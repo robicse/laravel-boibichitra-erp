@@ -40,7 +40,7 @@ use Illuminate\Support\Facades\Route;
 // Before Login
 // good way
 // http://localhost/boibichitra-accounts/public/api/test
-//Route::get('test', 'API\FrontendController@test');
+Route::get('test1', 'API\FrontendController@test1');
 
 Route::post('register', 'API\FrontendController@register');
 Route::post('login', 'API\FrontendController@login');
@@ -53,7 +53,7 @@ Route::post('login', 'API\FrontendController@login');
 //    return $request->user();
 //});
 
-Route::middleware('auth:api')->get('/test', 'API\BackendController@test');
+//Route::middleware('auth:api')->get('/test', 'API\BackendController@test');
 // role
 Route::middleware('auth:api')->get('/roles', 'API\BackendController@roleList');
 // party

@@ -21,6 +21,12 @@ class FrontendController extends Controller
     public $ExistsStatus = 403;
     public $validationStatus = 404;
 
+    public function test1()
+    {
+        //return 'test';
+        return response()->json(['success'=>true,'response' => 'Test Action Api!'], $this-> successStatus);
+    }
+
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [

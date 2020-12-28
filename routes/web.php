@@ -38,14 +38,25 @@ Route::get('/view-clear', function() {
 
 
 Route::get('/', function () {
-    return view('welcome');
+    //return view('welcome');
+    return redirect()->route('login');
 });
 
-Route::group(['middleware' => ['auth']], function() {
+//Route::group(['middleware' => ['auth']], function() {
     //Route::resource('roles','RoleController');
     //Route::resource('users','UserController');
-});
+//});
+
+
 
 Auth::routes();
 
 Route::get('/home', 'HomeController@index')->name('home');
+
+Route::group(['middleware' => ['auth']], function() {
+    Route::get('change-password/{id}', 'UserController@changedPassword')->name('password.change_password');
+    Route::post('change-password-update', 'UserController@changedPasswordUpdated')->name('password.change_password_update');
+
+    Route::resource('roles', 'RoleController');
+    Route::resource('users', 'UserController');
+});
