@@ -107,11 +107,19 @@ class FrontendController extends Controller
 
         //if (Auth::attempt(['email' => request('email'), 'password' => request('password')])) {
         if (Auth::attempt(['phone' => request('phone'), 'password' => request('password')])) {
-            $user = Auth::user();
 
             $success['success'] = true;
+
+            $user = Auth::user();
+
+            //get roles
+            $user['role'] = $user->getRoleNames()[0];
+
             // create token
             $user['token'] = $user->createToken('BoiBichitra')->accessToken;
+
+
+            unset($user['roles']);
             $success['user'] = $user;
 
             return response()->json(['success' => $success], $this-> successStatus);

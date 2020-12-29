@@ -44,6 +44,7 @@ class UserController extends Controller
     {
         $this->validate($request, [
             'name' => 'required',
+            'phone' => 'required|unique:users,phone',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|same:confirm-password',
             'roles' => 'required'
@@ -68,6 +69,7 @@ class UserController extends Controller
     public function show($id)
     {
         $user = User::find($id);
+
         return view('users.show',compact('user'));
     }
 
@@ -97,6 +99,7 @@ class UserController extends Controller
     {
         $this->validate($request, [
             'name' => 'required',
+            'phone' => 'required|unique:users,phone,'.$id,
             'email' => 'required|email|unique:users,email,'.$id,
             'password' => 'same:confirm-password',
             'roles' => 'required'

@@ -14,7 +14,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 
+/* use command line*/
+#php artisan cache:clear
+#php artisan config:cache
+#php artisan view:clear
+#php artisan config:cache
 
+
+/*use browser*/
 Route::get('/clear-cache', function() {
     $exitCode = Artisan::call('cache:clear');
     return 'cache clear';

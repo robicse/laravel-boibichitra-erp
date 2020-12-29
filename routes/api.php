@@ -56,9 +56,16 @@ Route::post('login', 'API\FrontendController@login');
 //Route::middleware('auth:api')->get('/test', 'API\BackendController@test');
 // role
 Route::middleware('auth:api')->get('/roles', 'API\BackendController@roleList');
+
 // party
 Route::middleware('auth:api')->get('/party_list', 'API\BackendController@partyList');
 Route::middleware('auth:api')->post('/party_create', 'API\BackendController@partyCreate');
 Route::middleware('auth:api')->post('/party_details', 'API\BackendController@partyDetails');
 Route::middleware('auth:api')->post('/party_update', 'API\BackendController@partyUpdate');
 Route::middleware('auth:api')->post('/party_delete', 'API\BackendController@partyDelete');
+
+// user
+
+Route::middleware('auth:api')->get('/user_list', 'API\BackendController@userList');
+Route::middleware('auth:api')->post('/user_create', 'API\BackendController@userCreate');
+Route::middleware('auth:api')->post('/user_details', 'API\BackendController@userDetails');
