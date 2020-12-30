@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Helpers\UserInfo;
+
 use App\Http\Controllers\Controller;
-use App\VerificationCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Validator;
+use Spatie\Permission\Models\Permission;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use App\User;
 
@@ -27,13 +27,13 @@ class FrontendController extends Controller
         return response()->json(['success'=>true,'response' => 'Test Action Api!'], $this-> successStatus);
     }
 
+    // only production user er jonno 1 bar e registration hobe
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required',
-            'phone' => 'required',
-            'password' => 'required',
-            'user_type' => 'required',
+            'phone' => 'required|unique:users,phone',
+            'password' => 'required|same:confirm_password',
         ]);
 
         if ($validator->fails()) {
@@ -61,20 +61,19 @@ class FrontendController extends Controller
         }else{
             $phn = $request->phone;
         }
-        $slug = Str::slug($request->name,'-');
-        $drSlugCheck = User::where('slug', $slug)->first();
-        if(!empty($drSlugCheck)) {
-            $slug = $slug.'-'.Str::random(6);
-        }
+//        $slug = Str::slug($request->name,'-');
+//        $drSlugCheck = User::where('slug', $slug)->first();
+//        if(!empty($drSlugCheck)) {
+//            $slug = $slug.'-'.Str::random(6);
+//        }
 
         // user data
         $user = new User();
         $user->name = $request->name;
-        $user->slug = $slug;
+        //$user->slug = $slug;
         $user->phone = $phn;
         $user->password = Hash::make($request->password);
         $user->email = $request->email;
-        $user->user_type = $request->user_type;
         $user->save();
         $user_id = $user->id;
         if($user_id){
@@ -88,7 +87,8 @@ class FrontendController extends Controller
         }
     }
 
-    public function login(Request $request)
+    // web good
+    public function login_web(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'phone' => 'required',
@@ -112,18 +112,73 @@ class FrontendController extends Controller
 
             $user = Auth::user();
 
+            // create token
+            $user['token'] = $user->createToken('BoiBichitra')->accessToken;
+
             //get roles
             $user['role'] = $user->getRoleNames()[0];
+            //$user['role_id'] = $user['roles'][0]->id;
+            $role_id = $user['roles'][0]->id;
+            $user['permissions'] = Permission::join("role_has_permissions","role_has_permissions.permission_id","=","permissions.id")
+                ->where("role_has_permissions.role_id",$role_id)
+                ->get();
+            unset($user['roles']);
+
+
+
+            $success['user'] = $user;
+            //$success['permissions'] = $permissions;
+
+            return response()->json(['success' => $success], $this-> successStatus);
+        } else {
+            return response()->json(['error' => 'Unauthorised'], $this-> failStatus);
+        }
+    }
+
+    public function login(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required',
+            'password' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        if(Auth::guard('web')->attempt(['phone' => request('phone'), 'password' => request('password')])){
+            //return response()->json(['success' => 'true'], $this-> successStatus);
+
+            $success['success'] = true;
+
+            //$user = Auth::user();
+            $user = Auth::guard('web')->user();
 
             // create token
             $user['token'] = $user->createToken('BoiBichitra')->accessToken;
 
-
+            //get roles
+            $user['role'] = $user->getRoleNames()[0];
+            //$user['role_id'] = $user['roles'][0]->id;
+            $role_id = $user['roles'][0]->id;
+            $user['permissions'] = Permission::join("role_has_permissions","role_has_permissions.permission_id","=","permissions.id")
+                ->where("role_has_permissions.role_id",$role_id)
+                ->get();
             unset($user['roles']);
+
+
+
             $success['user'] = $user;
+            //$success['permissions'] = $permissions;
 
             return response()->json(['success' => $success], $this-> successStatus);
-        } else {
+        }else{
             return response()->json(['error' => 'Unauthorised'], $this-> failStatus);
         }
     }

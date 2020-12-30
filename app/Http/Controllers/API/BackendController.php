@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 
 class BackendController extends Controller
 {
@@ -25,6 +27,144 @@ class BackendController extends Controller
         return response()->json(['success'=>true,'response' => 'Test Action Api!'], $this-> successStatus);
     }
 
+    // first permission create
+    // and then role create
+    // final user create
+    public function permissionListCreate(Request $request){
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:permissions,name',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $permission = Permission::create(['name' => $request->input('name')]);
+
+        if($permission)
+        {
+            return response()->json(['success'=>true,'response' => $permission], $this-> successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Permission Created!'], $this->failStatus);
+        }
+    }
+
+    public function permissionListDetails(Request $request){
+        $check_exists_party = DB::table("permissions")->where('id',$request->permission_id)->pluck('id')->first();
+        if($check_exists_party == null){
+            return response()->json(['success'=>false,'response'=>'No Permission Found, using this id!'], $this->failStatus);
+        }
+
+        $permissions = DB::table("permissions")->where('id',$request->permission_id)->latest()->first();
+        if($permissions)
+        {
+            return response()->json(['success'=>true,'response' => $permissions], $this-> successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Permission Found!'], $this->failStatus);
+        }
+    }
+
+    public function permissionListUpdate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:permissions,name,'.$request->permission_id,
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $check_exists_party = DB::table("permissions")->where('id',$request->permission_id)->pluck('id')->first();
+        if($check_exists_party == null){
+            return response()->json(['success'=>false,'response'=>'No Permission Found, using this id!'], $this->failStatus);
+        }
+
+        return response()->json(['success'=>true,'response' => 'Working Mode'], $this-> successStatus);
+
+//        $permission = Permission::find($request->permission_id);
+//        $permission->name = $request->name;
+//        $update_permission = $permission->save();
+//
+//        if($update_permission){
+//            return response()->json(['success'=>true,'response' => $permission], $this-> successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'Permission Not Updated Successfully!'], $this->failStatus);
+//        }
+    }
+
+    public function rolePermissionCreate(Request $request){
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:roles,name',
+            'permission' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $role = Role::create(['name' => $request->input('name')]);
+        $role->syncPermissions($request->input('permission'));
+
+        if($role)
+        {
+            return response()->json(['success'=>true,'response' => $role], $this-> successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Role Created!'], $this->failStatus);
+        }
+    }
+
+    public function rolePermissionUpdate(Request $request){
+        $validator = Validator::make($request->all(), [
+            'role_id' => 'required',
+            'name' => 'required',
+            'permission' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        //$role = Role::create(['name' => $request->input('name')]);
+        //$role->syncPermissions($request->input('permission'));
+
+        $role = Role::find($request->role_id);
+        $role->name = $request->input('name');
+        $role->save();
+
+        $role->syncPermissions($request->input('permission'));
+
+        if($role)
+        {
+            return response()->json(['success'=>true,'response' => $role], $this-> successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Role Created!'], $this->failStatus);
+        }
+    }
+
     public function roleList(){
         $roles = DB::table('roles')->select('id','name')->get();
 
@@ -34,6 +174,63 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this-> successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Role List Found!'], $this->failStatus);
+        }
+    }
+
+    public function userCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required',
+            'phone' => 'required|unique:users,phone',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|same:confirm_password',
+            'roles' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $input = $request->all();
+        $input['password'] = Hash::make($input['password']);
+
+        $user = User::create($input);
+        $user->assignRole($request->input('roles'));
+
+        if($user){
+            return response()->json(['success'=>true,'response' => $user], $this-> successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'User Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function userDetails(Request $request){
+        $check_exists_party = DB::table("users")->where('id',$request->user_id)->pluck('id')->first();
+        if($check_exists_party == null){
+            return response()->json(['success'=>false,'response'=>'No User Found, Using this id!'], $this->failStatus);
+        }
+
+        //$users = DB::table("users")->where('id',$request->user_id)->select('id','name','phone','email','status')->first();
+        $users = DB::table("users")
+            ->join('model_has_roles','model_has_roles.model_id','users.id')
+            ->join('roles','model_has_roles.role_id','roles.id')
+            ->where('users.id',$request->user_id)
+            ->select('users.id','users.name','users.phone','users.email','users.status','roles.name as role')
+            ->first();
+
+
+        if($users)
+        {
+            return response()->json(['success'=>true,'response' => $users], $this-> successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No User Found!'], $this->failStatus);
         }
     }
 
@@ -158,7 +355,12 @@ class BackendController extends Controller
     }
 
     public function userList(){
-        $users = DB::table('users')->select('id','user_type','name','phone','email','status')->get();
+        //$users = DB::table('users')->select('id','name','phone','email','status')->get();
+        $users = DB::table("users")
+            ->join('model_has_roles','model_has_roles.model_id','users.id')
+            ->join('roles','model_has_roles.role_id','roles.id')
+            ->select('users.id','users.name','users.phone','users.email','users.status','roles.name as role')
+            ->get();
 
         if($users)
         {
@@ -166,66 +368,6 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this-> successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No User List Found!'], $this->failStatus);
-        }
-    }
-
-    public function userCreate(Request $request){
-
-        $validator = Validator::make($request->all(), [
-            'name' => 'required',
-            'phone' => 'required|unique:users,phone',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|same:confirm-password',
-            'roles' => 'required'
-        ]);
-
-        if ($validator->fails()) {
-            $response = [
-                'success' => false,
-                'data' => 'Validation Error.',
-                'message' => $validator->errors()
-            ];
-
-            return response()->json($response, $this-> validationStatus);
-        }
-
-
-        $input = $request->all();
-        $input['password'] = Hash::make($input['password']);
-
-        $user = User::create($input);
-        $user->assignRole($request->input('roles'));
-
-        if($user){
-            $update_user = User::find($user->id);
-            $update_user->update();
-
-            return response()->json(['success'=>true,'response' => $user], $this-> successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Party Not Created Successfully!'], $this->failStatus);
-        }
-    }
-
-    public function userDetails(Request $request){
-        $check_exists_party = DB::table("users")->where('id',$request->user_id)->pluck('id')->first();
-        if($check_exists_party == null){
-            return response()->json(['success'=>false,'response'=>'No User Found, Using this id!'], $this->failStatus);
-        }
-
-        //$users = DB::table("users")->where('id',$request->user_id)->select('id','name','phone','email','status')->first();
-        $users = DB::table("users")
-            ->join('model_has_roles','model_has_roles.model_id','users.id')
-            ->join('roles','model_has_roles.role_id','roles.id')
-            ->where('users.id',$request->user_id)
-            ->select('users.id','users.name','users.phone','users.email','users.status','roles.name as roles')
-            ->first();
-
-
-        if($users)
-        {
-            return response()->json(['success'=>true,'response' => $users], $this-> successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No User Found!'], $this->failStatus);
         }
     }
 }
