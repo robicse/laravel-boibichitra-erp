@@ -4,8 +4,12 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Party;
+use App\Product;
+use App\ProductBrand;
+use App\ProductUnit;
 use App\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -121,11 +125,28 @@ class BackendController extends Controller
     }
 
     public function roleList(){
-        $roles = DB::table('roles')->select('id','name')->get();
+
+        $roles = DB::table('roles')
+            ->select('id','name')
+            ->where('name','!=','admin')
+            ->get();
 
         if($roles)
         {
-            $success['roles'] =  $roles;
+            $data = [];
+
+            foreach($roles as $role){
+                $nested_data['id'] = $role->id;
+                $nested_data['name'] = $role->name;
+
+                $nested_data['permissions'] = Permission::join("role_has_permissions","role_has_permissions.permission_id","=","permissions.id")
+                    ->where("role_has_permissions.role_id",$role->id)
+                    ->get();
+
+                $data[] = $nested_data;
+            }
+
+            $success['role'] =  $data;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Role List Found!'], $this->failStatus);
@@ -202,7 +223,7 @@ class BackendController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|same:confirm_password',
             'roles' => 'required',
-            'landing_permission' => 'required',
+            'status' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -254,14 +275,30 @@ class BackendController extends Controller
 
     public function userUpdate(Request $request){
 
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'required',
-            'name' => 'required',
-            'phone' => 'required|unique:users,phone,'.$request->user_id,
-            'email' => 'required|email|unique:users,email,'.$request->user_id,
-            'password' => 'same:confirm_password',
-            'roles' => 'required'
-        ]);
+        $input = $request->all();
+
+        if(!empty($input['password'])){
+            $validator = Validator::make($request->all(), [
+                'user_id' => 'required',
+                'name' => 'required',
+                'phone' => 'required|unique:users,phone,'.$request->user_id,
+                'email' => 'required|email|unique:users,email,'.$request->user_id,
+                'password' => 'same:confirm_password',
+                'roles' => 'required',
+                'status' => 'required',
+            ]);
+        }else{
+            $validator = Validator::make($request->all(), [
+                'user_id' => 'required',
+                'name' => 'required',
+                'phone' => 'required|unique:users,phone,'.$request->user_id,
+                'email' => 'required|email|unique:users,email,'.$request->user_id,
+                'roles' => 'required',
+                'status' => 'required',
+            ]);
+        }
+
+
 
         if ($validator->fails()) {
             $response = [
@@ -273,28 +310,31 @@ class BackendController extends Controller
             return response()->json($response, $this->validationStatus);
         }
 
-        $check_exists_party = DB::table("users")->where('id',$request->user_id)->pluck('id')->first();
-        if($check_exists_party == null){
-            return response()->json(['success'=>false,'response'=>'No User Found!'], $this->failStatus);
-        }
+        //$check_exists_party = DB::table("users")->where('id',$request->user_id)->pluck('id')->first();
+        $check_exists_user = DB::table("users")->where('id',$request->user_id)->first();
 
-        $input = $request->all();
-        if(!empty($input['password'])){
-            $input['password'] = Hash::make($input['password']);
+        if($check_exists_user){
+            if(!empty($input['password'])){
+                $input['password'] = Hash::make($input['password']);
+            }else{
+                //$input = array_except($input,array('password'));
+                //$input = Arr::get($input,array('password'));
+                $input['password'] = $check_exists_user->password;
+            }
+
+            $user = User::find($request->user_id);
+            $user->update($input);
+            DB::table('model_has_roles')->where('model_id',$request->user_id)->delete();
+
+            $user->assignRole($request->input('roles'));
+
+            if($user){
+                return response()->json(['success'=>true,'response' => $user], $this->successStatus);
+            }else{
+                return response()->json(['success'=>false,'response'=>'User Not Updated Successfully!'], $this->failStatus);
+            }
         }else{
-            $input = array_except($input,array('password'));
-        }
-
-        $user = User::find($request->user_id);
-        $user->update($input);
-        DB::table('model_has_roles')->where('model_id',$request->user_id)->delete();
-
-        $user->assignRole($request->input('roles'));
-
-        if($user){
-            return response()->json(['success'=>true,'response' => $user], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'User Not Updated Successfully!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No User Found, Using this id!'], $this->failStatus);
         }
     }
 
@@ -331,6 +371,7 @@ class BackendController extends Controller
             'type'=> 'required',
             'name' => 'required',
             'phone'=> 'required',
+            'status' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -384,6 +425,7 @@ class BackendController extends Controller
             'type'=> 'required',
             'name' => 'required',
             'phone'=> 'required',
+            'status' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -447,6 +489,254 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No User List Found!'], $this->failStatus);
+        }
+    }
+
+    // product brand
+    public function productBrandList(){
+        $product_brands = DB::table('product_brands')->select('id','name','status')->get();
+
+        if($product_brands)
+        {
+            $success['product_brand'] =  $product_brands;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Brand List Found!'], $this->failStatus);
+        }
+    }
+
+    public function productBrandCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:product_brands,name',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $productBrand = new ProductBrand();
+        $productBrand->name = $request->name;
+        $productBrand->status = $request->status;
+        $productBrand->save();
+        $insert_id = $productBrand->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $productBrand], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Product Brand Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function productBrandEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'product_brand_id'=> 'required',
+            'name' => 'required|unique:product_brands,name,'.$request->product_brand_id,
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_product_brand = DB::table("product_brands")->where('id',$request->product_brand_id)->pluck('id')->first();
+        if($check_exists_product_brand == null){
+            return response()->json(['success'=>false,'response'=>'No Product Brand Found!'], $this->failStatus);
+        }
+
+        $product_brands = ProductBrand::find($request->product_brand_id);
+        $product_brands->name = $request->name;
+        $product_brands->status = $request->status;
+        $update_product_brand = $product_brands->save();
+
+        if($update_product_brand){
+            return response()->json(['success'=>true,'response' => $product_brands], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Product Brand Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function productBrandDelete(Request $request){
+        $check_exists_product_brand = DB::table("product_brands")->where('id',$request->product_brand_id)->pluck('id')->first();
+        if($check_exists_product_brand == null){
+            return response()->json(['success'=>false,'response'=>'No Product Brand Found!'], $this->failStatus);
+        }
+
+        $delete_party = DB::table("product_brands")->where('id',$request->product_brand_id)->delete();
+        if($delete_party)
+        {
+            return response()->json(['success'=>true,'response' => 'Product Brand Successfully Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Brand Deleted!'], $this->failStatus);
+        }
+    }
+
+    // product unit
+    public function productUnitList(){
+        $product_units = DB::table('product_units')->select('id','name','status')->get();
+
+        if($product_units)
+        {
+            $success['product_units'] =  $product_units;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Unit List Found!'], $this->failStatus);
+        }
+    }
+
+    public function productUnitCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:product_units,name',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $productUnit = new ProductUnit();
+        $productUnit->name = $request->name;
+        $productUnit->status = $request->status;
+        $productUnit->save();
+        $insert_id = $productUnit->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $productUnit], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Product Not Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function productUnitEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'product_unit_id'=> 'required',
+            'name' => 'required|unique:product_units,name,'.$request->product_unit_id,
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_product_unit = DB::table("product_units")->where('id',$request->product_unit_id)->pluck('id')->first();
+        if($check_exists_product_unit == null){
+            return response()->json(['success'=>false,'response'=>'No Product Unit Found!'], $this->failStatus);
+        }
+
+        $product_units = ProductUnit::find($request->product_unit_id);
+        $product_units->name = $request->name;
+        $product_units->status = $request->status;
+        $update_product_unit = $product_units->save();
+
+        if($update_product_unit){
+            return response()->json(['success'=>true,'response' => $product_units], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Product Unit Not Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function productUnitDelete(Request $request){
+        $check_exists_product_unit = DB::table("product_units")->where('id',$request->product_unit_id)->pluck('id')->first();
+        if($check_exists_product_unit == null){
+            return response()->json(['success'=>false,'response'=>'No Product Unit Found!'], $this->failStatus);
+        }
+
+        $delete_product_unit = DB::table("product_units")->where('id',$request->product_unit_id)->delete();
+        if($delete_product_unit)
+        {
+            return response()->json(['success'=>true,'response' => 'Product Unit Successfully Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Unit Deleted!'], $this->failStatus);
+        }
+    }
+
+    public function productList(){
+        $products = DB::table('products')
+            ->select('id','name','product_unit_id','item_code','barcode','self_no','low_inventory_alert','product_brand_id','purchase_price','selling_price','note','date','status')
+            ->get();
+
+        if($products)
+        {
+            $success['products'] =  $products;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product List Found!'], $this->failStatus);
+        }
+    }
+
+    public function productCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:products,name',
+            'product_unit_id'=> 'required',
+            'barcode'=> 'required',
+            'purchase_price'=> 'required',
+            'selling_price'=> 'required',
+            'date'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $product = new Product();
+        $product->name = $request->name;
+        $product->product_unit_id = $request->product_unit_id;
+        $product->item_code = $request->item_code ? $request->item_code : NULL;
+        $product->barcode = $request->barcode;
+        $product->self_no = $request->self_no ? $request->self_no : NULL;
+        $product->low_inventory_alert = $request->low_inventory_alert ? $request->low_inventory_alert : NULL;
+        $product->product_brand_id = $request->product_brand_id ? $request->product_brand_id : NULL;
+        $product->purchase_price = $request->purchase_price;
+        $product->selling_price = $request->selling_price;
+        $product->note = $request->note ? $request->note : NULL;
+        $product->date = $request->date;
+        $product->status = $request->status;
+        $product->save();
+        $insert_id = $product->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $product], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Product Not Created Successfully!'], $this->failStatus);
         }
     }
 }

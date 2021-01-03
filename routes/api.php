@@ -79,3 +79,22 @@ Route::middleware('auth:api')->post('/party_create', 'API\BackendController@part
 Route::middleware('auth:api')->post('/party_details', 'API\BackendController@partyDetails');
 Route::middleware('auth:api')->post('/party_update', 'API\BackendController@partyUpdate');
 Route::middleware('auth:api')->post('/party_delete', 'API\BackendController@partyDelete');
+
+
+// product brand
+Route::middleware('auth:api')->get('/product_brand_list', 'API\BackendController@productBrandList');
+Route::middleware('auth:api')->post('/product_brand_create', 'API\BackendController@productBrandCreate');
+Route::middleware('auth:api')->post('/product_brand_edit', 'API\BackendController@productBrandEdit');
+Route::middleware('auth:api')->post('/product_brand_delete', 'API\BackendController@productBrandDelete');
+
+// product unit
+Route::middleware('auth:api')->get('/product_unit_list', 'API\BackendController@productUnitList');
+Route::middleware('auth:api')->post('/product_unit_create', 'API\BackendController@productUnitCreate');
+Route::middleware('auth:api')->post('/product_unit_edit', 'API\BackendController@productUnitEdit');
+Route::middleware('auth:api')->post('/product_unit_delete', 'API\BackendController@productUnitDelete');
+
+// product
+Route::middleware('auth:api')->get('/product_list', 'API\BackendController@productList');
+Route::middleware('auth:api')->post('/product_create', 'API\BackendController@productCreate');
+//Route::middleware('auth:api')->post('/product_edit', 'API\BackendController@productEdit');
+//Route::middleware('auth:api')->post('/product_delete', 'API\BackendController@productDelete');
