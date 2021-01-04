@@ -96,5 +96,5 @@ Route::middleware('auth:api')->post('/product_unit_delete', 'API\BackendControll
 // product
 Route::middleware('auth:api')->get('/product_list', 'API\BackendController@productList');
 Route::middleware('auth:api')->post('/product_create', 'API\BackendController@productCreate');
-//Route::middleware('auth:api')->post('/product_edit', 'API\BackendController@productEdit');
-//Route::middleware('auth:api')->post('/product_delete', 'API\BackendController@productDelete');
+Route::middleware('auth:api')->post('/product_edit', 'API\BackendController@productEdit');
+Route::middleware('auth:api')->post('/product_delete', 'API\BackendController@productDelete');

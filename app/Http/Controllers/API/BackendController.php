@@ -128,7 +128,7 @@ class BackendController extends Controller
 
         $roles = DB::table('roles')
             ->select('id','name')
-            ->where('name','!=','admin')
+            //->where('name','!=','admin')
             ->get();
 
         if($roles)
@@ -682,7 +682,9 @@ class BackendController extends Controller
 
     public function productList(){
         $products = DB::table('products')
-            ->select('id','name','product_unit_id','item_code','barcode','self_no','low_inventory_alert','product_brand_id','purchase_price','selling_price','note','date','status')
+            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+            ->select('products.id','products.name as product_name','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
             ->get();
 
         if($products)
@@ -699,7 +701,8 @@ class BackendController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|unique:products,name',
             'product_unit_id'=> 'required',
-            'barcode'=> 'required',
+            //'barcode'=> 'required',
+            'barcode' => 'required|unique:products,barcode',
             'purchase_price'=> 'required',
             'selling_price'=> 'required',
             'date'=> 'required',
@@ -737,6 +740,72 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $product], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'Product Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function productEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'product_id'=> 'required',
+            'name' => 'required|unique:products,name,'.$request->product_id,
+            'product_unit_id'=> 'required',
+            //'barcode'=> 'required',
+            'barcode' => 'required|unique:products,barcode,'.$request->product_id,
+            'purchase_price'=> 'required',
+            'selling_price'=> 'required',
+            'date'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_product = DB::table("products")->where('id',$request->product_id)->pluck('id')->first();
+        if($check_exists_product == null){
+            return response()->json(['success'=>false,'response'=>'No Product Found!'], $this->failStatus);
+        }
+
+        $product = Product::find($request->product_id);
+        $product->name = $request->name;
+        $product->product_unit_id = $request->product_unit_id;
+        $product->item_code = $request->item_code ? $request->item_code : NULL;
+        $product->barcode = $request->barcode;
+        $product->self_no = $request->self_no ? $request->self_no : NULL;
+        $product->low_inventory_alert = $request->low_inventory_alert ? $request->low_inventory_alert : NULL;
+        $product->product_brand_id = $request->product_brand_id ? $request->product_brand_id : NULL;
+        $product->purchase_price = $request->purchase_price;
+        $product->selling_price = $request->selling_price;
+        $product->note = $request->note ? $request->note : NULL;
+        $product->date = $request->date;
+        $product->status = $request->status;
+        $update_product = $product->save();
+
+        if($update_product){
+            return response()->json(['success'=>true,'response' => $product], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Product Not Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function productDelete(Request $request){
+        $check_exists_product = DB::table("products")->where('id',$request->product_id)->pluck('id')->first();
+        if($check_exists_product == null){
+            return response()->json(['success'=>false,'response'=>'No Product Found!'], $this->failStatus);
+        }
+
+        $delete_product = DB::table("products")->where('id',$request->product_id)->delete();
+        if($delete_product)
+        {
+            return response()->json(['success'=>true,'response' => 'Product Successfully Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Deleted!'], $this->failStatus);
         }
     }
 }
