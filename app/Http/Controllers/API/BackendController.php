@@ -7,7 +7,9 @@ use App\Party;
 use App\Product;
 use App\ProductBrand;
 use App\ProductUnit;
+use App\Store;
 use App\User;
+use App\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +31,218 @@ class BackendController extends Controller
     {
         //return 'test';
         return response()->json(['success'=>true,'response' => 'Test Action Api!'], $this->successStatus);
+    }
+
+
+
+
+    // product unit
+    public function warehouseList(){
+        $warehouses = DB::table('warehouses')->select('id','name','phone','email','address','status')->get();
+
+        if($warehouses)
+        {
+            $success['warehouses'] =  $warehouses;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouses List Found!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:warehouses,name',
+            'phone' => 'required|unique:warehouses,phone',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $warehouse = new Warehouse();
+        $warehouse->name = $request->name;
+        $warehouse->phone = $request->phone;
+        $warehouse->email = $request->email;
+        $warehouse->address = $request->address;
+        $warehouse->status = $request->status;
+        $warehouse->save();
+        $insert_id = $warehouse->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $warehouse], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Warehouse Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'warehouse_id'=> 'required',
+            'name' => 'required|unique:warehouses,name,'.$request->warehouse_id,
+            'phone' => 'required|unique:warehouses,phone,'.$request->warehouse_id,
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_warehouse = DB::table("warehouses")->where('id',$request->warehouse_id)->pluck('id')->first();
+        if($check_exists_warehouse == null){
+            return response()->json(['success'=>false,'response'=>'No Warehouse Found!'], $this->failStatus);
+        }
+
+        $warehouse = Warehouse::find($request->warehouse_id);
+        $warehouse->name = $request->name;
+        $warehouse->phone = $request->phone;
+        $warehouse->email = $request->email;
+        $warehouse->address = $request->address;
+        $warehouse->status = $request->status;
+        $update_warehouse = $warehouse->save();
+
+        if($update_warehouse){
+            return response()->json(['success'=>true,'response' => $warehouse], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Warehouse Not Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseDelete(Request $request){
+        $check_exists_warehouse = DB::table("warehouses")->where('id',$request->warehouse_id)->pluck('id')->first();
+        if($check_exists_warehouse == null){
+            return response()->json(['success'=>false,'response'=>'No Warehouse Found!'], $this->failStatus);
+        }
+
+        $delete_warehouse = DB::table("warehouses")->where('id',$request->warehouse_id)->delete();
+        if($delete_warehouse)
+        {
+            return response()->json(['success'=>true,'response' => 'Warehouse Successfully Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Deleted!'], $this->failStatus);
+        }
+    }
+
+    public function storeList(){
+        $stores = DB::table('stores')
+            ->leftJoin('warehouses','stores.warehouse_id','warehouses.id')
+            ->select('stores.id','stores.name as store_name','stores.phone','stores.email','stores.address','stores.status','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
+            ->get();
+
+        if($stores)
+        {
+            $success['stores'] =  $stores;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store List Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'warehouse_id'=> 'required',
+            'name' => 'required|unique:stores,name',
+            'phone'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $store = new Store();
+        $store->warehouse_id = $request->warehouse_id;
+        $store->name = $request->name;
+        $store->phone = $request->phone;
+        $store->email = $request->email ? $request->email : NULL;
+        $store->address = $request->address ? $request->address : NULL;
+        $store->status = $request->status;
+        $store->save();
+        $insert_id = $store->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $store], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Store Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function storeEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'warehouse_id'=> 'required',
+            'name' => 'required|unique:stores,name,'.$request->store_id,
+            'phone'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_store = DB::table("stores")->where('id',$request->store_id)->pluck('id')->first();
+        if($check_exists_store == null){
+            return response()->json(['success'=>false,'response'=>'No Store Found!'], $this->failStatus);
+        }
+
+        $store = Store::find($request->store_id);
+        $store->warehouse_id = $request->warehouse_id;
+        $store->name = $request->name;
+        $store->phone = $request->phone;
+        $store->email = $request->email ? $request->email : NULL;
+        $store->address = $request->address ? $request->address : NULL;
+        $store->status = $request->status;
+        $update_store = $store->save();
+
+        if($update_store){
+            return response()->json(['success'=>true,'response' => $store], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Store Not Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function storeDelete(Request $request){
+        $check_exists_store = DB::table("stores")->where('id',$request->store_id)->pluck('id')->first();
+        if($check_exists_store == null){
+            return response()->json(['success'=>false,'response'=>'No Store Found!'], $this->failStatus);
+        }
+
+        $delete_store = DB::table("stores")->where('id',$request->store_id)->delete();
+        if($delete_store)
+        {
+            return response()->json(['success'=>true,'response' => 'Store Successfully Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Deleted!'], $this->failStatus);
+        }
     }
 
 
@@ -215,6 +429,25 @@ class BackendController extends Controller
         }
     }
 
+    public function userList(){
+        //$users = DB::table('users')->select('id','name','phone','email','status')->get();
+        $users = DB::table("users")
+            ->join('model_has_roles','model_has_roles.model_id','users.id')
+            ->join('roles','model_has_roles.role_id','roles.id')
+            ->leftJoin('warehouses','users.warehouse_id','warehouses.id')
+            ->leftJoin('stores','users.store_id','stores.id')
+            ->select('users.id','users.name','users.phone','users.email','users.status','roles.name as role','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->get();
+
+        if($users)
+        {
+            $success['users'] =  $users;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No User List Found!'], $this->failStatus);
+        }
+    }
+
     public function userCreate(Request $request){
 
         $validator = Validator::make($request->all(), [
@@ -224,6 +457,7 @@ class BackendController extends Controller
             'password' => 'required|same:confirm_password',
             'roles' => 'required',
             'status' => 'required',
+            'warehouse_id' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -260,8 +494,10 @@ class BackendController extends Controller
         $users = DB::table("users")
             ->join('model_has_roles','model_has_roles.model_id','users.id')
             ->join('roles','model_has_roles.role_id','roles.id')
+            ->leftJoin('warehouses','users.warehouse_id','warehouses.id')
+            ->leftJoin('stores','users.store_id','stores.id')
             ->where('users.id',$request->user_id)
-            ->select('users.id','users.name','users.phone','users.email','users.status','roles.name as role')
+            ->select('users.id','users.name','users.phone','users.email','users.status','roles.name as role','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
             ->first();
 
 
@@ -273,7 +509,7 @@ class BackendController extends Controller
         }
     }
 
-    public function userUpdate(Request $request){
+    public function userEdit(Request $request){
 
         $input = $request->all();
 
@@ -286,6 +522,7 @@ class BackendController extends Controller
                 'password' => 'same:confirm_password',
                 'roles' => 'required',
                 'status' => 'required',
+                'warehouse_id' => 'required',
             ]);
         }else{
             $validator = Validator::make($request->all(), [
@@ -295,6 +532,7 @@ class BackendController extends Controller
                 'email' => 'required|email|unique:users,email,'.$request->user_id,
                 'roles' => 'required',
                 'status' => 'required',
+                'warehouse_id' => 'required',
             ]);
         }
 
@@ -472,23 +710,6 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Party Successfully Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Party Deleted!'], $this->failStatus);
-        }
-    }
-
-    public function userList(){
-        //$users = DB::table('users')->select('id','name','phone','email','status')->get();
-        $users = DB::table("users")
-            ->join('model_has_roles','model_has_roles.model_id','users.id')
-            ->join('roles','model_has_roles.role_id','roles.id')
-            ->select('users.id','users.name','users.phone','users.email','users.status','roles.name as role')
-            ->get();
-
-        if($users)
-        {
-            $success['users'] =  $users;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No User List Found!'], $this->failStatus);
         }
     }
 
@@ -808,4 +1029,6 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Product Deleted!'], $this->failStatus);
         }
     }
+
+
 }

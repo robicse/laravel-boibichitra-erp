@@ -55,6 +55,22 @@ Route::post('login', 'API\FrontendController@login');
 //});
 
 //Route::middleware('auth:api')->get('/test', 'API\BackendController@test');
+
+// warehouse
+Route::middleware('auth:api')->get('/warehouse_list', 'API\BackendController@warehouseList');
+Route::middleware('auth:api')->post('/warehouse_create', 'API\BackendController@warehouseCreate');
+Route::middleware('auth:api')->post('/warehouse_edit', 'API\BackendController@warehouseEdit');
+Route::middleware('auth:api')->post('/warehouse_delete', 'API\BackendController@warehouseDelete');
+
+
+// store
+Route::middleware('auth:api')->get('/store_list', 'API\BackendController@storeList');
+Route::middleware('auth:api')->post('/store_create', 'API\BackendController@storeCreate');
+Route::middleware('auth:api')->post('/store_edit', 'API\BackendController@storeEdit');
+Route::middleware('auth:api')->post('/store_delete', 'API\BackendController@storeDelete');
+
+
+
 // first permission
 Route::middleware('auth:api')->get('/permission_list_show', 'API\BackendController@permissionListShow');
 Route::middleware('auth:api')->post('/permission_list_create', 'API\BackendController@permissionListCreate');
@@ -70,7 +86,7 @@ Route::middleware('auth:api')->post('/role_permission_update', 'API\BackendContr
 Route::middleware('auth:api')->post('/user_create', 'API\BackendController@userCreate');
 Route::middleware('auth:api')->get('/user_list', 'API\BackendController@userList');
 Route::middleware('auth:api')->post('/user_details', 'API\BackendController@userDetails');
-Route::middleware('auth:api')->post('/user_update', 'API\BackendController@userUpdate');
+Route::middleware('auth:api')->post('/user_edit', 'API\BackendController@userEdit');
 Route::middleware('auth:api')->post('/user_delete', 'API\BackendController@userDelete');
 
 // party

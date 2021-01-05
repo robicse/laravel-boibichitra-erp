@@ -14,7 +14,7 @@ class CreateUsersTable extends Migration
     public function up()
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
+            $table->bigIncrements('id');
             $table->string('user_type');
             $table->string('name');
             $table->string('slug')->nullable();
@@ -22,8 +22,14 @@ class CreateUsersTable extends Migration
             $table->string('email')->unique();
             $table->string('password')->nullable();
             $table->integer('status')->default(0);
+            //$table->bigInteger('warehouse_id')->unsigned();
+            //$table->bigInteger('store_id')->unsigned();
+            $table->bigInteger('warehouse_id')->nullable();
+            $table->bigInteger('store_id')->nullable();
             $table->rememberToken();
             $table->timestamps();
+            //$table->foreign('warehouses')->references('id')->on('warehouse_id')->onDelete('cascade');
+            //$table->foreign('stores')->references('id')->on('store_id')->onDelete('cascade');
         });
     }
 
