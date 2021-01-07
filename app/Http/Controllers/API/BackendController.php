@@ -1041,7 +1041,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('products.id',$request->product_id)
-            ->select('product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+            ->select('products.purchase_price','products.selling_price','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->get();
 
         if($product_brand_and_unit)
@@ -1194,6 +1194,163 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Role Created!'], $this->failStatus);
+        }
+    }
+
+    public function productWholePurchaseEdit(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'product_purchase_id'=> 'required',
+            'user_id'=> 'required',
+            'party_id'=> 'required',
+            'warehouse_id'=> 'required',
+            'paid_amount'=> 'required',
+            'due_amount'=> 'required',
+            'total_amount'=> 'required',
+            'product_unit_id'=> 'required',
+            'product_id'=> 'required',
+            'qty'=> 'required',
+            'price'=> 'required',
+            'mrp_price'=> 'required',
+            'payment_type'=> 'required',
+        ]);
+
+        $row_count = count($request->product_id);
+        $total_amount = 0;
+        for($i=0; $i<$row_count;$i++)
+        {
+            $total_amount += $request->qty[$i]*$request->price[$i];
+        }
+
+//        $get_invoice_no = ProductPurchase::latest()->pluck('invoice_no')->first();
+//        if(!empty($get_invoice_no)){
+//            $get_invoice = str_replace("purchase-","",$get_invoice_no);
+//            $invoice_no = $get_invoice+1;
+//        }else{
+//            $invoice_no = 1000;
+//        }
+//        $final_invoice = 'purchase-'.$invoice_no;
+//
+//        $date = date('Y-m-d');
+//        $date_time = date('Y-m-d h:i:s');
+
+        // product purchase
+        $productPurchase = ProductPurchase::find($request->product_purchase_id);
+        $productPurchase ->user_id = $request->user_id;
+        $productPurchase ->party_id = $request->party_id;
+        $productPurchase ->warehouse_id = $request->warehouse_id;
+        $productPurchase ->paid_amount = $request->paid_amount;
+        $productPurchase ->due_amount = $request->due_amount;
+        $productPurchase ->total_amount = $total_amount;
+        $productPurchase->update();
+        $affectedRows = $productPurchase->id;
+        if($affectedRows)
+        {
+            for($i=0; $i<$row_count;$i++)
+            {
+                $product_id = $request->product_id[$i];
+                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+
+                $product_purchase_detail_id = $request->product_purchase_detail_id[$i];
+                // product purchase detail
+                $purchase_purchase_detail = ProductPurchaseDetail::find($product_purchase_detail_id);
+                $purchase_purchase_detail->product_unit_id = $request->product_unit_id[$i];
+                $purchase_purchase_detail->product_brand_id = $request->product_brand_id[$i] ? $request->product_brand_id[$i] : NULL;
+                $purchase_purchase_detail->product_id = $request->product_id[$i];
+                $purchase_purchase_detail->qty = $request->qty[$i];
+                $purchase_purchase_detail->price = $request->price[$i];
+                $purchase_purchase_detail->mrp_price = $request->mrp_price[$i];
+                $purchase_purchase_detail->sub_total = $request->qty[$i]*$request->price[$i];
+                $purchase_purchase_detail->barcode = $barcode;
+                $purchase_purchase_detail->update();
+
+//                $check_previous_stock = Stock::where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+//                if(!empty($check_previous_stock)){
+//                    $previous_stock = $check_previous_stock;
+//                }else{
+//                    $previous_stock = 0;
+//                }
+//
+//                // product stock
+//                $stock = new Stock();
+//                $stock->user_id = $request->user_id;
+//                $stock->warehouse_id = $request->warehouse_id;
+//                $stock->product_id = $request->product_id[$i];
+//                $stock->product_unit_id = $request->product_unit_id[$i];
+//                $stock->product_brand_id = $request->product_brand_id[$i] ? $request->product_brand_id[$i] : NULL;
+//                $stock->previous_stock = $previous_stock;
+//                $stock->stock_in = $request->qty[$i];
+//                $stock->stock_out = 0;
+//                $stock->current_stock = $previous_stock + $request->qty[$i];
+//                $stock->save();
+
+
+                // product stock
+                $stock_row = Stock::where('ref_id',$request->product_purchase_id)->where('stock_type','whole-purchase')->where('product_id',$product_id)->first();
+
+                if($stock_row->stock_in != $request->qty[$i]){
+
+                    if($request->qty[$i] > $stock_row->stock_in){
+                        $add_or_minus_stock_in = $request->qty[$i] - $stock_row->stock_in;
+                        $update_stock_in = $stock_row->stock_in + $add_or_minus_stock_in;
+                        $update_current_stock = $stock_row->current_stock + $add_or_minus_stock_in;
+                    }else{
+                        $add_or_minus_stock_in =  $stock_row->stock_in - $request->qty[$i];
+                        $update_stock_in = $stock_row->stock_in - $add_or_minus_stock_in;
+                        $update_current_stock = $stock_row->current_stock - $add_or_minus_stock_in;
+                    }
+
+                    $stock_row->user_id = $request->user_id;
+                    $stock_row->stock_in = $update_stock_in;
+                    $stock_row->current_stock = $update_current_stock;
+                    $stock_row->update();
+                }
+            }
+
+            // transaction
+            $transaction = Transaction::where('ref_id',$request->product_purchase_id)->first();
+            $transaction->user_id = $request->user_id;
+            $transaction->warehouse_id = $request->warehouse_id;
+            $transaction->party_id = $request->party_id;
+            $transaction->payment_type = $request->payment_type;
+            $transaction->amount = $request->paid_amount;
+            $transaction->update();
+
+            // payment paid
+            $payment_paid = PaymentPaid::where('product_purchase_id',$request->product_purchase_id)->first();
+            $payment_paid->user_id = $request->user_id;
+            $payment_paid->party_id = $request->party_id;
+            $payment_paid->paid_amount = $request->paid_amount;
+            $payment_paid->due_amount = $request->due_amount;
+            $payment_paid->current_paid_amount = $request->paid_amount;
+            $payment_paid->update();
+
+
+            return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function productWholePurchaseDelete(Request $request){
+        $check_exists_product_purchase = DB::table("product_purchases")->where('id',$request->product_purchase_id)->pluck('id')->first();
+        if($check_exists_product_purchase == null){
+            return response()->json(['success'=>false,'response'=>'No Product Purchase Found!'], $this->failStatus);
+        }
+
+        $productPurchase = ProductPurchase::find($request->product_purchase_id);
+        $delete_purchase = $productPurchase->delete();
+
+        DB::table('product_purchase_details')->where('product_purchase_id',$request->product_purchase_id)->delete();
+        DB::table('stocks')->where('ref_id',$request->product_purchase_id)->delete();
+        DB::table('transactions')->where('ref_id',$request->product_purchase_id)->delete();
+        DB::table('payment_paids')->where('product_purchase_id',$request->product_purchase_id)->delete();
+
+        if($delete_purchase)
+        {
+            return response()->json(['success'=>true,'response' => 'Purchase Successfully Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Purchase Deleted!'], $this->failStatus);
         }
     }
 
