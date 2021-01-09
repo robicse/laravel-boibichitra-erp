@@ -1069,29 +1069,106 @@ class BackendController extends Controller
         }
     }
 
+    public function productWholePurchaseDetails(Request $request){
+        $product_purchase_details = DB::table('product_purchases')
+            ->join('product_purchase_details','product_purchases.id','product_purchase_details.product_purchase_id')
+            ->leftJoin('products','product_purchase_details.product_id','products.id')
+            ->leftJoin('product_units','product_purchase_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','product_purchase_details.product_brand_id','product_brands.id')
+            ->where('product_purchases.id',$request->product_purchase_id)
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_purchase_details.qty','product_purchase_details.price','product_purchase_details.mrp_price')
+            ->get();
+
+        if($product_purchase_details)
+        {
+            $success['product_whole_purchase_details'] =  $product_purchase_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Purchase Detail Found!'], $this->failStatus);
+        }
+    }
+
     public function productWholePurchaseCreate(Request $request){
+
+
+//        $test = [
+//            "party_id" => 15,
+//            "warehouse_id" => 1,
+//            "products" => [
+//                0 =>
+//                    [
+//                        "product_id" => 4,
+//                        "product_name" => "test product",
+//                        "product_unit_id" => 1,
+//                        "product_unit_name" => "Pcs",
+//                        "product_brand_id" => 4,
+//                        "product_brand_name" => "Brand Test",
+//                        "price" => 200,
+//                        "mrp_price" => 250,
+//                        "qty" => 1,
+//                    ],
+//                1 =>
+//                    [
+//                        "product_id" => 6,
+//                        "product_name" => "test product 1",
+//                        "product_unit_id" => 2,
+//                        "product_unit_name" => "Set",
+//                        "product_brand_id" => 5,
+//                        "product_brand_name" => "Brand Test 1",
+//                        "price" => 300,
+//                        "mrp_price" => 350,
+//                        "qty" => 2,
+//                    ]
+//            ],
+//            "total_amount" => 500,
+//            "paid_amount" => 400,
+//            "due_amount" => 100,
+//            "payment_type" => "Cash"
+//        ];
+
+//        dd($test['products'][0]['product_id']);
+
+//        [0=>["product_id" => 4,"product_name" => "test product","product_unit_id" => 1,"product_unit_name" => "Pcs","product_brand_id" => 4,"product_brand_name" => "Brand Test","price" => 200,"qty" => 1], 1=>["product_id" => 6,"product_name" => "test product 1","product_unit_id" => 2,"product_unit_name" => "Set","product_brand_id" => 5,"product_brand_name" => "Brand Test 1","qty" => 2,]]
+
+
+
+
         //dd($request->all());
+        //return response()->json(['success'=>true,'response' => $request->all()], $this->successStatus);
+
+
+
+
+
+
+
+
         $this->validate($request, [
-            'user_id'=> 'required',
+            //'user_id'=> 'required',
             'party_id'=> 'required',
             'warehouse_id'=> 'required',
             'paid_amount'=> 'required',
             'due_amount'=> 'required',
             'total_amount'=> 'required',
-            'product_unit_id'=> 'required',
-            'product_id'=> 'required',
-            'qty'=> 'required',
-            'price'=> 'required',
-            'mrp_price'=> 'required',
             'payment_type'=> 'required',
+            //'product_unit_id'=> 'required',
+            //'product_id'=> 'required',
+            //'qty'=> 'required',
+            //'price'=> 'required',
+            //'mrp_price'=> 'required'
         ]);
 
-        $row_count = count($request->product_id);
-        $total_amount = 0;
-        for($i=0; $i<$row_count;$i++)
-        {
-            $total_amount += $request->qty[$i]*$request->price[$i];
-        }
+//        $row_count = count($request->product_id);
+//        $total_amount = 0;
+//        for($i=0; $i<$row_count;$i++)
+//        {
+//            $total_amount += $request->qty[$i]*$request->price[$i];
+//        }
+
+//        $total_amount = 0;
+//        foreach ($request->products as $data) {
+//            $total_amount += $data['qty']*$data['price'];
+//        }
 
         $get_invoice_no = ProductPurchase::latest()->pluck('invoice_no')->first();
         if(!empty($get_invoice_no)){
@@ -1105,36 +1182,84 @@ class BackendController extends Controller
         $date = date('Y-m-d');
         $date_time = date('Y-m-d h:i:s');
 
+        $user_id = Auth::user()->id;
+
         // product purchase
         $productPurchase = new ProductPurchase();
         $productPurchase ->invoice_no = $final_invoice;
-        $productPurchase ->user_id = $request->user_id;
+        $productPurchase ->user_id = $user_id;
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
-        $productPurchase ->total_amount = $total_amount;
+        $productPurchase ->total_amount = $request->total_amount;
         $productPurchase ->purchase_date = $date;
         $productPurchase ->purchase_date_time = $date_time;
         $productPurchase->save();
         $insert_id = $productPurchase->id;
+
         if($insert_id)
         {
-            for($i=0; $i<$row_count;$i++)
-            {
-                $product_id = $request->product_id[$i];
+//            for($i=0; $i<$row_count;$i++)
+//            {
+//                $product_id = $request['products']['product_id'][$i];
+//
+//                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+//
+//                // product purchase detail
+//                $purchase_purchase_detail = new ProductPurchaseDetail();
+//                $purchase_purchase_detail->product_purchase_id = $insert_id;
+//                $purchase_purchase_detail->product_unit_id = $request->product_unit_id[$i];
+//                $purchase_purchase_detail->product_brand_id = $request->product_brand_id[$i] ? $request->product_brand_id[$i] : NULL;
+//                $purchase_purchase_detail->product_id = $request->product_id[$i];
+//                $purchase_purchase_detail->qty = $request->qty[$i];
+//                $purchase_purchase_detail->price = $request->price[$i];
+//                $purchase_purchase_detail->mrp_price = $request->mrp_price[$i];
+//                $purchase_purchase_detail->sub_total = $request->qty[$i]*$request->price[$i];
+//                $purchase_purchase_detail->barcode = $barcode;
+//                $purchase_purchase_detail->save();
+//
+//                $check_previous_stock = Stock::where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+//                if(!empty($check_previous_stock)){
+//                    $previous_stock = $check_previous_stock;
+//                }else{
+//                    $previous_stock = 0;
+//                }
+//
+//                // product stock
+//                $stock = new Stock();
+//                $stock->ref_id = $insert_id;
+//                $stock->user_id = $user_id;
+//                $stock->warehouse_id = $request->warehouse_id;
+//                $stock->product_id = $request->product_id[$i];
+//                $stock->product_unit_id = $request->product_unit_id[$i];
+//                $stock->product_brand_id = $request->product_brand_id[$i] ? $request->product_brand_id[$i] : NULL;
+//                $stock->stock_type = 'whole-purchase';
+//                $stock->previous_stock = $previous_stock;
+//                $stock->stock_in = $request->qty[$i];
+//                $stock->stock_out = 0;
+//                $stock->current_stock = $previous_stock + $request->qty[$i];
+//                $stock->stock_date = $date;
+//                $stock->stock_date_time = $date_time;
+//                $stock->save();
+//            }
+
+            foreach ($request->products as $data) {
+
+                $product_id =  $data['product_id'];
+
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
 
                 // product purchase detail
                 $purchase_purchase_detail = new ProductPurchaseDetail();
                 $purchase_purchase_detail->product_purchase_id = $insert_id;
-                $purchase_purchase_detail->product_unit_id = $request->product_unit_id[$i];
-                $purchase_purchase_detail->product_brand_id = $request->product_brand_id[$i] ? $request->product_brand_id[$i] : NULL;
-                $purchase_purchase_detail->product_id = $request->product_id[$i];
-                $purchase_purchase_detail->qty = $request->qty[$i];
-                $purchase_purchase_detail->price = $request->price[$i];
-                $purchase_purchase_detail->mrp_price = $request->mrp_price[$i];
-                $purchase_purchase_detail->sub_total = $request->qty[$i]*$request->price[$i];
+                $purchase_purchase_detail->product_unit_id = $data['product_unit_id'];
+                $purchase_purchase_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $purchase_purchase_detail->product_id = $product_id;
+                $purchase_purchase_detail->qty = $data['qty'];
+                $purchase_purchase_detail->price = $data['price'];
+                $purchase_purchase_detail->mrp_price = $data['mrp_price'];
+                $purchase_purchase_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_purchase_detail->barcode = $barcode;
                 $purchase_purchase_detail->save();
 
@@ -1148,16 +1273,16 @@ class BackendController extends Controller
                 // product stock
                 $stock = new Stock();
                 $stock->ref_id = $insert_id;
-                $stock->user_id = $request->user_id;
+                $stock->user_id = $user_id;
                 $stock->warehouse_id = $request->warehouse_id;
-                $stock->product_id = $request->product_id[$i];
-                $stock->product_unit_id = $request->product_unit_id[$i];
-                $stock->product_brand_id = $request->product_brand_id[$i] ? $request->product_brand_id[$i] : NULL;
+                $stock->product_id = $product_id;
+                $stock->product_unit_id = $data['product_unit_id'];
+                $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $stock->stock_type = 'whole-purchase';
                 $stock->previous_stock = $previous_stock;
-                $stock->stock_in = $request->qty[$i];
+                $stock->stock_in = $data['qty'];
                 $stock->stock_out = 0;
-                $stock->current_stock = $previous_stock + $request->qty[$i];
+                $stock->current_stock = $previous_stock + $data['qty'];
                 $stock->stock_date = $date;
                 $stock->stock_date_time = $date_time;
                 $stock->save();
@@ -1167,7 +1292,7 @@ class BackendController extends Controller
             $transaction = new Transaction();
             $transaction->ref_id = $insert_id;
             $transaction->invoice_no = $final_invoice;
-            $transaction->user_id = $request->user_id;
+            $transaction->user_id = $user_id;
             $transaction->warehouse_id = $request->warehouse_id;
             $transaction->party_id = $request->party_id;
             $transaction->transaction_type = 'whole-purchase';
@@ -1181,7 +1306,7 @@ class BackendController extends Controller
             $payment_paid = new PaymentPaid();
             $payment_paid->invoice_no = $final_invoice;
             $payment_paid->product_purchase_id = $insert_id;
-            $payment_paid->user_id = $request->user_id;
+            $payment_paid->user_id = $user_id;
             $payment_paid->party_id = $request->party_id;
             $payment_paid->paid_amount = $request->paid_amount;
             $payment_paid->due_amount = $request->due_amount;
@@ -1201,38 +1326,24 @@ class BackendController extends Controller
         //dd($request->all());
         $this->validate($request, [
             'product_purchase_id'=> 'required',
-            'user_id'=> 'required',
             'party_id'=> 'required',
             'warehouse_id'=> 'required',
             'paid_amount'=> 'required',
             'due_amount'=> 'required',
             'total_amount'=> 'required',
-            'product_unit_id'=> 'required',
-            'product_id'=> 'required',
-            'qty'=> 'required',
-            'price'=> 'required',
-            'mrp_price'=> 'required',
             'payment_type'=> 'required',
+            //'product_id'=> 'required',
+            //'product_unit_id'=> 'required',
+            //'qty'=> 'required',
+            //'price'=> 'required',
+            //'mrp_price'=> 'required'
         ]);
 
-        $row_count = count($request->product_id);
-        $total_amount = 0;
-        for($i=0; $i<$row_count;$i++)
-        {
-            $total_amount += $request->qty[$i]*$request->price[$i];
-        }
-
-//        $get_invoice_no = ProductPurchase::latest()->pluck('invoice_no')->first();
-//        if(!empty($get_invoice_no)){
-//            $get_invoice = str_replace("purchase-","",$get_invoice_no);
-//            $invoice_no = $get_invoice+1;
-//        }else{
-//            $invoice_no = 1000;
+//        $total_amount = 0;
+//        foreach ($request->products as $data) {
+//            $total_amount += $data['qty']*$data['price'];
 //        }
-//        $final_invoice = 'purchase-'.$invoice_no;
-//
-//        $date = date('Y-m-d');
-//        $date_time = date('Y-m-d h:i:s');
+
 
         // product purchase
         $productPurchase = ProductPurchase::find($request->product_purchase_id);
@@ -1241,61 +1352,40 @@ class BackendController extends Controller
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
-        $productPurchase ->total_amount = $total_amount;
+        $productPurchase ->total_amount = $request->total_amount;
         $productPurchase->update();
         $affectedRows = $productPurchase->id;
         if($affectedRows)
         {
-            for($i=0; $i<$row_count;$i++)
-            {
-                $product_id = $request->product_id[$i];
+            foreach ($request->products as $data) {
+                $product_id = $data['product_id'];
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
 
-                $product_purchase_detail_id = $request->product_purchase_detail_id[$i];
+                $product_purchase_detail_id = $data['product_purchase_detail_id'];
                 // product purchase detail
                 $purchase_purchase_detail = ProductPurchaseDetail::find($product_purchase_detail_id);
-                $purchase_purchase_detail->product_unit_id = $request->product_unit_id[$i];
-                $purchase_purchase_detail->product_brand_id = $request->product_brand_id[$i] ? $request->product_brand_id[$i] : NULL;
-                $purchase_purchase_detail->product_id = $request->product_id[$i];
-                $purchase_purchase_detail->qty = $request->qty[$i];
-                $purchase_purchase_detail->price = $request->price[$i];
-                $purchase_purchase_detail->mrp_price = $request->mrp_price[$i];
-                $purchase_purchase_detail->sub_total = $request->qty[$i]*$request->price[$i];
+                $purchase_purchase_detail->product_unit_id = $data['product_unit_id'];
+                $purchase_purchase_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $purchase_purchase_detail->product_id = $product_id;
+                $purchase_purchase_detail->qty = $data['qty'];
+                $purchase_purchase_detail->price = $data['price'];
+                $purchase_purchase_detail->mrp_price = $data['mrp_price'];
+                $purchase_purchase_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_purchase_detail->barcode = $barcode;
                 $purchase_purchase_detail->update();
-
-//                $check_previous_stock = Stock::where('product_id',$product_id)->latest()->pluck('current_stock')->first();
-//                if(!empty($check_previous_stock)){
-//                    $previous_stock = $check_previous_stock;
-//                }else{
-//                    $previous_stock = 0;
-//                }
-//
-//                // product stock
-//                $stock = new Stock();
-//                $stock->user_id = $request->user_id;
-//                $stock->warehouse_id = $request->warehouse_id;
-//                $stock->product_id = $request->product_id[$i];
-//                $stock->product_unit_id = $request->product_unit_id[$i];
-//                $stock->product_brand_id = $request->product_brand_id[$i] ? $request->product_brand_id[$i] : NULL;
-//                $stock->previous_stock = $previous_stock;
-//                $stock->stock_in = $request->qty[$i];
-//                $stock->stock_out = 0;
-//                $stock->current_stock = $previous_stock + $request->qty[$i];
-//                $stock->save();
 
 
                 // product stock
                 $stock_row = Stock::where('ref_id',$request->product_purchase_id)->where('stock_type','whole-purchase')->where('product_id',$product_id)->first();
 
-                if($stock_row->stock_in != $request->qty[$i]){
+                if($stock_row->stock_in != $data['qty']){
 
-                    if($request->qty[$i] > $stock_row->stock_in){
-                        $add_or_minus_stock_in = $request->qty[$i] - $stock_row->stock_in;
+                    if($data['qty'] > $stock_row->stock_in){
+                        $add_or_minus_stock_in = $data['qty'] - $stock_row->stock_in;
                         $update_stock_in = $stock_row->stock_in + $add_or_minus_stock_in;
                         $update_current_stock = $stock_row->current_stock + $add_or_minus_stock_in;
                     }else{
-                        $add_or_minus_stock_in =  $stock_row->stock_in - $request->qty[$i];
+                        $add_or_minus_stock_in =  $stock_row->stock_in - $data['qty'];
                         $update_stock_in = $stock_row->stock_in - $add_or_minus_stock_in;
                         $update_current_stock = $stock_row->current_stock - $add_or_minus_stock_in;
                     }

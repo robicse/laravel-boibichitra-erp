@@ -118,6 +118,7 @@ Route::middleware('auth:api')->post('/product_delete', 'API\BackendController@pr
 // product purchase whole
 Route::middleware('auth:api')->post('/product_unit_and_brand', 'API\BackendController@productUnitAndBrand');
 Route::middleware('auth:api')->get('/product_whole_purchase_list', 'API\BackendController@productWholePurchaseList');
+Route::middleware('auth:api')->post('/product_whole_purchase_details', 'API\BackendController@productWholePurchaseDetails');
 Route::middleware('auth:api')->post('/product_whole_purchase_create', 'API\BackendController@productWholePurchaseCreate');
 Route::middleware('auth:api')->post('/product_whole_purchase_edit', 'API\BackendController@productWholePurchaseEdit');
 Route::middleware('auth:api')->post('/product_whole_purchase_delete', 'API\BackendController@productWholePurchaseDelete');
