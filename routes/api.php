@@ -122,3 +122,7 @@ Route::middleware('auth:api')->post('/product_whole_purchase_details', 'API\Back
 Route::middleware('auth:api')->post('/product_whole_purchase_create', 'API\BackendController@productWholePurchaseCreate');
 Route::middleware('auth:api')->post('/product_whole_purchase_edit', 'API\BackendController@productWholePurchaseEdit');
 Route::middleware('auth:api')->post('/product_whole_purchase_delete', 'API\BackendController@productWholePurchaseDelete');
+
+
+// stock list
+Route::middleware('auth:api')->get('/warehouse_stock_list', 'API\BackendController@warehouseStockList');

@@ -1444,5 +1444,25 @@ class BackendController extends Controller
         }
     }
 
+    public function warehouseStockList(){
+        $warehouse_stock_list = DB::table('stocks')
+            ->leftJoin('users','stocks.user_id','users.id')
+            ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
+            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+            ->leftJoin('products','stocks.product_id','products.id')
+            ->select('users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
+            ->latest('stocks.id','desc')
+            ->get();
+
+        if($warehouse_stock_list)
+        {
+            $success['warehouse_stock_list'] =  $warehouse_stock_list;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Stock List Found!'], $this->failStatus);
+        }
+    }
+
 
 }
