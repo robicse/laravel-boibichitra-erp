@@ -21,7 +21,7 @@ class CreateTransactionsTable extends Migration
             $table->bigInteger('warehouse_id')->unsigned()->nullable();
             $table->bigInteger('store_id')->unsigned()->nullable();
             $table->bigInteger('party_id')->unsigned();
-            $table->enum('transaction_type', ['whole-purchase','pos-purchase','purchase-return','whole-sale','pos-sale','sale-return','payment_paid','payment_collection']);
+            $table->enum('transaction_type', ['whole_purchase','pos_purchase','purchase_return','whole_sale','pos_sale','sale_return','payment_paid','payment_collection']);
             $table->enum('payment_type', ['Cash','Check','Bkash']);
             $table->string('payment_number')->nullable();
             $table->float('amount', 8,2);

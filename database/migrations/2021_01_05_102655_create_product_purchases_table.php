@@ -19,6 +19,7 @@ class CreateProductPurchasesTable extends Migration
             $table->bigInteger('user_id');
             $table->bigInteger('party_id')->unsigned();
             $table->bigInteger('warehouse_id')->unsigned();
+            $table->enum('stock_type', ['whole_purchase','pos_purchase']);
             $table->float('paid_amount', 8,2);
             $table->float('due_amount', 8,2);
             $table->float('total_amount', 8,2);

@@ -1054,18 +1054,19 @@ class BackendController extends Controller
     }
 
     public function productWholePurchaseList(){
-        $product_purchases = DB::table('product_purchases')
+        $product_whole_purchases = DB::table('product_purchases')
             ->leftJoin('users','product_purchases.user_id','users.id')
             ->leftJoin('parties','product_purchases.party_id','parties.id')
+            ->where('product_purchases.purchase_type','whole_purchase')
             ->select('product_purchases.id','product_purchases.invoice_no','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.name as supplier_name')
             ->get();
 
-        if($product_purchases)
+        if($product_whole_purchases)
         {
-            $success['product_whole_purchases'] =  $product_purchases;
+            $success['product_whole_purchases'] =  $product_whole_purchases;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'No Product List Found!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Product Whole Purchase List Found!'], $this->failStatus);
         }
     }
 
@@ -1084,7 +1085,7 @@ class BackendController extends Controller
             $success['product_whole_purchase_details'] =  $product_purchase_details;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'No Product Purchase Detail Found!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Product Whole Purchase Detail Found!'], $this->failStatus);
         }
     }
 
@@ -1190,6 +1191,7 @@ class BackendController extends Controller
         $productPurchase ->user_id = $user_id;
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
+        $productPurchase ->purchase_type = 'whole_purchase';
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
         $productPurchase ->total_amount = $request->total_amount;
@@ -1234,7 +1236,7 @@ class BackendController extends Controller
 //                $stock->product_id = $request->product_id[$i];
 //                $stock->product_unit_id = $request->product_unit_id[$i];
 //                $stock->product_brand_id = $request->product_brand_id[$i] ? $request->product_brand_id[$i] : NULL;
-//                $stock->stock_type = 'whole-purchase';
+//                $stock->stock_type = 'whole_purchase';
 //                $stock->previous_stock = $previous_stock;
 //                $stock->stock_in = $request->qty[$i];
 //                $stock->stock_out = 0;
@@ -1278,7 +1280,7 @@ class BackendController extends Controller
                 $stock->product_id = $product_id;
                 $stock->product_unit_id = $data['product_unit_id'];
                 $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $stock->stock_type = 'whole-purchase';
+                $stock->stock_type = 'whole_purchase';
                 $stock->previous_stock = $previous_stock;
                 $stock->stock_in = $data['qty'];
                 $stock->stock_out = 0;
@@ -1295,7 +1297,7 @@ class BackendController extends Controller
             $transaction->user_id = $user_id;
             $transaction->warehouse_id = $request->warehouse_id;
             $transaction->party_id = $request->party_id;
-            $transaction->transaction_type = 'whole-purchase';
+            $transaction->transaction_type = 'whole_purchase';
             $transaction->payment_type = $request->payment_type;
             $transaction->amount = $request->paid_amount;
             $transaction->transaction_date = $date;
@@ -1376,7 +1378,7 @@ class BackendController extends Controller
 
 
                 // product stock
-                $stock_row = Stock::where('ref_id',$request->product_purchase_id)->where('stock_type','whole-purchase')->where('product_id',$product_id)->first();
+                $stock_row = Stock::where('ref_id',$request->product_purchase_id)->where('stock_type','whole_purchase')->where('product_id',$product_id)->first();
 
                 if($stock_row->stock_in != $data['qty']){
 
@@ -1444,6 +1446,273 @@ class BackendController extends Controller
         }
     }
 
+    public function productPOSPurchaseList(){
+        $product_pos_purchases = DB::table('product_purchases')
+            ->leftJoin('users','product_purchases.user_id','users.id')
+            ->leftJoin('parties','product_purchases.party_id','parties.id')
+            ->where('product_purchases.purchase_type','pos_purchase')
+            ->select('product_purchases.id','product_purchases.invoice_no','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.name as supplier_name')
+            ->get();
+
+        if($product_pos_purchases)
+        {
+            $success['product_pos_purchases'] =  $product_pos_purchases;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product POS Purchase List Found!'], $this->failStatus);
+        }
+    }
+
+    public function productPOSPurchaseDetails(Request $request){
+        $product_pos_purchase_details = DB::table('product_purchases')
+            ->join('product_purchase_details','product_purchases.id','product_purchase_details.product_purchase_id')
+            ->leftJoin('products','product_purchase_details.product_id','products.id')
+            ->leftJoin('product_units','product_purchase_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','product_purchase_details.product_brand_id','product_brands.id')
+            ->where('product_purchases.id',$request->product_purchase_id)
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_purchase_details.qty','product_purchase_details.price','product_purchase_details.mrp_price')
+            ->get();
+
+        if($product_pos_purchase_details)
+        {
+            $success['product_pos_purchase_details'] =  $product_pos_purchase_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product POS Purchase Detail Found!'], $this->failStatus);
+        }
+    }
+
+    public function productPOSPurchaseCreate(Request $request){
+
+        $this->validate($request, [
+            'party_id'=> 'required',
+            'warehouse_id'=> 'required',
+            'paid_amount'=> 'required',
+            'due_amount'=> 'required',
+            'total_amount'=> 'required',
+            'payment_type'=> 'required',
+        ]);
+
+        $get_invoice_no = ProductPurchase::latest()->pluck('invoice_no')->first();
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("purchase-","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
+        }else{
+            $invoice_no = 1000;
+        }
+        $final_invoice = 'purchase-'.$invoice_no;
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+
+        // product purchase
+        $productPurchase = new ProductPurchase();
+        $productPurchase ->invoice_no = $final_invoice;
+        $productPurchase ->user_id = $user_id;
+        $productPurchase ->party_id = $request->party_id;
+        $productPurchase ->warehouse_id = $request->warehouse_id;
+        $productPurchase ->purchase_type = 'pos_purchase';
+        $productPurchase ->paid_amount = $request->paid_amount;
+        $productPurchase ->due_amount = $request->due_amount;
+        $productPurchase ->total_amount = $request->total_amount;
+        $productPurchase ->purchase_date = $date;
+        $productPurchase ->purchase_date_time = $date_time;
+        $productPurchase->save();
+        $insert_id = $productPurchase->id;
+
+        if($insert_id)
+        {
+            foreach ($request->products as $data) {
+
+                $product_id =  $data['product_id'];
+
+                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+
+                // product purchase detail
+                $purchase_purchase_detail = new ProductPurchaseDetail();
+                $purchase_purchase_detail->product_purchase_id = $insert_id;
+                $purchase_purchase_detail->product_unit_id = $data['product_unit_id'];
+                $purchase_purchase_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $purchase_purchase_detail->product_id = $product_id;
+                $purchase_purchase_detail->qty = $data['qty'];
+                $purchase_purchase_detail->price = $data['price'];
+                $purchase_purchase_detail->mrp_price = $data['mrp_price'];
+                $purchase_purchase_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $purchase_purchase_detail->barcode = $barcode;
+                $purchase_purchase_detail->save();
+
+                $check_previous_stock = Stock::where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                if(!empty($check_previous_stock)){
+                    $previous_stock = $check_previous_stock;
+                }else{
+                    $previous_stock = 0;
+                }
+
+                // product stock
+                $stock = new Stock();
+                $stock->ref_id = $insert_id;
+                $stock->user_id = $user_id;
+                $stock->warehouse_id = $request->warehouse_id;
+                $stock->product_id = $product_id;
+                $stock->product_unit_id = $data['product_unit_id'];
+                $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $stock->stock_type = 'pos_purchase';
+                $stock->previous_stock = $previous_stock;
+                $stock->stock_in = $data['qty'];
+                $stock->stock_out = 0;
+                $stock->current_stock = $previous_stock + $data['qty'];
+                $stock->stock_date = $date;
+                $stock->stock_date_time = $date_time;
+                $stock->save();
+            }
+
+            // transaction
+            $transaction = new Transaction();
+            $transaction->ref_id = $insert_id;
+            $transaction->invoice_no = $final_invoice;
+            $transaction->user_id = $user_id;
+            $transaction->warehouse_id = $request->warehouse_id;
+            $transaction->party_id = $request->party_id;
+            $transaction->transaction_type = 'pos_purchase';
+            $transaction->payment_type = $request->payment_type;
+            $transaction->amount = $request->paid_amount;
+            $transaction->transaction_date = $date;
+            $transaction->transaction_date_time = $date_time;
+            $transaction->save();
+
+            // payment paid
+            $payment_paid = new PaymentPaid();
+            $payment_paid->invoice_no = $final_invoice;
+            $payment_paid->product_purchase_id = $insert_id;
+            $payment_paid->user_id = $user_id;
+            $payment_paid->party_id = $request->party_id;
+            $payment_paid->paid_amount = $request->paid_amount;
+            $payment_paid->due_amount = $request->due_amount;
+            $payment_paid->current_paid_amount = $request->paid_amount;
+            $payment_paid->paid_date = $date;
+            $payment_paid->paid_date_time = $date_time;
+            $payment_paid->save();
+
+
+            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Role Created!'], $this->failStatus);
+        }
+    }
+
+    public function productPOSPurchaseEdit(Request $request){
+        $this->validate($request, [
+            'product_purchase_id'=> 'required',
+            'party_id'=> 'required',
+            'warehouse_id'=> 'required',
+            'paid_amount'=> 'required',
+            'due_amount'=> 'required',
+            'total_amount'=> 'required',
+            'payment_type'=> 'required',
+        ]);
+
+
+        // product purchase
+        $productPurchase = ProductPurchase::find($request->product_purchase_id);
+        $productPurchase ->user_id = $request->user_id;
+        $productPurchase ->party_id = $request->party_id;
+        $productPurchase ->warehouse_id = $request->warehouse_id;
+        $productPurchase ->paid_amount = $request->paid_amount;
+        $productPurchase ->due_amount = $request->due_amount;
+        $productPurchase ->total_amount = $request->total_amount;
+        $productPurchase->update();
+        $affectedRows = $productPurchase->id;
+        if($affectedRows)
+        {
+            foreach ($request->products as $data) {
+                $product_id = $data['product_id'];
+                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+
+                $product_purchase_detail_id = $data['product_purchase_detail_id'];
+                // product purchase detail
+                $purchase_purchase_detail = ProductPurchaseDetail::find($product_purchase_detail_id);
+                $purchase_purchase_detail->product_unit_id = $data['product_unit_id'];
+                $purchase_purchase_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $purchase_purchase_detail->product_id = $product_id;
+                $purchase_purchase_detail->qty = $data['qty'];
+                $purchase_purchase_detail->price = $data['price'];
+                $purchase_purchase_detail->mrp_price = $data['mrp_price'];
+                $purchase_purchase_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $purchase_purchase_detail->barcode = $barcode;
+                $purchase_purchase_detail->update();
+
+
+                // product stock
+                $stock_row = Stock::where('ref_id',$request->product_purchase_id)->where('stock_type','whole_purchase')->where('product_id',$product_id)->first();
+
+                if($stock_row->stock_in != $data['qty']){
+
+                    if($data['qty'] > $stock_row->stock_in){
+                        $add_or_minus_stock_in = $data['qty'] - $stock_row->stock_in;
+                        $update_stock_in = $stock_row->stock_in + $add_or_minus_stock_in;
+                        $update_current_stock = $stock_row->current_stock + $add_or_minus_stock_in;
+                    }else{
+                        $add_or_minus_stock_in =  $stock_row->stock_in - $data['qty'];
+                        $update_stock_in = $stock_row->stock_in - $add_or_minus_stock_in;
+                        $update_current_stock = $stock_row->current_stock - $add_or_minus_stock_in;
+                    }
+
+                    $stock_row->user_id = $request->user_id;
+                    $stock_row->stock_in = $update_stock_in;
+                    $stock_row->current_stock = $update_current_stock;
+                    $stock_row->update();
+                }
+            }
+
+            // transaction
+            $transaction = Transaction::where('ref_id',$request->product_purchase_id)->first();
+            $transaction->user_id = $request->user_id;
+            $transaction->warehouse_id = $request->warehouse_id;
+            $transaction->party_id = $request->party_id;
+            $transaction->payment_type = $request->payment_type;
+            $transaction->amount = $request->paid_amount;
+            $transaction->update();
+
+            // payment paid
+            $payment_paid = PaymentPaid::where('product_purchase_id',$request->product_purchase_id)->first();
+            $payment_paid->user_id = $request->user_id;
+            $payment_paid->party_id = $request->party_id;
+            $payment_paid->paid_amount = $request->paid_amount;
+            $payment_paid->due_amount = $request->due_amount;
+            $payment_paid->current_paid_amount = $request->paid_amount;
+            $payment_paid->update();
+
+
+            return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function productPOSPurchaseDelete(Request $request){
+        $check_exists_product_purchase = DB::table("product_purchases")->where('id',$request->product_purchase_id)->pluck('id')->first();
+        if($check_exists_product_purchase == null){
+            return response()->json(['success'=>false,'response'=>'No Product Purchase Found!'], $this->failStatus);
+        }
+
+        $productPurchase = ProductPurchase::find($request->product_purchase_id);
+        $delete_purchase = $productPurchase->delete();
+
+        DB::table('product_purchase_details')->where('product_purchase_id',$request->product_purchase_id)->delete();
+        DB::table('stocks')->where('ref_id',$request->product_purchase_id)->delete();
+        DB::table('transactions')->where('ref_id',$request->product_purchase_id)->delete();
+        DB::table('payment_paids')->where('product_purchase_id',$request->product_purchase_id)->delete();
+
+        if($delete_purchase)
+        {
+            return response()->json(['success'=>true,'response' => 'Purchase Successfully Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Purchase Deleted!'], $this->failStatus);
+        }
+    }
+
     public function warehouseStockList(){
         $warehouse_stock_list = DB::table('stocks')
             ->leftJoin('users','stocks.user_id','users.id')
@@ -1451,7 +1720,8 @@ class BackendController extends Controller
             ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
             ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
             ->leftJoin('products','stocks.product_id','products.id')
-            ->select('users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
+            ->where('stocks.stock_where','warehouse')
+            ->select('stocks.id as stock_id','users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.stock_in_out','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
             ->latest('stocks.id','desc')
             ->get();
 
@@ -1461,6 +1731,128 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Warehouse Stock List Found!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseStockLowList(){
+
+        $warehouse_stock_low_list = DB::table('stocks')
+            ->leftJoin('users','stocks.user_id','users.id')
+            ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
+            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+            ->leftJoin('products','stocks.product_id','products.id')
+            ->where('stocks.stock_where','warehouse')
+            //->where('stocks.current_stock','<',2)
+            ->whereIn('stocks.id', function($query) {
+                $query->from('stocks')->where('current_stock','<', 2)->groupBy('product_id')->selectRaw('MAX(id)');
+            })
+            ->select('stocks.id as stock_id','users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.id as product_id','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
+            ->latest('stocks.id','desc')
+            ->get();
+
+        if($warehouse_stock_low_list)
+        {
+            $success['warehouse_stock_low_list'] =  $warehouse_stock_low_list;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Stock Low List Found!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseCurrentStockList(Request $request){
+
+        $warehouse_current_stock_list = DB::table('stocks')
+            ->leftJoin('users','stocks.user_id','users.id')
+            ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
+            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+            ->leftJoin('products','stocks.product_id','products.id')
+            ->where('stocks.stock_where','warehouse')
+            ->whereIn('stocks.id', function($query) {
+                $query->from('stocks')->groupBy('product_id')->selectRaw('MAX(id)');
+            })
+            ->select('stocks.id as stock_id','warehouses.id as warehouse_id','warehouses.name as warehouse_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','products.id as product_id','products.name as product_name','stocks.current_stock')
+            ->latest('stocks.id','desc')
+            ->get();
+
+        if($warehouse_current_stock_list)
+        {
+            $success['warehouse_current_stock_list'] =  $warehouse_current_stock_list;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
+
+    public function warehouseToStoreStockCreate(Request $request){
+        $this->validate($request, [
+            'warehouse_id'=> 'required',
+        ]);
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+
+        foreach ($request->products as $data) {
+            $product_id = $data['product_id'];
+            $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+
+//            $product_purchase_detail_id = $data['product_purchase_detail_id'];
+//            // product purchase detail
+//            $purchase_purchase_detail = ProductPurchaseDetail::find($product_purchase_detail_id);
+//            $purchase_purchase_detail->product_unit_id = $data['product_unit_id'];
+//            $purchase_purchase_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+//            $purchase_purchase_detail->product_id = $product_id;
+//            $purchase_purchase_detail->qty = $data['qty'];
+//            $purchase_purchase_detail->price = $data['price'];
+//            $purchase_purchase_detail->mrp_price = $data['mrp_price'];
+//            $purchase_purchase_detail->sub_total = $data['qty']*$data['mrp_price'];
+//            $purchase_purchase_detail->barcode = $barcode;
+//            $purchase_purchase_detail->update();
+
+            // stock out warehouse product
+            $stock = new Stock();
+            $stock->ref_id = NULL;
+            $stock->user_id = $user_id;
+            $stock->warehouse_id = $request->warehouse_id;
+            $stock->product_id = $product_id;
+            $stock->product_unit_id = $data['product_unit_id'];
+            $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $stock->stock_type = 'pos_purchase';
+            $stock->previous_stock = $previous_stock;
+            $stock->stock_in = $data['qty'];
+            $stock->stock_out = 0;
+            $stock->current_stock = $previous_stock + $data['qty'];
+            $stock->stock_date = $date;
+            $stock->stock_date_time = $date_time;
+            $stock->save();
+
+            // stock in warehouse product
+            $stock = new Stock();
+            $stock->ref_id = NULL;
+            $stock->user_id = $user_id;
+            $stock->warehouse_id = $request->warehouse_id;
+            $stock->product_id = $product_id;
+            $stock->product_unit_id = $data['product_unit_id'];
+            $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $stock->stock_type = 'pos_purchase';
+            $stock->previous_stock = $previous_stock;
+            $stock->stock_in = $data['qty'];
+            $stock->stock_out = 0;
+            $stock->current_stock = $previous_stock + $data['qty'];
+            $stock->stock_date = $date;
+            $stock->stock_date_time = $date_time;
+            $stock->save();
+        }
+
+
+        if(1==1){
+            return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
         }
     }
 

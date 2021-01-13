@@ -123,6 +123,18 @@ Route::middleware('auth:api')->post('/product_whole_purchase_create', 'API\Backe
 Route::middleware('auth:api')->post('/product_whole_purchase_edit', 'API\BackendController@productWholePurchaseEdit');
 Route::middleware('auth:api')->post('/product_whole_purchase_delete', 'API\BackendController@productWholePurchaseDelete');
 
+// product purchase pos
+Route::middleware('auth:api')->get('/product_pos_purchase_list', 'API\BackendController@productPOSPurchaseList');
+Route::middleware('auth:api')->post('/product_pos_purchase_details', 'API\BackendController@productPOSPurchaseDetails');
+Route::middleware('auth:api')->post('/product_pos_purchase_create', 'API\BackendController@productPOSPurchaseCreate');
+Route::middleware('auth:api')->post('/product_pos_purchase_edit', 'API\BackendController@productPOSPurchaseEdit');
+Route::middleware('auth:api')->post('/product_pos_purchase_delete', 'API\BackendController@productPOSPurchaseDelete');
+
 
 // stock list
 Route::middleware('auth:api')->get('/warehouse_stock_list', 'API\BackendController@warehouseStockList');
+Route::middleware('auth:api')->get('/warehouse_stock_low_list', 'API\BackendController@warehouseStockLowList');
+
+// stock transfer
+Route::middleware('auth:api')->post('/warehouse_current_stock_list', 'API\BackendController@warehouseCurrentStockList');
+Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\BackendController@warehouseToStoreStockCreate');
