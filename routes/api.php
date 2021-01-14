@@ -134,6 +134,7 @@ Route::middleware('auth:api')->post('/product_pos_purchase_delete', 'API\Backend
 // stock list
 Route::middleware('auth:api')->get('/warehouse_stock_list', 'API\BackendController@warehouseStockList');
 Route::middleware('auth:api')->get('/warehouse_stock_low_list', 'API\BackendController@warehouseStockLowList');
+Route::middleware('auth:api')->post('/product_whole_purchase_create_with_low_product', 'API\BackendController@productWholePurchaseCreateWithLowProduct');
 
 // stock transfer
 Route::middleware('auth:api')->post('/warehouse_current_stock_list', 'API\BackendController@warehouseCurrentStockList');
