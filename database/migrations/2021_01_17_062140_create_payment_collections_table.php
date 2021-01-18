@@ -17,10 +17,12 @@ class CreatePaymentCollectionsTable extends Migration
             $table->bigIncrements('id');
             $table->string('invoice_no');
             $table->bigInteger('product_sale_id')->unsigned();
+            $table->bigInteger('product_sale_return_id')->unsigned()->nullable();
             $table->bigInteger('user_id');
             $table->bigInteger('party_id')->unsigned();
             $table->bigInteger('warehouse_id')->unsigned()->nullable();
             $table->bigInteger('store_id')->unsigned()->nullable();
+            $table->enum('collection_type',['Sale','Return']);
             $table->float('collection_amount', 8,2);
             $table->float('due_amount', 8,2);
             $table->float('current_collection_amount', 8,2);

@@ -130,7 +130,7 @@ Route::middleware('auth:api')->post('/product_pos_purchase_create', 'API\Backend
 Route::middleware('auth:api')->post('/product_pos_purchase_edit', 'API\BackendController@productPOSPurchaseEdit');
 Route::middleware('auth:api')->post('/product_pos_purchase_delete', 'API\BackendController@productPOSPurchaseDelete');
 
-// product purchase whole
+// product purchase return
 Route::middleware('auth:api')->get('/product_purchase_invoice_list', 'API\BackendController@productPurchaseInvoiceList');
 Route::middleware('auth:api')->post('/product_purchase_return', 'API\BackendController@productPurchaseReturn');
 
@@ -158,6 +158,10 @@ Route::middleware('auth:api')->post('/product_pos_sale_details', 'API\BackendCon
 Route::middleware('auth:api')->post('/product_pos_sale_create', 'API\BackendController@productPOSSaleCreate');
 Route::middleware('auth:api')->post('/product_pos_sale_edit', 'API\BackendController@productPOSSaleEdit');
 Route::middleware('auth:api')->post('/product_pos_sale_delete', 'API\BackendController@productPOSSaleDelete');
+
+// product sale return
+Route::middleware('auth:api')->get('/product_sale_invoice_list', 'API\BackendController@productSaleInvoiceList');
+Route::middleware('auth:api')->post('/product_sale_return', 'API\BackendController@productSaleReturn');
 
 // sslcommerz
 //Route::post('/checkout/ssl/pay', 'API\PublicSslCommerzPaymentController@index');

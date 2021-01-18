@@ -10,8 +10,12 @@ use App\Product;
 use App\ProductBrand;
 use App\ProductPurchase;
 use App\ProductPurchaseDetail;
+use App\ProductPurchaseReturn;
+use App\ProductPurchaseReturnDetail;
 use App\ProductSale;
 use App\ProductSaleDetail;
+use App\ProductSaleReturn;
+use App\ProductSaleReturnDetail;
 use App\ProductUnit;
 use App\Stock;
 use App\Store;
@@ -1373,6 +1377,7 @@ class BackendController extends Controller
             $payment_paid->product_purchase_id = $insert_id;
             $payment_paid->user_id = $user_id;
             $payment_paid->party_id = $request->party_id;
+            $payment_paid->paid_type = 'Purchase';
             $payment_paid->paid_amount = $request->paid_amount;
             $payment_paid->due_amount = $request->due_amount;
             $payment_paid->current_paid_amount = $request->paid_amount;
@@ -1658,6 +1663,7 @@ class BackendController extends Controller
             $payment_paid->product_purchase_id = $insert_id;
             $payment_paid->user_id = $user_id;
             $payment_paid->party_id = $request->party_id;
+            $payment_paid->paid_type = 'Purchase';
             $payment_paid->paid_amount = $request->paid_amount;
             $payment_paid->due_amount = $request->due_amount;
             $payment_paid->current_paid_amount = $request->paid_amount;
@@ -1803,92 +1809,130 @@ class BackendController extends Controller
     public function productPurchaseReturn(Request $request){
         //dd($request->all());
         $this->validate($request, [
-            'product_purchase_id'=> 'required',
             'party_id'=> 'required',
             'warehouse_id'=> 'required',
             'paid_amount'=> 'required',
             'due_amount'=> 'required',
             'total_amount'=> 'required',
             'payment_type'=> 'required',
+            'product_purchase_invoice_no'=> 'required',
         ]);
 
+        $product_purchase_id = ProductPurchase::where('invoice_no',$request->product_purchase_invoice_no)->pluck('id')->first();
+
+        $get_invoice_no = ProductPurchaseReturn::latest('id','desc')->pluck('invoice_no')->first();
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("purchase-return","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
+        }else{
+            $invoice_no = 5000;
+        }
+        $final_invoice = 'purchase-return'.$invoice_no;
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
 
         // product purchase
-        $productPurchase = ProductPurchase::find($request->product_purchase_id);
-        $productPurchase ->user_id = $request->user_id;
-        $productPurchase ->party_id = $request->party_id;
-        $productPurchase ->warehouse_id = $request->warehouse_id;
-        $productPurchase ->discount_type = $request->discount_type;
-        $productPurchase ->discount_amount = $request->discount_amount;
-        $productPurchase ->paid_amount = $request->paid_amount;
-        $productPurchase ->due_amount = $request->due_amount;
-        $productPurchase ->total_amount = $request->total_amount;
-        $productPurchase->update();
-        $affectedRows = $productPurchase->id;
-        if($affectedRows)
+        $productPurchaseReturn = new ProductPurchaseReturn();
+        $productPurchaseReturn ->invoice_no = $final_invoice;
+        $productPurchaseReturn ->product_purchase_invoice_no = $request->product_purchase_invoice_no;
+        $productPurchaseReturn ->user_id = $user_id;
+        $productPurchaseReturn ->party_id = $request->party_id;
+        $productPurchaseReturn ->warehouse_id = $request->warehouse_id;
+        $productPurchaseReturn ->product_purchase_return_type = 'purchase_return';
+        $productPurchaseReturn ->discount_type = $request->discount_type;
+        $productPurchaseReturn ->discount_amount = $request->discount_amount;
+        $productPurchaseReturn ->paid_amount = $request->paid_amount;
+        $productPurchaseReturn ->due_amount = $request->due_amount;
+        $productPurchaseReturn ->total_amount = $request->total_amount;
+        $productPurchaseReturn ->product_purchase_return_date = $date;
+        $productPurchaseReturn ->product_purchase_return_date_time = $date_time;
+        $productPurchaseReturn->save();
+        $insert_id = $productPurchaseReturn->id;
+
+        if($insert_id)
         {
             foreach ($request->products as $data) {
-                $product_id = $data['product_id'];
+
+                $product_id =  $data['product_id'];
+
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
 
-                $product_purchase_detail_id = $data['product_purchase_detail_id'];
                 // product purchase detail
-                $purchase_purchase_detail = ProductPurchaseDetail::find($product_purchase_detail_id);
-                $purchase_purchase_detail->product_unit_id = $data['product_unit_id'];
-                $purchase_purchase_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $purchase_purchase_detail->product_id = $product_id;
-                $purchase_purchase_detail->qty = $data['qty'];
-                $purchase_purchase_detail->price = $data['price'];
-                $purchase_purchase_detail->mrp_price = $data['mrp_price'];
-                $purchase_purchase_detail->sub_total = $data['qty']*$data['mrp_price'];
-                $purchase_purchase_detail->barcode = $barcode;
-                $purchase_purchase_detail->update();
+                $purchase_purchase_return_detail = new ProductPurchaseReturnDetail();
+                $purchase_purchase_return_detail->pro_pur_return_id = $insert_id;
+                $purchase_purchase_return_detail->pro_pur_detail_id = $data['pro_pur_detail_id'];
+                $purchase_purchase_return_detail->product_unit_id = $data['product_unit_id'];
+                $purchase_purchase_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $purchase_purchase_return_detail->product_id = $product_id;
+                $purchase_purchase_return_detail->barcode = $barcode;
+                $purchase_purchase_return_detail->qty = $data['qty'];
+                $purchase_purchase_return_detail->price = $data['price'];
+                $purchase_purchase_return_detail->sub_total = $data['qty']*$data['price'];
+                $purchase_purchase_return_detail->save();
 
+                $check_previous_stock = Stock::where('product_id',$product_id)->latest('id','desc')->pluck('current_stock')->first();
+                if(!empty($check_previous_stock)){
+                    $previous_stock = $check_previous_stock;
+                }else{
+                    $previous_stock = 0;
+                }
 
                 // product stock
-                $stock_row = Stock::where('ref_id',$request->product_purchase_id)->where('stock_type','whole_purchase')->where('product_id',$product_id)->first();
-
-                if($stock_row->stock_in != $data['qty']){
-
-                    if($data['qty'] > $stock_row->stock_in){
-                        $add_or_minus_stock_in = $data['qty'] - $stock_row->stock_in;
-                        $update_stock_in = $stock_row->stock_in + $add_or_minus_stock_in;
-                        $update_current_stock = $stock_row->current_stock + $add_or_minus_stock_in;
-                    }else{
-                        $add_or_minus_stock_in =  $stock_row->stock_in - $data['qty'];
-                        $update_stock_in = $stock_row->stock_in - $add_or_minus_stock_in;
-                        $update_current_stock = $stock_row->current_stock - $add_or_minus_stock_in;
-                    }
-
-                    $stock_row->user_id = $request->user_id;
-                    $stock_row->stock_in = $update_stock_in;
-                    $stock_row->current_stock = $update_current_stock;
-                    $stock_row->update();
-                }
+                $stock = new Stock();
+                $stock->ref_id = $insert_id;
+                $stock->user_id = $user_id;
+                $stock->warehouse_id = $request->warehouse_id;
+                $stock->product_id = $product_id;
+                $stock->product_unit_id = $data['product_unit_id'];
+                $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $stock->stock_type = 'purchase_return';
+                $stock->stock_where = 'warehouse';
+                $stock->stock_in_out = 'stock_out';
+                $stock->previous_stock = $previous_stock;
+                $stock->stock_in = 0;
+                $stock->stock_out = $data['qty'];
+                $stock->current_stock = $previous_stock - $data['qty'];
+                $stock->stock_date = $date;
+                $stock->stock_date_time = $date_time;
+                $stock->save();
             }
 
             // transaction
-            $transaction = Transaction::where('ref_id',$request->product_purchase_id)->first();
-            $transaction->user_id = $request->user_id;
+            $transaction = new Transaction();
+            $transaction->ref_id = $insert_id;
+            $transaction->invoice_no = $final_invoice;
+            $transaction->user_id = $user_id;
             $transaction->warehouse_id = $request->warehouse_id;
             $transaction->party_id = $request->party_id;
+            $transaction->transaction_type = 'purchase_return';
             $transaction->payment_type = $request->payment_type;
             $transaction->amount = $request->paid_amount;
-            $transaction->update();
+            $transaction->transaction_date = $date;
+            $transaction->transaction_date_time = $date_time;
+            $transaction->save();
 
             // payment paid
-            $payment_paid = PaymentPaid::where('product_purchase_id',$request->product_purchase_id)->first();
-            $payment_paid->user_id = $request->user_id;
+            $payment_paid = new PaymentPaid();
+            $payment_paid->invoice_no = $final_invoice;
+            $payment_paid->product_purchase_id = $product_purchase_id;
+            $payment_paid->product_purchase_return_id = $insert_id;
+            $payment_paid->user_id = $user_id;
             $payment_paid->party_id = $request->party_id;
+            $payment_paid->paid_type = 'Return';
             $payment_paid->paid_amount = $request->paid_amount;
             $payment_paid->due_amount = $request->due_amount;
             $payment_paid->current_paid_amount = $request->paid_amount;
-            $payment_paid->update();
+            $payment_paid->paid_date = $date;
+            $payment_paid->paid_date_time = $date_time;
+            $payment_paid->save();
 
 
-            return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
+            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Role Created!'], $this->failStatus);
         }
     }
 
@@ -2167,6 +2211,7 @@ class BackendController extends Controller
             $payment_paid->product_purchase_id = $insert_id;
             $payment_paid->user_id = $user_id;
             $payment_paid->party_id = $request->party_id;
+            $payment_paid->paid_type = 'Purchase';
             $payment_paid->paid_amount = $request->paid_amount;
             $payment_paid->due_amount = $request->due_amount;
             $payment_paid->current_paid_amount = $request->paid_amount;
@@ -2378,6 +2423,7 @@ class BackendController extends Controller
             $payment_collection->product_sale_id = $insert_id;
             $payment_collection->user_id = $user_id;
             $payment_collection->party_id = $request->party_id;
+            $payment_collection->collection_type = 'Sale';
             $payment_collection->collection_amount = $request->paid_amount;
             $payment_collection->due_amount = $request->due_amount;
             $payment_collection->current_collection_amount = $request->paid_amount;
@@ -2714,6 +2760,7 @@ class BackendController extends Controller
             $payment_collection->party_id = $request->party_id;
             $payment_collection->warehouse_id = $request->warehouse_id;
             $payment_collection->store_id = $request->store_id;
+            $payment_collection->collection_type = 'Sale';
             $payment_collection->collection_amount = $request->paid_amount;
             $payment_collection->due_amount = $request->due_amount;
             $payment_collection->current_collection_amount = $request->paid_amount;
@@ -2845,6 +2892,158 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' =>'Sale Successfully Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'Sale Not Deleted!'], $this->failStatus);
+        }
+    }
+
+    // product sale invoice list
+    public function productSaleInvoiceList(){
+        $product_sale_invoices = DB::table('product_sales')
+            ->select('id','invoice_no')
+            ->get();
+
+        if($product_sale_invoices)
+        {
+            $success['product_sale_invoices'] =  $product_sale_invoices;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Sale List Found!'], $this->failStatus);
+        }
+    }
+
+    public function productSaleReturn(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'party_id'=> 'required',
+            'store_id'=> 'required',
+            'paid_amount'=> 'required',
+            'due_amount'=> 'required',
+            'total_amount'=> 'required',
+            'payment_type'=> 'required',
+            'product_sale_invoice_no'=> 'required',
+        ]);
+
+        $product_sale_id = ProductSale::where('invoice_no',$request->product_sale_invoice_no)->pluck('id')->first();
+        $get_invoice_no = ProductSaleReturn::latest('id','desc')->pluck('invoice_no')->first();
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("sale-return","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
+        }else{
+            $invoice_no = 800000;
+        }
+        $final_invoice = 'sale-return'.$invoice_no;
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+        $store_id = $request->store_id;
+        $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
+
+        // product purchase
+        $productSaleReturn = new ProductSaleReturn();
+        $productSaleReturn ->invoice_no = $final_invoice;
+        $productSaleReturn ->product_sale_invoice_no = $request->product_sale_invoice_no;
+        $productSaleReturn ->user_id = $user_id;
+        $productSaleReturn ->party_id = $request->party_id;
+        $productSaleReturn ->warehouse_id = $warehouse_id;
+        $productSaleReturn ->store_id = $store_id;
+        $productSaleReturn ->product_sale_return_type = 'sale_return';
+        $productSaleReturn ->discount_type = $request->discount_type;
+        $productSaleReturn ->discount_amount = $request->discount_amount;
+        $productSaleReturn ->paid_amount = $request->paid_amount;
+        $productSaleReturn ->due_amount = $request->due_amount;
+        $productSaleReturn ->total_amount = $request->total_amount;
+        $productSaleReturn ->product_sale_return_date = $date;
+        $productSaleReturn ->product_sale_return_date_time = $date_time;
+        $productSaleReturn->save();
+        $insert_id = $productSaleReturn->id;
+
+        if($insert_id)
+        {
+            // for live testing
+            foreach ($request->products as $data) {
+
+                $product_id =  $data['product_id'];
+
+                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+
+                // product purchase detail
+                $purchase_sale_return_detail = new ProductSaleReturnDetail();
+                $purchase_sale_return_detail->pro_sale_return_id = $insert_id;
+                $purchase_sale_return_detail->pro_sale_detail_id = $request->pro_sale_detail_id;
+                $purchase_sale_return_detail->product_unit_id = $data['product_unit_id'];
+                $purchase_sale_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $purchase_sale_return_detail->product_id = $product_id;
+                $purchase_sale_return_detail->barcode = $barcode;
+                $purchase_sale_return_detail->qty = $data['qty'];
+                $purchase_sale_return_detail->price = $data['price'];
+                $purchase_sale_return_detail->sub_total = $data['qty']*$data['price'];
+                $purchase_sale_return_detail->save();
+
+                $check_previous_stock = Stock::where('product_id',$product_id)->latest('id','desc')->pluck('current_stock')->first();
+                if(!empty($check_previous_stock)){
+                    $previous_stock = $check_previous_stock;
+                }else{
+                    $previous_stock = 0;
+                }
+
+                // product stock
+                $stock = new Stock();
+                $stock->ref_id = $insert_id;
+                $stock->user_id = $user_id;
+                $stock->warehouse_id = $warehouse_id;
+                $stock->store_id = $store_id;
+                $stock->product_id = $product_id;
+                $stock->product_unit_id = $data['product_unit_id'];
+                $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $stock->stock_type = 'sale_return';
+                $stock->stock_where = 'store';
+                $stock->stock_in_out = 'stock_in';
+                $stock->previous_stock = $previous_stock;
+                $stock->stock_in = $data['qty'];
+                $stock->stock_out = 0;
+                $stock->current_stock = $previous_stock + $data['qty'];
+                $stock->stock_date = $date;
+                $stock->stock_date_time = $date_time;
+                $stock->save();
+            }
+
+            // transaction
+            $transaction = new Transaction();
+            $transaction->ref_id = $insert_id;
+            $transaction->invoice_no = $final_invoice;
+            $transaction->user_id = $user_id;
+            $transaction->warehouse_id = $warehouse_id;
+            $transaction->store_id = $store_id;
+            $transaction->party_id = $request->party_id;
+            $transaction->transaction_type = 'sale_return';
+            $transaction->payment_type = $request->payment_type;
+            $transaction->amount = $request->paid_amount;
+            $transaction->transaction_date = $date;
+            $transaction->transaction_date_time = $date_time;
+            $transaction->save();
+
+            // payment paid
+            $payment_collection = new PaymentCollection();
+            $payment_collection->invoice_no = $final_invoice;
+            $payment_collection->product_sale_id = $product_sale_id;
+            $payment_collection->product_sale_return_id = $insert_id;
+            $payment_collection->user_id = $user_id;
+            $payment_collection->party_id = $request->party_id;
+            $payment_collection->warehouse_id = $request->warehouse_id;
+            $payment_collection->store_id = $request->store_id;
+            $payment_collection->collection_type = 'Return';
+            $payment_collection->collection_amount = $request->paid_amount;
+            $payment_collection->due_amount = $request->due_amount;
+            $payment_collection->current_collection_amount = $request->paid_amount;
+            $payment_collection->collection_date = $date;
+            $payment_collection->collection_date_time = $date_time;
+            $payment_collection->save();
+
+
+            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
         }
     }
 
