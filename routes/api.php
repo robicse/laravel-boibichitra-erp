@@ -130,6 +130,10 @@ Route::middleware('auth:api')->post('/product_pos_purchase_create', 'API\Backend
 Route::middleware('auth:api')->post('/product_pos_purchase_edit', 'API\BackendController@productPOSPurchaseEdit');
 Route::middleware('auth:api')->post('/product_pos_purchase_delete', 'API\BackendController@productPOSPurchaseDelete');
 
+// product purchase whole
+Route::middleware('auth:api')->get('/product_purchase_invoice_list', 'API\BackendController@productPurchaseInvoiceList');
+Route::middleware('auth:api')->post('/product_purchase_return', 'API\BackendController@productPurchaseReturn');
+
 
 // stock list
 Route::middleware('auth:api')->get('/warehouse_stock_list', 'API\BackendController@warehouseStockList');
@@ -139,3 +143,27 @@ Route::middleware('auth:api')->post('/product_whole_purchase_create_with_low_pro
 // stock transfer
 Route::middleware('auth:api')->post('/warehouse_current_stock_list', 'API\BackendController@warehouseCurrentStockList');
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\BackendController@warehouseToStoreStockCreate');
+
+// product sale whole
+Route::middleware('auth:api')->get('/product_whole_sale_list', 'API\BackendController@productWholeSaleList');
+Route::middleware('auth:api')->post('/product_whole_sale_details', 'API\BackendController@productWholeSaleDetails');
+Route::middleware('auth:api')->post('/product_whole_sale_create', 'API\BackendController@productWholeSaleCreate');
+Route::middleware('auth:api')->post('/product_whole_sale_edit', 'API\BackendController@productWholeSaleEdit');
+Route::middleware('auth:api')->post('/product_whole_sale_delete', 'API\BackendController@productWholeSaleDelete');
+
+
+// product sale pos
+Route::middleware('auth:api')->get('/product_pos_sale_list', 'API\BackendController@productPOSSaleList');
+Route::middleware('auth:api')->post('/product_pos_sale_details', 'API\BackendController@productPOSSaleDetails');
+Route::middleware('auth:api')->post('/product_pos_sale_create', 'API\BackendController@productPOSSaleCreate');
+Route::middleware('auth:api')->post('/product_pos_sale_edit', 'API\BackendController@productPOSSaleEdit');
+Route::middleware('auth:api')->post('/product_pos_sale_delete', 'API\BackendController@productPOSSaleDelete');
+
+// sslcommerz
+//Route::post('/checkout/ssl/pay', 'API\PublicSslCommerzPaymentController@index');
+//Route::POST('/success', 'API\PublicSslCommerzPaymentController@success');
+//Route::POST('/fail', 'API\PublicSslCommerzPaymentController@fail');
+//Route::POST('/cancel', 'API\PublicSslCommerzPaymentController@cancel');
+//Route::POST('/ipn', 'API\PublicSslCommerzPaymentController@ipn');
+//
+//Route::get('/ssl/redirect/{status}','API\PublicSslCommerzPaymentController@status');

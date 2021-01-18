@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateProductPurchasesTable extends Migration
+class CreatePaymentCollectionsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,23 +13,24 @@ class CreateProductPurchasesTable extends Migration
      */
     public function up()
     {
-        Schema::create('product_purchases', function (Blueprint $table) {
+        Schema::create('payment_collections', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('invoice_no');
+            $table->bigInteger('product_sale_id')->unsigned();
             $table->bigInteger('user_id');
             $table->bigInteger('party_id')->unsigned();
-            $table->bigInteger('warehouse_id')->unsigned();
-            $table->enum('purchase_type', ['whole_purchase','pos_purchase']);
-            $table->enum('discount_type', ['Flat','Percentage'])->nullable();
-            $table->string('discount_amount')->nullable();
-            $table->float('paid_amount', 8,2);
+            $table->bigInteger('warehouse_id')->unsigned()->nullable();
+            $table->bigInteger('store_id')->unsigned()->nullable();
+            $table->float('collection_amount', 8,2);
             $table->float('due_amount', 8,2);
-            $table->float('total_amount', 8,2);
-            $table->string('purchase_date');
-            $table->string('purchase_date_time');
+            $table->float('current_collection_amount', 8,2);
+            $table->string('collection_date');
+            $table->string('collection_date_time');
             $table->timestamps();
+            $table->foreign('product_sale_id')->references('id')->on('product_sales')->onDelete('cascade');
             $table->foreign('party_id')->references('id')->on('parties')->onDelete('cascade');
             $table->foreign('warehouse_id')->references('id')->on('warehouses')->onDelete('cascade');
+            $table->foreign('store_id')->references('id')->on('stores')->onDelete('cascade');
         });
     }
 
@@ -40,6 +41,6 @@ class CreateProductPurchasesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('product_purchases');
+        Schema::dropIfExists('payment_collections');
     }
 }
