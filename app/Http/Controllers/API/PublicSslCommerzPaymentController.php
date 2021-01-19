@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Models\Web\Order;
+use App\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,11 +16,11 @@ class PublicSslCommerzPaymentController extends Controller
     public function index(Request $request)
     {
 
-        $order =  Order::where('orders_id',$request->order_id)->firstOrFail();
+        $transaction =  Transaction::where('id',$request->transaction_id)->firstOrFail();
 
-        $order_price =$order->order_price;
+        $amount =$transaction->amount;
         //$shipping_cost = number_format(Session::get('shipping_cost'),2);
-        $total = $order_price;
+        $total = $amount;
         # Here you have to receive all the order data to initate  payment.
         # Lets your oder trnsaction informations are saving in a table called "orders"
         # In orders table order uniq identity is "order_id","transaction_status" field contain status of the transaction, "grand_total" is the order amount to be paid and "currency" is for storing Site Currency which will be checked with paid currency.
@@ -31,7 +31,7 @@ class PublicSslCommerzPaymentController extends Controller
         $post_data['tran_id'] = uniqid(); // tran_id must be unique
 
 
-        Order::where('orders_id',$request->order_id)->update(
+        Transaction::where('id',$request->transaction_id)->update(
             array(
                 'currency' => $post_data['currency'],
                 'transaction_id' => $post_data['tran_id'],
@@ -74,13 +74,13 @@ class PublicSslCommerzPaymentController extends Controller
         #End to received these value from session. which was saved in index function.
         #Check order status in order tabel against the transaction id or order id.
 
-        $order_detials = DB::table('orders')
+        $order_detials = DB::table('transactions')
             ->where('transaction_id', $tran_id)
-            ->select('transaction_id', 'transaction_status','currency','order_price','shipping_cost')->first();
+            ->select('transaction_id', 'transaction_status','currency','amount')->first();
 
 
         //$chekTotal= $order_detials->order_price + number_format(Session::get('shipping_cost'),2);
-        $chekTotal= $order_detials->order_price;
+        $chekTotal= $order_detials->amount;
 
         if($order_detials->transaction_status=='Pending')
         {
@@ -93,7 +93,7 @@ class PublicSslCommerzPaymentController extends Controller
                 in order table as Processing or Complete.
                 Here you can also sent sms or email for successfull transaction to customer
                 */
-                $update_product = DB::table('orders')
+                DB::table('transactions')
                     ->where('transaction_id', $tran_id)
                     ->update([
                         'transaction_status' => 'Completed',
@@ -117,7 +117,7 @@ class PublicSslCommerzPaymentController extends Controller
                 That means IPN did not work or IPN URL was not set in your merchant panel and Transation validation failed.
                 Here you need to update order status as Failed in order table.
                 */
-                $update_product = DB::table('orders')
+                DB::table('transactions')
                     ->where('transaction_id', $tran_id)
                     ->update(['transaction_status' => 'Failed']);
 //                echo "validation Fail";
@@ -147,14 +147,14 @@ class PublicSslCommerzPaymentController extends Controller
     public function fail(Request $request)
     {
         $tran_id = $request->tran_id;
-        $order_detials = DB::table('orders')
+        $order_detials = DB::table('transactions')
             ->where('transaction_id', $tran_id)
-            ->select('orders_id', 'transaction_status','currency','order_price')->first();
+            ->select('id', 'transaction_status','currency','amount')->first();
 
         if($order_detials->transaction_status=='Pending')
         {
             //dd($_POST);
-            $update_product = DB::table('orders')
+            DB::table('transactions')
                 ->where('transaction_id', $tran_id)
                 ->update(['transaction_status' => 'Failed']);
             return redirect('api/ssl/redirect/fail');
@@ -173,13 +173,13 @@ class PublicSslCommerzPaymentController extends Controller
     public function cancel(Request $request)
     {
         $tran_id = $tran_id = $request->tran_id;
-        $order_detials = DB::table('orders')
+        $order_detials = DB::table('transactions')
             ->where('transaction_id', $tran_id)
-            ->select('orders_id', 'transaction_status','currency','order_price')->first();
+            ->select('id', 'transaction_status','currency','amount')->first();
 //dd($order_detials);
         if($order_detials->transaction_status=='Pending')
         {
-            $update_product = DB::table('orders')
+            DB::table('transactions')
                 ->where('transaction_id', $tran_id)
                 ->update(['transaction_status' => 'Canceled']);
             echo "Transaction is Cancel";
@@ -206,14 +206,14 @@ class PublicSslCommerzPaymentController extends Controller
             $tran_id = $request->input('tran_id');
 
             #Check order status in order tabel against the transaction id or order id.
-            $order_details = DB::table('orders')
+            $order_details = DB::table('transactions')
                 ->where('transaction_id', $tran_id)
-                ->select('orders_id', 'transaction_status','currency','order_price')->first();
+                ->select('id', 'transaction_status','currency','amount')->first();
 
             if($order_details->transaction_status =='Pending')
             {
                 $sslc = new SSLCommerz();
-                $validation = $sslc->orderValidate($tran_id, $order_details->order_price, $order_details->currency, $request->all());
+                $validation = $sslc->orderValidate($tran_id, $order_details->amount, $order_details->currency, $request->all());
                 if($validation == TRUE)
                 {
                     /*
@@ -222,7 +222,7 @@ class PublicSslCommerzPaymentController extends Controller
                     in order table as Processing or Complete.
                     Here you can also sent sms or email for successfull transaction to customer
                     */
-                    $update_product = DB::table('orders')
+                    DB::table('transactions')
                         ->where('transaction_id', $tran_id)
                         ->update(['transaction_status' => 'Complete']);
 
@@ -234,7 +234,7 @@ class PublicSslCommerzPaymentController extends Controller
                     That means IPN worked, but Transation validation failed.
                     Here you need to update order status as Failed in order table.
                     */
-                    $update_product = DB::table('orders')
+                    DB::table('transactions')
                         ->where('order_id', $tran_id)
                         ->update(['transaction_status' => 'Failed']);
 

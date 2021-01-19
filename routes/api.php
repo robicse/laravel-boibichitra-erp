@@ -165,10 +165,10 @@ Route::middleware('auth:api')->get('/product_sale_invoice_list', 'API\BackendCon
 Route::middleware('auth:api')->post('/product_sale_return', 'API\BackendController@productSaleReturn');
 
 // sslcommerz
-//Route::post('/checkout/ssl/pay', 'API\PublicSslCommerzPaymentController@index');
-//Route::POST('/success', 'API\PublicSslCommerzPaymentController@success');
-//Route::POST('/fail', 'API\PublicSslCommerzPaymentController@fail');
-//Route::POST('/cancel', 'API\PublicSslCommerzPaymentController@cancel');
-//Route::POST('/ipn', 'API\PublicSslCommerzPaymentController@ipn');
-//
-//Route::get('/ssl/redirect/{status}','API\PublicSslCommerzPaymentController@status');
+Route::post('/checkout/ssl/pay', 'API\PublicSslCommerzPaymentController@index');
+Route::POST('/success', 'API\PublicSslCommerzPaymentController@success');
+Route::POST('/fail', 'API\PublicSslCommerzPaymentController@fail');
+Route::POST('/cancel', 'API\PublicSslCommerzPaymentController@cancel');
+Route::POST('/ipn', 'API\PublicSslCommerzPaymentController@ipn');
+
+Route::get('/ssl/redirect/{status}','API\PublicSslCommerzPaymentController@status');

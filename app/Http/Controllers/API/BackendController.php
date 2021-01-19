@@ -2002,7 +2002,7 @@ class BackendController extends Controller
                 ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
                 ->where('stocks.product_id',$data->product_id)
                 ->where('stocks.warehouse_id',$request->warehouse_id)
-                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','product_units.name as product_unit_name','product_brands.name as product_brand_name')
                 ->latest('stocks.id','desc')
                 ->first();
 
@@ -2011,6 +2011,10 @@ class BackendController extends Controller
             $nested_data['warehouse_name'] = $stock_row->warehouse_name;
             $nested_data['product_id'] = $stock_row->product_id;
             $nested_data['product_name'] = $stock_row->product_name;
+            $nested_data['purchase_price'] = $stock_row->purchase_price;
+            $nested_data['selling_price'] = $stock_row->selling_price;
+            $nested_data['item_code'] = $stock_row->item_code;
+            $nested_data['barcode'] = $stock_row->barcode;
             $nested_data['product_unit_id'] = $stock_row->product_unit_id;
             $nested_data['product_unit_name'] = $stock_row->product_unit_name;
             $nested_data['product_brand_id'] = $stock_row->product_brand_id;
@@ -2617,7 +2621,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
             ->where('product_sales.id',$request->product_sale_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.price','product_sale_details.mrp_price')
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.price as mrp_price')
             ->get();
 
         if($product_sale_details)
@@ -2731,16 +2735,16 @@ class BackendController extends Controller
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
 
                 // product purchase detail
-                $purchase_sale_detail = new ProductSaleDetail();
-                $purchase_sale_detail->product_sale_id = $insert_id;
-                $purchase_sale_detail->product_unit_id = $data['product_unit_id'];
-                $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $purchase_sale_detail->product_id = $product_id;
-                $purchase_sale_detail->barcode = $barcode;
-                $purchase_sale_detail->qty = $data['qty'];
-                $purchase_sale_detail->mrp_price = $data['mrp_price'];
-                $purchase_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
-                $purchase_sale_detail->save();
+                $product_sale_detail = new ProductSaleDetail();
+                $product_sale_detail->product_sale_id = $insert_id;
+                $product_sale_detail->product_unit_id = $data['product_unit_id'];
+                $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $product_sale_detail->product_id = $product_id;
+                $product_sale_detail->barcode = $barcode;
+                $product_sale_detail->qty = $data['qty'];
+                $product_sale_detail->price = $data['mrp_price'];
+                $product_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $product_sale_detail->save();
 
                 $check_previous_stock = Stock::where('product_id',$product_id)->latest()->pluck('current_stock')->first();
                 if(!empty($check_previous_stock)){
@@ -2784,6 +2788,7 @@ class BackendController extends Controller
             $transaction->transaction_date = $date;
             $transaction->transaction_date_time = $date_time;
             $transaction->save();
+            $transaction_id = $transaction->id;
 
             // payment paid
             $payment_collection = new PaymentCollection();
@@ -2801,8 +2806,11 @@ class BackendController extends Controller
             $payment_collection->collection_date_time = $date_time;
             $payment_collection->save();
 
-
-            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+            if($request->payment_type == 'SSL Commerz'){
+                return response()->json(['success'=>true,'transaction_id' => $transaction_id], $this->successStatus);
+            }else{
+                return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+            }
         }else{
             return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
         }
@@ -2851,7 +2859,7 @@ class BackendController extends Controller
                 $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_sale_detail->product_id = $product_id;
                 $purchase_sale_detail->qty = $data['qty'];
-                $purchase_sale_detail->mrp_price = $data['mrp_price'];
+                $purchase_sale_detail->price = $data['mrp_price'];
                 $purchase_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_sale_detail->barcode = $barcode;
                 $purchase_sale_detail->update();
