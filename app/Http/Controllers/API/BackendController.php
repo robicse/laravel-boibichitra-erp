@@ -1140,7 +1140,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','product_purchase_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','product_purchase_details.product_brand_id','product_brands.id')
             ->where('product_purchases.id',$request->product_purchase_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_purchase_details.qty','product_purchase_details.price','product_purchase_details.mrp_price')
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_purchase_details.qty','product_purchase_details.id as product_purchase_detail_id','product_purchase_details.price','product_purchase_details.mrp_price')
             ->get();
 
         if($product_purchase_details)
@@ -1326,7 +1326,7 @@ class BackendController extends Controller
                 $purchase_purchase_detail->qty = $data['qty'];
                 $purchase_purchase_detail->price = $data['price'];
                 $purchase_purchase_detail->mrp_price = $data['mrp_price'];
-                $purchase_purchase_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $purchase_purchase_detail->sub_total = $data['qty']*$data['price'];
                 $purchase_purchase_detail->barcode = $barcode;
                 $purchase_purchase_detail->save();
 
@@ -1414,10 +1414,11 @@ class BackendController extends Controller
 //            $total_amount += $data['qty']*$data['price'];
 //        }
 
+        $user_id = Auth::user()->id;
 
         // product purchase
         $productPurchase = ProductPurchase::find($request->product_purchase_id);
-        $productPurchase ->user_id = $request->user_id;
+        $productPurchase ->user_id = $user_id;
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->discount_type = $request->discount_type;
@@ -1442,7 +1443,7 @@ class BackendController extends Controller
                 $purchase_purchase_detail->qty = $data['qty'];
                 $purchase_purchase_detail->price = $data['price'];
                 $purchase_purchase_detail->mrp_price = $data['mrp_price'];
-                $purchase_purchase_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $purchase_purchase_detail->sub_total = $data['qty']*$data['price'];
                 $purchase_purchase_detail->barcode = $barcode;
                 $purchase_purchase_detail->update();
 
@@ -1462,7 +1463,7 @@ class BackendController extends Controller
                         $update_current_stock = $stock_row->current_stock - $add_or_minus_stock_in;
                     }
 
-                    $stock_row->user_id = $request->user_id;
+                    $stock_row->user_id = $user_id;
                     $stock_row->stock_in = $update_stock_in;
                     $stock_row->current_stock = $update_current_stock;
                     $stock_row->update();
@@ -1471,7 +1472,7 @@ class BackendController extends Controller
 
             // transaction
             $transaction = Transaction::where('ref_id',$request->product_purchase_id)->first();
-            $transaction->user_id = $request->user_id;
+            $transaction->user_id = $user_id;
             $transaction->warehouse_id = $request->warehouse_id;
             $transaction->party_id = $request->party_id;
             $transaction->payment_type = $request->payment_type;
@@ -1480,7 +1481,7 @@ class BackendController extends Controller
 
             // payment paid
             $payment_paid = PaymentPaid::where('product_purchase_id',$request->product_purchase_id)->first();
-            $payment_paid->user_id = $request->user_id;
+            $payment_paid->user_id = $user_id;
             $payment_paid->party_id = $request->party_id;
             $payment_paid->paid_amount = $request->paid_amount;
             $payment_paid->due_amount = $request->due_amount;
@@ -1541,7 +1542,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','product_purchase_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','product_purchase_details.product_brand_id','product_brands.id')
             ->where('product_purchases.id',$request->product_purchase_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_purchase_details.qty','product_purchase_details.price','product_purchase_details.mrp_price')
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_purchase_details.qty','product_purchase_details.id as product_purchase_detail_id','product_purchase_details.price','product_purchase_details.mrp_price')
             ->get();
 
         if($product_pos_purchase_details)
@@ -1612,7 +1613,7 @@ class BackendController extends Controller
                 $purchase_purchase_detail->qty = $data['qty'];
                 $purchase_purchase_detail->price = $data['price'];
                 $purchase_purchase_detail->mrp_price = $data['mrp_price'];
-                $purchase_purchase_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $purchase_purchase_detail->sub_total = $data['qty']*$data['price'];
                 $purchase_purchase_detail->barcode = $barcode;
                 $purchase_purchase_detail->save();
 
@@ -1689,10 +1690,11 @@ class BackendController extends Controller
             'payment_type'=> 'required',
         ]);
 
+        $user_id = Auth::user()->id;
 
         // product purchase
         $productPurchase = ProductPurchase::find($request->product_purchase_id);
-        $productPurchase ->user_id = $request->user_id;
+        $productPurchase ->user_id = $user_id;
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->discount_type = $request->discount_type;
@@ -1717,13 +1719,13 @@ class BackendController extends Controller
                 $purchase_purchase_detail->qty = $data['qty'];
                 $purchase_purchase_detail->price = $data['price'];
                 $purchase_purchase_detail->mrp_price = $data['mrp_price'];
-                $purchase_purchase_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $purchase_purchase_detail->sub_total = $data['qty']*$data['price'];
                 $purchase_purchase_detail->barcode = $barcode;
                 $purchase_purchase_detail->update();
 
 
                 // product stock
-                $stock_row = Stock::where('ref_id',$request->product_purchase_id)->where('stock_type','whole_purchase')->where('product_id',$product_id)->first();
+                $stock_row = Stock::where('ref_id',$request->product_purchase_id)->where('stock_type','pos_purchase')->where('product_id',$product_id)->first();
 
                 if($stock_row->stock_in != $data['qty']){
 
@@ -1737,7 +1739,7 @@ class BackendController extends Controller
                         $update_current_stock = $stock_row->current_stock - $add_or_minus_stock_in;
                     }
 
-                    $stock_row->user_id = $request->user_id;
+                    $stock_row->user_id = $user_id;
                     $stock_row->stock_in = $update_stock_in;
                     $stock_row->current_stock = $update_current_stock;
                     $stock_row->update();
@@ -1746,7 +1748,7 @@ class BackendController extends Controller
 
             // transaction
             $transaction = Transaction::where('ref_id',$request->product_purchase_id)->first();
-            $transaction->user_id = $request->user_id;
+            $transaction->user_id = $user_id;
             $transaction->warehouse_id = $request->warehouse_id;
             $transaction->party_id = $request->party_id;
             $transaction->payment_type = $request->payment_type;
@@ -1755,7 +1757,7 @@ class BackendController extends Controller
 
             // payment paid
             $payment_paid = PaymentPaid::where('product_purchase_id',$request->product_purchase_id)->first();
-            $payment_paid->user_id = $request->user_id;
+            $payment_paid->user_id = $user_id;
             $payment_paid->party_id = $request->party_id;
             $payment_paid->paid_amount = $request->paid_amount;
             $payment_paid->due_amount = $request->due_amount;
@@ -1984,27 +1986,62 @@ class BackendController extends Controller
     }
 
     public function warehouseCurrentStockList(Request $request){
-
-        $warehouse_current_stock_list = DB::table('stocks')
-            ->leftJoin('users','stocks.user_id','users.id')
-            ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
-            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
-            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
-            ->leftJoin('products','stocks.product_id','products.id')
-            ->where('stocks.stock_where','warehouse')
-            ->whereIn('stocks.id', function($query) {
-                $query->from('stocks')->groupBy('product_id')->selectRaw('MAX(id)');
-            })
-            ->select('stocks.id as stock_id','warehouses.id as warehouse_id','warehouses.name as warehouse_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','products.id as product_id','products.name as product_name','stocks.current_stock')
-            ->latest('stocks.id','desc')
+        $warehouse_stock_product_list = Stock::where('warehouse_id',$request->warehouse_id)
+            ->select('product_id')
+            ->groupBy('product_id')
+            ->latest('product_id')
             ->get();
 
-        if($warehouse_current_stock_list)
+        $warehouse_stock_product = [];
+        foreach($warehouse_stock_product_list as $data){
+
+            $stock_row = DB::table('stocks')
+                ->join('warehouses','stocks.warehouse_id','warehouses.id')
+                ->leftJoin('products','stocks.product_id','products.id')
+                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+                ->where('stocks.product_id',$data->product_id)
+                ->where('stocks.warehouse_id',$request->warehouse_id)
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->latest('stocks.id','desc')
+                ->first();
+
+            $nested_data['stock_id'] = $stock_row->id;
+            $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+            $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+            $nested_data['product_id'] = $stock_row->product_id;
+            $nested_data['product_name'] = $stock_row->product_name;
+            $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+            $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+            $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+            $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+            $nested_data['current_stock'] = $stock_row->current_stock;
+
+            array_push($warehouse_stock_product,$nested_data);
+        }
+
+        if($warehouse_stock_product)
         {
-            $success['warehouse_current_stock_list'] =  $warehouse_current_stock_list;
+            $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
+    public function checkWarehouseProductCurrentStock(Request $request){
+        $check_warehouse_product_current_stock = Stock::where('warehouse_id',$request->warehouse_id)
+            ->where('product_id',$request->product_id)
+            ->latest('id','desc')
+            ->pluck('current_stock')
+            ->first();
+
+        if($check_warehouse_product_current_stock)
+        {
+            $success['check_warehouse_product_current_stock'] =  $check_warehouse_product_current_stock;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Product Current Stock Found!'], $this->failStatus);
         }
     }
 
@@ -2020,10 +2057,6 @@ class BackendController extends Controller
         $user_id = Auth::user()->id;
         $warehouse_id = $request->warehouse_id;
         $store_id = $request->store_id;
-//        foreach ($request->products as $data) {
-//            $product_id = $data['product_id'];
-//        }
-//        return response()->json(['success'=>true,'response' => $product_id], $this->successStatus);
 
         $insert_id = false;
 
@@ -2097,9 +2130,9 @@ class BackendController extends Controller
 
 
         if($insert_id){
-            return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
+            return response()->json(['success'=>true,'response' => 'Warehouse To Store Stock Successfully Inserted.'], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Warehouse To Store Stock Successfully Inserted.!'], $this->failStatus);
         }
     }
 
@@ -2297,7 +2330,7 @@ class BackendController extends Controller
         $productSale ->invoice_no = $final_invoice;
         $productSale ->user_id = $user_id;
         $productSale ->party_id = $request->party_id;
-        $productSale ->purchase_type = 'whole_sale';
+        $productSale ->sale_type = 'whole_sale';
         $productSale ->discount_type = $request->discount_type;
         $productSale ->discount_amount = $request->discount_amount;
         $productSale ->paid_amount = $request->paid_amount;
@@ -2369,8 +2402,8 @@ class BackendController extends Controller
                 $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_sale_detail->product_id = $product_id;
                 $purchase_sale_detail->qty = $data['qty'];
-                $purchase_sale_detail->price = $data['price'];
-                $purchase_sale_detail->sub_total = $data['qty']*$data['price'];
+                $purchase_sale_detail->mrp_price = $data['mrp_price'];
+                $purchase_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_sale_detail->barcode = $barcode;
                 $purchase_sale_detail->save();
 
@@ -2476,8 +2509,8 @@ class BackendController extends Controller
                 $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_sale_detail->product_id = $product_id;
                 $purchase_sale_detail->qty = $data['qty'];
-                $purchase_sale_detail->price = $data['price'];
-                $purchase_sale_detail->sub_total = $data['qty']*$data['price'];
+                $purchase_sale_detail->mrp_price = $data['mrp_price'];
+                $purchase_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_sale_detail->barcode = $barcode;
                 $purchase_sale_detail->update();
 
@@ -2583,8 +2616,8 @@ class BackendController extends Controller
             ->leftJoin('products','product_sale_details.product_id','products.id')
             ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
-            ->where('product_sales.id',$request->product_purchase_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.price')
+            ->where('product_sales.id',$request->product_sale_id)
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.price','product_sale_details.mrp_price')
             ->get();
 
         if($product_sale_details)
@@ -2609,7 +2642,7 @@ class BackendController extends Controller
             'payment_type'=> 'required',
         ]);
 
-        $get_invoice_no = ProductSale::latest()->pluck('invoice_no')->first();
+        $get_invoice_no = ProductSale::latest('id','desc')->pluck('invoice_no')->first();
         if(!empty($get_invoice_no)){
             $get_invoice = str_replace("sale-","",$get_invoice_no);
             $invoice_no = $get_invoice+1;
@@ -2630,8 +2663,8 @@ class BackendController extends Controller
         $productSale ->invoice_no = $final_invoice;
         $productSale ->user_id = $user_id;
         $productSale ->party_id = $request->party_id;
-        $productSale ->warehouse_id = $request->warehouse_id;
-        $productSale ->store_id = $request->store_id;
+        $productSale ->warehouse_id = $warehouse_id;
+        $productSale ->store_id = $store_id;
         $productSale ->sale_type = 'pos_sale';
         $productSale ->discount_type = $request->discount_type;
         $productSale ->discount_amount = $request->discount_amount;
@@ -2705,8 +2738,8 @@ class BackendController extends Controller
                 $purchase_sale_detail->product_id = $product_id;
                 $purchase_sale_detail->barcode = $barcode;
                 $purchase_sale_detail->qty = $data['qty'];
-                $purchase_sale_detail->price = $data['price'];
-                $purchase_sale_detail->sub_total = $data['qty']*$data['price'];
+                $purchase_sale_detail->mrp_price = $data['mrp_price'];
+                $purchase_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_sale_detail->save();
 
                 $check_previous_stock = Stock::where('product_id',$product_id)->latest()->pluck('current_stock')->first();
@@ -2758,8 +2791,8 @@ class BackendController extends Controller
             $payment_collection->product_sale_id = $insert_id;
             $payment_collection->user_id = $user_id;
             $payment_collection->party_id = $request->party_id;
-            $payment_collection->warehouse_id = $request->warehouse_id;
-            $payment_collection->store_id = $request->store_id;
+            $payment_collection->warehouse_id = $warehouse_id;
+            $payment_collection->store_id = $store_id;
             $payment_collection->collection_type = 'Sale';
             $payment_collection->collection_amount = $request->paid_amount;
             $payment_collection->due_amount = $request->due_amount;
@@ -2787,13 +2820,14 @@ class BackendController extends Controller
             'payment_type'=> 'required',
         ]);
 
+        $user_id = Auth::user()->id;
         $store_id = $request->store_id;
         $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
 
 
         // product purchase
         $productSale = ProductSale::find($request->product_sale_id);
-        $productSale ->user_id = $request->user_id;
+        $productSale ->user_id = $user_id;
         $productSale ->party_id = $request->party_id;
         $productSale ->warehouse_id = $warehouse_id;
         $productSale ->store_id = $store_id;
@@ -2817,14 +2851,14 @@ class BackendController extends Controller
                 $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_sale_detail->product_id = $product_id;
                 $purchase_sale_detail->qty = $data['qty'];
-                $purchase_sale_detail->price = $data['price'];
-                $purchase_sale_detail->sub_total = $data['qty']*$data['price'];
+                $purchase_sale_detail->mrp_price = $data['mrp_price'];
+                $purchase_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_sale_detail->barcode = $barcode;
                 $purchase_sale_detail->update();
 
 
                 // product stock
-                $stock_row = Stock::where('ref_id',$request->product_sale_id)->where('stock_type','whole_sale')->where('product_id',$product_id)->first();
+                $stock_row = Stock::where('ref_id',$request->product_sale_id)->where('stock_type','pos_sale')->where('product_id',$product_id)->first();
 
                 if($stock_row->stock_out != $data['qty']){
 
@@ -2838,7 +2872,7 @@ class BackendController extends Controller
                         $update_current_stock = $stock_row->current_stock + $add_or_minus_stock_out;
                     }
 
-                    $stock_row->user_id = $request->user_id;
+                    $stock_row->user_id = $user_id;
                     $stock_row->stock_out = $update_stock_out;
                     $stock_row->current_stock = $update_current_stock;
                     $stock_row->update();
@@ -2847,7 +2881,7 @@ class BackendController extends Controller
 
             // transaction
             $transaction = Transaction::where('ref_id',$request->product_sale_id)->first();
-            $transaction->user_id = $request->user_id;
+            $transaction->user_id = $user_id;
             $transaction->store_id = $warehouse_id;
             $transaction->store_id = $store_id;
             $transaction->party_id = $request->party_id;
@@ -2857,7 +2891,7 @@ class BackendController extends Controller
 
             // payment paid
             $payment_collection = PaymentCollection::where('product_sale_id',$request->product_sale_id)->first();
-            $payment_collection->user_id = $request->user_id;
+            $payment_collection->user_id = $user_id;
             $payment_collection->party_id = $request->party_id;
             $payment_collection->warehouse_id = $warehouse_id;
             $payment_collection->store_id = $store_id;
@@ -2976,8 +3010,8 @@ class BackendController extends Controller
                 $purchase_sale_return_detail->product_id = $product_id;
                 $purchase_sale_return_detail->barcode = $barcode;
                 $purchase_sale_return_detail->qty = $data['qty'];
-                $purchase_sale_return_detail->price = $data['price'];
-                $purchase_sale_return_detail->sub_total = $data['qty']*$data['price'];
+                $purchase_sale_return_detail->mrp_price = $data['mrp_price'];
+                $purchase_sale_return_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_sale_return_detail->save();
 
                 $check_previous_stock = Stock::where('product_id',$product_id)->latest('id','desc')->pluck('current_stock')->first();

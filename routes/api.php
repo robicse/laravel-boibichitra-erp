@@ -142,6 +142,7 @@ Route::middleware('auth:api')->post('/product_whole_purchase_create_with_low_pro
 
 // stock transfer
 Route::middleware('auth:api')->post('/warehouse_current_stock_list', 'API\BackendController@warehouseCurrentStockList');
+Route::middleware('auth:api')->post('/check_warehouse_product_current_stock', 'API\BackendController@checkWarehouseProductCurrentStock');
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\BackendController@warehouseToStoreStockCreate');
 
 // product sale whole
