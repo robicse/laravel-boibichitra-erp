@@ -921,7 +921,7 @@ class BackendController extends Controller
         $products = DB::table('products')
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
-            ->select('products.id','products.name as product_name','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
             ->get();
 
         if($products)
@@ -956,26 +956,6 @@ class BackendController extends Controller
             return response()->json($response, $this-> validationStatus);
         }
 
-//        $extensions = array('gif','jpg','jpeg','png');
-//        if($request->hasFile('image') and in_array($request->image->extension(), $extensions)){
-//            $image = $request->image;
-//            $fileName = time().'.'.$image->getClientOriginalName();
-//            $image->move('uploads/products/', $fileName);
-//            $product_image = 'uploads/products/'.$fileName;
-//        }else{
-//            $product_image = 'default.jpg';
-//        }
-
-        $image = $request->file('image');
-        if (isset($image)) {
-            //make unique name for image
-            $currentDate = Carbon::now()->toDateString();
-            $image_name = $currentDate . '-' . uniqid() . '.' . $image->getClientOriginalExtension();
-//            resize image for service category and upload
-            $product_image = Image::make($image)->resize(100, 100)->save($image->getClientOriginalExtension());
-            Storage::disk('public')->put('uploads/products/'. $image_name, $product_image);
-        }
-
         $product = new Product();
         $product->name = $request->name;
         $product->product_unit_id = $request->product_unit_id;
@@ -989,7 +969,7 @@ class BackendController extends Controller
         $product->note = $request->note ? $request->note : NULL;
         $product->date = $request->date;
         $product->status = $request->status;
-        $product->image = $product_image;
+        $product->image = 'default.png';
         $product->save();
         $insert_id = $product->id;
 
@@ -1029,37 +1009,9 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Product Found!'], $this->failStatus);
         }
 
+        $image = Product::where('id',$request->product_id)->pluck('image')->first();
 
         $product = Product::find($request->product_id);
-        // for image
-//        $extensions = array('gif','jpg','jpeg','png');
-//        if($request->hasFile('image') and in_array($request->image->extension(), $extensions)){
-//            $image = $request->image;
-//            $fileName = time().'.'.$image->getClientOriginalName();
-//            $image->move('uploads/products/', $fileName);
-//            $product_image = 'uploads/products/'.$fileName;
-//        }else{
-//            $product_image = $product->image;
-//        }
-
-        if (isset($image)) {
-            //make unique name for image
-            $currentDate = Carbon::now()->toDateString();
-            $image_name = $currentDate . '-' . uniqid() . '.' . $image->getClientOriginalExtension();
-            //delete old image.....
-            if(Storage::disk('public')->exists('uploads/products/'.$product->image))
-            {
-                Storage::disk('public')->delete('uploads/products/'.$product->image);
-
-            }
-//            resize image for service category and upload
-            $product_image = Image::make($image)->resize(100, 100)->save($image->getClientOriginalExtension());
-            Storage::disk('public')->put('uploads/products/' . $image_name, $product_image);
-        }
-        else {
-            $product_image = $product->image;
-        }
-
         $product->name = $request->name;
         $product->product_unit_id = $request->product_unit_id;
         $product->item_code = $request->item_code ? $request->item_code : NULL;
@@ -1072,7 +1024,7 @@ class BackendController extends Controller
         $product->note = $request->note ? $request->note : NULL;
         $product->date = $request->date;
         $product->status = $request->status;
-        $product->image = $product_image;
+        $product->image = $image;
         $update_product = $product->save();
 
         if($update_product){
@@ -1255,8 +1207,8 @@ class BackendController extends Controller
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->purchase_type = 'whole_purchase';
-        $productPurchase ->discount_type = $request->discount_type;
-        $productPurchase ->discount_amount = $request->discount_amount;
+        $productPurchase ->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : NULL;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
         $productPurchase ->total_amount = $request->total_amount;
@@ -1421,8 +1373,8 @@ class BackendController extends Controller
         $productPurchase ->user_id = $user_id;
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
-        $productPurchase ->discount_type = $request->discount_type;
-        $productPurchase ->discount_amount = $request->discount_amount;
+        $productPurchase ->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : NULL;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
         $productPurchase ->total_amount = $request->total_amount;
@@ -1586,8 +1538,8 @@ class BackendController extends Controller
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->purchase_type = 'pos_purchase';
-        $productPurchase ->discount_type = $request->discount_type;
-        $productPurchase ->discount_amount = $request->discount_amount;
+        $productPurchase ->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : NULL;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
         $productPurchase ->total_amount = $request->total_amount;
@@ -1697,8 +1649,8 @@ class BackendController extends Controller
         $productPurchase ->user_id = $user_id;
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
-        $productPurchase ->discount_type = $request->discount_type;
-        $productPurchase ->discount_amount = $request->discount_amount;
+        $productPurchase ->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : NULL;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
         $productPurchase ->total_amount = $request->total_amount;
@@ -1989,7 +1941,7 @@ class BackendController extends Controller
         $warehouse_stock_product_list = Stock::where('warehouse_id',$request->warehouse_id)
             ->select('product_id')
             ->groupBy('product_id')
-            ->latest('product_id')
+            ->latest('id')
             ->get();
 
         $warehouse_stock_product = [];
@@ -2000,28 +1952,31 @@ class BackendController extends Controller
                 ->leftJoin('products','stocks.product_id','products.id')
                 ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
                 ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+                ->where('stocks.stock_where','warehouse')
                 ->where('stocks.product_id',$data->product_id)
                 ->where('stocks.warehouse_id',$request->warehouse_id)
                 ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','product_units.name as product_unit_name','product_brands.name as product_brand_name')
-                ->latest('stocks.id','desc')
+                ->latest('id','desc')
                 ->first();
 
-            $nested_data['stock_id'] = $stock_row->id;
-            $nested_data['warehouse_id'] = $stock_row->warehouse_id;
-            $nested_data['warehouse_name'] = $stock_row->warehouse_name;
-            $nested_data['product_id'] = $stock_row->product_id;
-            $nested_data['product_name'] = $stock_row->product_name;
-            $nested_data['purchase_price'] = $stock_row->purchase_price;
-            $nested_data['selling_price'] = $stock_row->selling_price;
-            $nested_data['item_code'] = $stock_row->item_code;
-            $nested_data['barcode'] = $stock_row->barcode;
-            $nested_data['product_unit_id'] = $stock_row->product_unit_id;
-            $nested_data['product_unit_name'] = $stock_row->product_unit_name;
-            $nested_data['product_brand_id'] = $stock_row->product_brand_id;
-            $nested_data['product_brand_name'] = $stock_row->product_brand_name;
-            $nested_data['current_stock'] = $stock_row->current_stock;
+            if($stock_row){
+                $nested_data['stock_id'] = $stock_row->id;
+                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+                $nested_data['product_id'] = $stock_row->product_id;
+                $nested_data['product_name'] = $stock_row->product_name;
+                $nested_data['purchase_price'] = $stock_row->purchase_price;
+                $nested_data['selling_price'] = $stock_row->selling_price;
+                $nested_data['item_code'] = $stock_row->item_code;
+                $nested_data['barcode'] = $stock_row->barcode;
+                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+                $nested_data['current_stock'] = $stock_row->current_stock;
 
-            array_push($warehouse_stock_product,$nested_data);
+                array_push($warehouse_stock_product,$nested_data);
+            }
         }
 
         if($warehouse_stock_product)
@@ -2033,21 +1988,22 @@ class BackendController extends Controller
         }
     }
 
-    public function checkWarehouseProductCurrentStock(Request $request){
-        $check_warehouse_product_current_stock = Stock::where('warehouse_id',$request->warehouse_id)
-            ->where('product_id',$request->product_id)
-            ->latest('id','desc')
-            ->pluck('current_stock')
-            ->first();
-
-        if($check_warehouse_product_current_stock)
-        {
-            $success['check_warehouse_product_current_stock'] =  $check_warehouse_product_current_stock;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Warehouse Product Current Stock Found!'], $this->failStatus);
-        }
-    }
+//    public function checkWarehouseProductCurrentStock(Request $request){
+//        $check_warehouse_product_current_stock = Stock::where('warehouse_id',$request->warehouse_id)
+//            ->where('product_id',$request->product_id)
+//            ->where('stock_where','warehouse')
+//            ->latest('id','desc')
+//            ->pluck('current_stock')
+//            ->first();
+//
+//        if($check_warehouse_product_current_stock)
+//        {
+//            $success['check_warehouse_product_current_stock'] =  $check_warehouse_product_current_stock;
+//            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Warehouse Product Current Stock Found!'], $this->failStatus);
+//        }
+//    }
 
 
     public function warehouseToStoreStockCreate(Request $request){
@@ -2068,12 +2024,18 @@ class BackendController extends Controller
             $product_id = $data['product_id'];
 
 
-            $previous_warehouse_current_stock = Stock::where('warehouse_id',$warehouse_id)
+            $check_previous_warehouse_current_stock = Stock::where('warehouse_id',$warehouse_id)
                 ->where('product_id',$product_id)
                 ->where('stock_where','warehouse')
-                ->pluck('current_stock')
                 ->latest('id','desc')
+                ->pluck('current_stock')
                 ->first();
+
+            if($check_previous_warehouse_current_stock){
+                $previous_warehouse_current_stock = $check_previous_warehouse_current_stock;
+            }else{
+                $previous_warehouse_current_stock = 0;
+            }
 
             // stock out warehouse product
             $stock = new Stock();
@@ -2100,14 +2062,14 @@ class BackendController extends Controller
                 ->where('store_id',$store_id)
                 ->where('product_id',$product_id)
                 ->where('stock_where','warehouse')
-                ->pluck('current_stock')
                 ->latest('id','desc')
+                ->pluck('current_stock')
                 ->first();
 
-            if(empty($check_previous_store_current_stock)){
-                $previous_store_current_stock = 0;
-            }else{
+            if($check_previous_store_current_stock){
                 $previous_store_current_stock = $check_previous_store_current_stock;
+            }else{
+                $previous_store_current_stock = 0;
             }
 
             // stock in store product
@@ -2137,6 +2099,104 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Warehouse To Store Stock Successfully Inserted.'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Warehouse To Store Stock Successfully Inserted.!'], $this->failStatus);
+        }
+    }
+
+    public function storeStockList(){
+        $store_stock_list = DB::table('stocks')
+            ->leftJoin('users','stocks.user_id','users.id')
+            ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
+            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+            ->leftJoin('products','stocks.product_id','products.id')
+            ->where('stocks.stock_where','store')
+            ->select('stocks.id as stock_id','users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.stock_in_out','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
+            ->latest('stocks.id','desc')
+            ->get();
+
+        if($store_stock_list)
+        {
+            $success['store_stock_list'] =  $store_stock_list;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Stock List Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeStockLowList(){
+
+        $store_stock_low_list = DB::table('stocks')
+            ->leftJoin('users','stocks.user_id','users.id')
+            ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
+            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+            ->leftJoin('products','stocks.product_id','products.id')
+            ->where('stocks.stock_where','store')
+            //->where('stocks.current_stock','<',2)
+            ->whereIn('stocks.id', function($query) {
+                $query->from('stocks')->where('current_stock','<', 2)->groupBy('product_id')->selectRaw('MAX(id)');
+            })
+            ->select('stocks.id as stock_id','users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.id as product_id','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
+            ->latest('stocks.id','desc')
+            ->get();
+
+        if($store_stock_low_list)
+        {
+            $success['store_stock_low_list'] =  $store_stock_low_list;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Stock Low List Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeCurrentStockList(Request $request){
+        $store_stock_product_list = Stock::where('store_id',$request->store_id)
+            ->select('product_id')
+            ->groupBy('product_id')
+            ->latest('id')
+            ->get();
+
+        $store_stock_product = [];
+        foreach($store_stock_product_list as $data){
+
+            $stock_row = DB::table('stocks')
+                ->join('warehouses','stocks.warehouse_id','warehouses.id')
+                ->leftJoin('products','stocks.product_id','products.id')
+                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+                ->where('stocks.stock_where','warehouse')
+                ->where('stocks.product_id',$data->product_id)
+                ->where('stocks.store_id',$request->store_id)
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->latest('id','desc')
+                ->first();
+
+            if($stock_row){
+                $nested_data['stock_id'] = $stock_row->id;
+                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+                $nested_data['product_id'] = $stock_row->product_id;
+                $nested_data['product_name'] = $stock_row->product_name;
+                $nested_data['purchase_price'] = $stock_row->purchase_price;
+                $nested_data['selling_price'] = $stock_row->selling_price;
+                $nested_data['item_code'] = $stock_row->item_code;
+                $nested_data['barcode'] = $stock_row->barcode;
+                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+                $nested_data['current_stock'] = $stock_row->current_stock;
+
+                array_push($store_stock_product,$nested_data);
+            }
+        }
+
+        if($store_stock_product)
+        {
+            $success['store_current_stock_list'] =  $store_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Current Stock List Found!'], $this->failStatus);
         }
     }
 
@@ -2331,17 +2391,19 @@ class BackendController extends Controller
 
         // product purchase
         $productSale = new ProductSale();
-        $productSale ->invoice_no = $final_invoice;
-        $productSale ->user_id = $user_id;
-        $productSale ->party_id = $request->party_id;
-        $productSale ->sale_type = 'whole_sale';
-        $productSale ->discount_type = $request->discount_type;
-        $productSale ->discount_amount = $request->discount_amount;
-        $productSale ->paid_amount = $request->paid_amount;
-        $productSale ->due_amount = $request->due_amount;
-        $productSale ->total_amount = $request->total_amount;
-        $productSale ->sale_date = $date;
-        $productSale ->sale_date_time = $date_time;
+        $productSale->invoice_no = $final_invoice;
+        $productSale->user_id = $user_id;
+        $productSale->store_id = $store_id;
+        $productSale->warehouse_id = $warehouse_id;
+        $productSale->party_id = $request->party_id;
+        $productSale->sale_type = 'whole_sale';
+        $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : NULL;
+        $productSale->paid_amount = $request->paid_amount;
+        $productSale->due_amount = $request->due_amount;
+        $productSale->total_amount = $request->total_amount;
+        $productSale->sale_date = $date;
+        $productSale->sale_date_time = $date_time;
         $productSale->save();
         $insert_id = $productSale->id;
 
@@ -2406,7 +2468,7 @@ class BackendController extends Controller
                 $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_sale_detail->product_id = $product_id;
                 $purchase_sale_detail->qty = $data['qty'];
-                $purchase_sale_detail->mrp_price = $data['mrp_price'];
+                $purchase_sale_detail->price = $data['mrp_price'];
                 $purchase_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_sale_detail->barcode = $barcode;
                 $purchase_sale_detail->save();
@@ -2487,12 +2549,17 @@ class BackendController extends Controller
             'payment_type'=> 'required',
         ]);
 
+        $user_id = Auth::user()->id;
+        $store_id = $request->store_id;
+        $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
+
 
         // product purchase
         $productSale = ProductSale::find($request->product_sale_id);
-        $productSale ->user_id = $request->user_id;
+        $productSale ->user_id = $user_id;
         $productSale ->party_id = $request->party_id;
-        $productSale ->store_id = $request->store_id;
+        $productSale ->warehouse_id = $warehouse_id;
+        $productSale ->store_id = $store_id;
         $productSale ->discount_type = $request->discount_type;
         $productSale ->discount_amount = $request->discount_amount;
         $productSale ->paid_amount = $request->paid_amount;
@@ -2513,7 +2580,7 @@ class BackendController extends Controller
                 $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_sale_detail->product_id = $product_id;
                 $purchase_sale_detail->qty = $data['qty'];
-                $purchase_sale_detail->mrp_price = $data['mrp_price'];
+                $purchase_sale_detail->price = $data['mrp_price'];
                 $purchase_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_sale_detail->barcode = $barcode;
                 $purchase_sale_detail->update();
@@ -2534,7 +2601,7 @@ class BackendController extends Controller
                         $update_current_stock = $stock_row->current_stock + $add_or_minus_stock_out;
                     }
 
-                    $stock_row->user_id = $request->user_id;
+                    $stock_row->user_id = $user_id;
                     $stock_row->stock_out = $update_stock_out;
                     $stock_row->current_stock = $update_current_stock;
                     $stock_row->update();
@@ -2543,8 +2610,9 @@ class BackendController extends Controller
 
             // transaction
             $transaction = Transaction::where('ref_id',$request->product_sale_id)->first();
-            $transaction->user_id = $request->user_id;
-            $transaction->store_id = $request->store_id;
+            $transaction->user_id = $user_id;
+            $transaction->warehouse_id = $warehouse_id;
+            $transaction->store_id = $store_id;
             $transaction->party_id = $request->party_id;
             $transaction->payment_type = $request->payment_type;
             $transaction->amount = $request->paid_amount;
@@ -2552,8 +2620,10 @@ class BackendController extends Controller
 
             // payment paid
             $payment_collection = PaymentCollection::where('product_sale_id',$request->product_sale_id)->first();
-            $payment_collection->user_id = $request->user_id;
+            $payment_collection->user_id = $user_id;
             $payment_collection->party_id = $request->party_id;
+            $payment_collection->warehouse_id = $warehouse_id;
+            $payment_collection->store_id = $store_id;
             $payment_collection->collection_amount = $request->paid_amount;
             $payment_collection->due_amount = $request->due_amount;
             $payment_collection->current_collection_amount = $request->paid_amount;
@@ -2890,7 +2960,7 @@ class BackendController extends Controller
             // transaction
             $transaction = Transaction::where('ref_id',$request->product_sale_id)->first();
             $transaction->user_id = $user_id;
-            $transaction->store_id = $warehouse_id;
+            $transaction->warehouse_id = $warehouse_id;
             $transaction->store_id = $store_id;
             $transaction->party_id = $request->party_id;
             $transaction->payment_type = $request->payment_type;
@@ -3087,6 +3157,48 @@ class BackendController extends Controller
         }else{
             return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
         }
+    }
+
+    public function productImage(Request $request)
+    {
+        $product=Product::find($request->product_id);
+        $base64_image_propic = $request->pro_img;
+        //return response()->json(['response' => $base64_image_propic], $this-> successStatus);
+
+        $data = $request->pro_img;
+        $pos = strpos($data, ';');
+        $type = explode(':', substr($data, 0, $pos))[1];
+        $type1 = explode('/', $type)[1];
+
+        if (preg_match('/^data:image\/(\w+);base64,/', $base64_image_propic)) {
+            $data = substr($base64_image_propic, strpos($base64_image_propic, ',') + 1);
+            $data = base64_decode($data);
+
+            $currentDate = Carbon::now()->toDateString();
+            $imagename = $currentDate . '-' . uniqid() . 'product_pic.'.$type1 ;
+
+            //delete old image.....
+//            if(Storage::disk('public')->exists('uploads/products/'.$product->image))
+//            {
+//                Storage::disk('public')->delete('uploads/products/'.$product->image);
+//
+//            }
+
+            // store image
+            Storage::disk('public')->put("uploads/products/". $imagename, $data);
+            //Storage::disk('public')->put('uploads/products/' . $image_name, $product_image);
+
+            // update image db
+            $product->image = $imagename;
+            $product->update();
+
+            $success['product'] = $product;
+            return response()->json(['response' => $success], $this-> successStatus);
+
+        }else{
+            return response()->json(['response'=>'failed'], $this-> failStatus);
+        }
+
     }
 
 

@@ -114,6 +114,7 @@ Route::middleware('auth:api')->get('/product_list', 'API\BackendController@produ
 Route::middleware('auth:api')->post('/product_create', 'API\BackendController@productCreate');
 Route::middleware('auth:api')->post('/product_edit', 'API\BackendController@productEdit');
 Route::middleware('auth:api')->post('/product_delete', 'API\BackendController@productDelete');
+Route::middleware('auth:api')->post('/product_image', 'API\BackendController@productImage');
 
 // product purchase whole
 Route::middleware('auth:api')->post('/product_unit_and_brand', 'API\BackendController@productUnitAndBrand');
@@ -135,15 +136,20 @@ Route::middleware('auth:api')->get('/product_purchase_invoice_list', 'API\Backen
 Route::middleware('auth:api')->post('/product_purchase_return', 'API\BackendController@productPurchaseReturn');
 
 
-// stock list
+// warehouse stock list
 Route::middleware('auth:api')->get('/warehouse_stock_list', 'API\BackendController@warehouseStockList');
 Route::middleware('auth:api')->get('/warehouse_stock_low_list', 'API\BackendController@warehouseStockLowList');
 Route::middleware('auth:api')->post('/product_whole_purchase_create_with_low_product', 'API\BackendController@productWholePurchaseCreateWithLowProduct');
 
+// store stock list
+Route::middleware('auth:api')->get('/store_stock_list', 'API\BackendController@storeStockList');
+Route::middleware('auth:api')->get('/store_stock_low_list', 'API\BackendController@storeStockLowList');
+
 // stock transfer
 Route::middleware('auth:api')->post('/warehouse_current_stock_list', 'API\BackendController@warehouseCurrentStockList');
-Route::middleware('auth:api')->post('/check_warehouse_product_current_stock', 'API\BackendController@checkWarehouseProductCurrentStock');
+//Route::middleware('auth:api')->post('/check_warehouse_product_current_stock', 'API\BackendController@checkWarehouseProductCurrentStock');
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\BackendController@warehouseToStoreStockCreate');
+Route::middleware('auth:api')->post('/store_current_stock_list', 'API\BackendController@storeCurrentStockList');
 
 // product sale whole
 Route::middleware('auth:api')->get('/product_whole_sale_list', 'API\BackendController@productWholeSaleList');
