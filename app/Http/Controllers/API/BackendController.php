@@ -922,6 +922,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
+            ->orderBy('products.id','desc')
             ->get();
 
         if($products)
@@ -1208,7 +1209,7 @@ class BackendController extends Controller
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->purchase_type = 'whole_purchase';
         $productPurchase ->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : NULL;
+        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
         $productPurchase ->total_amount = $request->total_amount;
@@ -1374,7 +1375,7 @@ class BackendController extends Controller
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : NULL;
+        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
         $productPurchase ->total_amount = $request->total_amount;
@@ -1539,7 +1540,7 @@ class BackendController extends Controller
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->purchase_type = 'pos_purchase';
         $productPurchase ->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : NULL;
+        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
         $productPurchase ->total_amount = $request->total_amount;
@@ -1650,7 +1651,7 @@ class BackendController extends Controller
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : NULL;
+        $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
         $productPurchase ->total_amount = $request->total_amount;
@@ -1760,7 +1761,7 @@ class BackendController extends Controller
         }
     }
 
-    public function productPurchaseReturn(Request $request){
+    public function productPurchaseReturnCreate(Request $request){
         //dd($request->all());
         $this->validate($request, [
             'party_id'=> 'required',
@@ -1796,8 +1797,8 @@ class BackendController extends Controller
         $productPurchaseReturn ->party_id = $request->party_id;
         $productPurchaseReturn ->warehouse_id = $request->warehouse_id;
         $productPurchaseReturn ->product_purchase_return_type = 'purchase_return';
-        $productPurchaseReturn ->discount_type = $request->discount_type;
-        $productPurchaseReturn ->discount_amount = $request->discount_amount;
+        $productPurchaseReturn ->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productPurchaseReturn ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productPurchaseReturn ->paid_amount = $request->paid_amount;
         $productPurchaseReturn ->due_amount = $request->due_amount;
         $productPurchaseReturn ->total_amount = $request->total_amount;
@@ -1817,7 +1818,7 @@ class BackendController extends Controller
                 // product purchase detail
                 $purchase_purchase_return_detail = new ProductPurchaseReturnDetail();
                 $purchase_purchase_return_detail->pro_pur_return_id = $insert_id;
-                $purchase_purchase_return_detail->pro_pur_detail_id = $data['pro_pur_detail_id'];
+                $purchase_purchase_return_detail->pro_pur_detail_id = $data['product_purchase_detail_id'];
                 $purchase_purchase_return_detail->product_unit_id = $data['product_unit_id'];
                 $purchase_purchase_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_purchase_return_detail->product_id = $product_id;
@@ -1887,6 +1888,39 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Role Created!'], $this->failStatus);
+        }
+    }
+
+    public function productPurchaseReturnDetails(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'product_purchase_invoice_no'=> 'required',
+        ]);
+
+        $product_purchases = DB::table('product_purchases')
+            ->leftJoin('users','product_purchases.user_id','users.id')
+            ->leftJoin('parties','product_purchases.party_id','parties.id')
+            ->leftJoin('warehouses','product_purchases.warehouse_id','warehouses.id')
+            ->where('product_purchases.invoice_no',$request->product_purchase_invoice_no)
+            ->select('product_purchases.id','product_purchases.invoice_no','product_purchases.discount_type','product_purchases.discount_amount','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.id as supplier_id','parties.name as supplier_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
+            ->first();
+
+        if($product_purchases){
+
+            $product_pos_purchase_details = DB::table('product_purchases')
+                ->join('product_purchase_details','product_purchases.id','product_purchase_details.product_purchase_id')
+                ->leftJoin('products','product_purchase_details.product_id','products.id')
+                ->leftJoin('product_units','product_purchase_details.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','product_purchase_details.product_brand_id','product_brands.id')
+                ->where('product_purchases.invoice_no',$request->product_purchase_invoice_no)
+                ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_purchase_details.qty','product_purchase_details.id as product_purchase_detail_id','product_purchase_details.price','product_purchase_details.mrp_price')
+                ->get();
+
+            $success['product_purchases'] = $product_purchases;
+            $success['product_pos_purchase_details'] = $product_pos_purchase_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Purchase Data Found!'], $this->failStatus);
         }
     }
 
@@ -2102,7 +2136,7 @@ class BackendController extends Controller
         }
     }
 
-    public function storeStockList(){
+    public function storeStockList(Request $request){
         $store_stock_list = DB::table('stocks')
             ->leftJoin('users','stocks.user_id','users.id')
             ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
@@ -2110,6 +2144,7 @@ class BackendController extends Controller
             ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
             ->leftJoin('products','stocks.product_id','products.id')
             ->where('stocks.stock_where','store')
+            ->where('stocks.store_id',$request->store_id)
             ->select('stocks.id as stock_id','users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.stock_in_out','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
             ->latest('stocks.id','desc')
             ->get();
@@ -2343,14 +2378,33 @@ class BackendController extends Controller
         }
     }
 
+//    public function productWholeSaleDetails(Request $request){
+//        $product_sale_details = DB::table('product_sales')
+//            ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
+//            ->leftJoin('products','product_sale_details.product_id','products.id')
+//            ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
+//            ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
+//            ->where('product_sales.id',$request->product_purchase_id)
+//            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.price')
+//            ->get();
+//
+//        if($product_sale_details)
+//        {
+//            $success['product_whole_sale_details'] =  $product_sale_details;
+//            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Product Whole Sale Detail Found!'], $this->failStatus);
+//        }
+//    }
+
     public function productWholeSaleDetails(Request $request){
         $product_sale_details = DB::table('product_sales')
             ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
             ->leftJoin('products','product_sale_details.product_id','products.id')
             ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
-            ->where('product_sales.id',$request->product_purchase_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.price')
+            ->where('product_sales.id',$request->product_sale_id)
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price')
             ->get();
 
         if($product_sale_details)
@@ -2384,6 +2438,7 @@ class BackendController extends Controller
 
         $date = date('Y-m-d');
         $date_time = date('Y-m-d h:i:s');
+        $add_two_day_date =  date('Y-m-d', strtotime("+2 days"));
 
         $user_id = Auth::user()->id;
         $store_id = $request->store_id;
@@ -2398,7 +2453,7 @@ class BackendController extends Controller
         $productSale->party_id = $request->party_id;
         $productSale->sale_type = 'whole_sale';
         $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : NULL;
+        $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale->paid_amount = $request->paid_amount;
         $productSale->due_amount = $request->due_amount;
         $productSale->total_amount = $request->total_amount;
@@ -2461,17 +2516,20 @@ class BackendController extends Controller
 
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
 
-                // product purchase detail
-                $purchase_sale_detail = new ProductSaleDetail();
-                $purchase_sale_detail->product_sale_id = $insert_id;
-                $purchase_sale_detail->product_unit_id = $data['product_unit_id'];
-                $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $purchase_sale_detail->product_id = $product_id;
-                $purchase_sale_detail->qty = $data['qty'];
-                $purchase_sale_detail->price = $data['mrp_price'];
-                $purchase_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
-                $purchase_sale_detail->barcode = $barcode;
-                $purchase_sale_detail->save();
+                // product sale detail
+                $product_sale_detail = new ProductSaleDetail();
+                $product_sale_detail->product_sale_id = $insert_id;
+                $product_sale_detail->product_unit_id = $data['product_unit_id'];
+                $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $product_sale_detail->product_id = $product_id;
+                $product_sale_detail->qty = $data['qty'];
+                $product_sale_detail->price = $data['mrp_price'];
+                $product_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $product_sale_detail->barcode = $barcode;
+                $product_sale_detail->sale_date = $date;
+                $product_sale_detail->return_among_day = 2;
+                $product_sale_detail->return_last_date = $add_two_day_date;
+                $product_sale_detail->save();
 
                 $check_previous_stock = Stock::where('product_id',$product_id)->latest()->pluck('current_stock')->first();
                 if(!empty($check_previous_stock)){
@@ -2560,8 +2618,8 @@ class BackendController extends Controller
         $productSale ->party_id = $request->party_id;
         $productSale ->warehouse_id = $warehouse_id;
         $productSale ->store_id = $store_id;
-        $productSale ->discount_type = $request->discount_type;
-        $productSale ->discount_amount = $request->discount_amount;
+        $productSale ->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSale ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale ->paid_amount = $request->paid_amount;
         $productSale ->due_amount = $request->due_amount;
         $productSale ->total_amount = $request->total_amount;
@@ -2575,15 +2633,15 @@ class BackendController extends Controller
 
                 $product_sale_detail_id = $data['product_sale_detail_id'];
                 // product purchase detail
-                $purchase_sale_detail = ProductSaleDetail::find($product_sale_detail_id);
-                $purchase_sale_detail->product_unit_id = $data['product_unit_id'];
-                $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $purchase_sale_detail->product_id = $product_id;
-                $purchase_sale_detail->qty = $data['qty'];
-                $purchase_sale_detail->price = $data['mrp_price'];
-                $purchase_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
-                $purchase_sale_detail->barcode = $barcode;
-                $purchase_sale_detail->update();
+                $product_sale_detail = ProductSaleDetail::find($product_sale_detail_id);
+                $product_sale_detail->product_unit_id = $data['product_unit_id'];
+                $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $product_sale_detail->product_id = $product_id;
+                $product_sale_detail->qty = $data['qty'];
+                $product_sale_detail->price = $data['mrp_price'];
+                $product_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $product_sale_detail->barcode = $barcode;
+                $product_sale_detail->update();
 
 
                 // product stock
@@ -2691,7 +2749,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
             ->where('product_sales.id',$request->product_sale_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.price as mrp_price')
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price')
             ->get();
 
         if($product_sale_details)
@@ -2727,6 +2785,7 @@ class BackendController extends Controller
 
         $date = date('Y-m-d');
         $date_time = date('Y-m-d h:i:s');
+        $add_two_day_date =  date('Y-m-d', strtotime("+2 days"));
 
         $user_id = Auth::user()->id;
         $store_id = $request->store_id;
@@ -2740,8 +2799,8 @@ class BackendController extends Controller
         $productSale ->warehouse_id = $warehouse_id;
         $productSale ->store_id = $store_id;
         $productSale ->sale_type = 'pos_sale';
-        $productSale ->discount_type = $request->discount_type;
-        $productSale ->discount_amount = $request->discount_amount;
+        $productSale ->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSale ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale ->paid_amount = $request->paid_amount;
         $productSale ->due_amount = $request->due_amount;
         $productSale ->total_amount = $request->total_amount;
@@ -2814,6 +2873,9 @@ class BackendController extends Controller
                 $product_sale_detail->qty = $data['qty'];
                 $product_sale_detail->price = $data['mrp_price'];
                 $product_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $product_sale_detail->sale_date = $date;
+                $product_sale_detail->return_among_day = 2;
+                $product_sale_detail->return_last_date = $add_two_day_date;
                 $product_sale_detail->save();
 
                 $check_previous_stock = Stock::where('product_id',$product_id)->latest()->pluck('current_stock')->first();
@@ -2909,8 +2971,8 @@ class BackendController extends Controller
         $productSale ->party_id = $request->party_id;
         $productSale ->warehouse_id = $warehouse_id;
         $productSale ->store_id = $store_id;
-        $productSale ->discount_type = $request->discount_type;
-        $productSale ->discount_amount = $request->discount_amount;
+        $productSale ->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSale ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale ->paid_amount = $request->paid_amount;
         $productSale ->due_amount = $request->due_amount;
         $productSale ->total_amount = $request->total_amount;
@@ -3022,7 +3084,41 @@ class BackendController extends Controller
         }
     }
 
-    public function productSaleReturn(Request $request){
+    public function productSaleReturnDetails(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'product_sale_invoice_no'=> 'required',
+        ]);
+
+        $product_sales = DB::table('product_sales')
+            ->leftJoin('users','product_sales.user_id','users.id')
+            ->leftJoin('parties','product_sales.party_id','parties.id')
+            ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+            ->leftJoin('stores','product_sales.store_id','stores.id')
+            ->where('product_sales.invoice_no',$request->product_sale_invoice_no)
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->first();
+
+        if($product_sales){
+
+            $product_sale_details = DB::table('product_sales')
+                ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
+                ->leftJoin('products','product_sale_details.product_id','products.id')
+                ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
+                ->where('product_sales.invoice_no',$request->product_sale_invoice_no)
+                ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.sale_date','product_sale_details.return_among_day','product_sale_details.price as mrp_price')
+                ->get();
+
+            $success['product_sales'] = $product_sales;
+            $success['product_sale_details'] = $product_sale_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Sale Data Found!'], $this->failStatus);
+        }
+    }
+
+    public function productSaleReturnCreate(Request $request){
         //dd($request->all());
         $this->validate($request, [
             'party_id'=> 'required',
@@ -3049,7 +3145,7 @@ class BackendController extends Controller
 
         $user_id = Auth::user()->id;
         $store_id = $request->store_id;
-        $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
+        $warehouse_id = Store::where('id',$store_id)->latest('id')->pluck('warehouse_id')->first();
 
         // product purchase
         $productSaleReturn = new ProductSaleReturn();
@@ -3060,8 +3156,8 @@ class BackendController extends Controller
         $productSaleReturn ->warehouse_id = $warehouse_id;
         $productSaleReturn ->store_id = $store_id;
         $productSaleReturn ->product_sale_return_type = 'sale_return';
-        $productSaleReturn ->discount_type = $request->discount_type;
-        $productSaleReturn ->discount_amount = $request->discount_amount;
+        $productSaleReturn ->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSaleReturn ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSaleReturn ->paid_amount = $request->paid_amount;
         $productSaleReturn ->due_amount = $request->due_amount;
         $productSaleReturn ->total_amount = $request->total_amount;
@@ -3199,6 +3295,25 @@ class BackendController extends Controller
             return response()->json(['response'=>'failed'], $this-> failStatus);
         }
 
+    }
+
+    public function transactionHistory(Request $request){
+        $transaction_history = DB::table('transactions')
+            ->leftJoin('users','transactions.user_id','users.id')
+            ->leftJoin('warehouses','transactions.warehouse_id','warehouses.id')
+            ->leftJoin('stores','transactions.store_id','stores.id')
+            ->leftJoin('parties','transactions.party_id','parties.id')
+            ->select('transactions.id as transaction_id','users.name as transaction_by_user','warehouses.name as warehouse_name','stores.name as store_name','parties.name as party_name','transactions.transaction_type','transactions.payment_type','transactions.amount','transactions.transaction_date_time')
+            ->latest('transactions.id','desc')
+            ->get();
+
+        if($transaction_history)
+        {
+            $success['transaction_history'] =  $transaction_history;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Transaction History Found!'], $this->failStatus);
+        }
     }
 
 

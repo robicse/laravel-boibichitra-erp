@@ -23,6 +23,9 @@ class CreateProductSaleDetailsTable extends Migration
             $table->integer('qty');
             $table->float('price', 8,2);
             $table->float('sub_total', 8,2);
+            $table->string('sale_date');
+            $table->string('return_among_day');
+            $table->string('return_last_date');
             $table->timestamps();
             $table->foreign('product_sale_id')->references('id')->on('product_sales')->onDelete('cascade');
             $table->foreign('product_unit_id')->references('id')->on('product_units')->onDelete('cascade');

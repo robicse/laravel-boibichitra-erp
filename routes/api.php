@@ -133,7 +133,8 @@ Route::middleware('auth:api')->post('/product_pos_purchase_delete', 'API\Backend
 
 // product purchase return
 Route::middleware('auth:api')->get('/product_purchase_invoice_list', 'API\BackendController@productPurchaseInvoiceList');
-Route::middleware('auth:api')->post('/product_purchase_return', 'API\BackendController@productPurchaseReturn');
+Route::middleware('auth:api')->post('/product_purchase_return_details', 'API\BackendController@productPurchaseReturnDetails');
+Route::middleware('auth:api')->post('/product_purchase_return_create', 'API\BackendController@productPurchaseReturnCreate');
 
 
 // warehouse stock list
@@ -142,7 +143,7 @@ Route::middleware('auth:api')->get('/warehouse_stock_low_list', 'API\BackendCont
 Route::middleware('auth:api')->post('/product_whole_purchase_create_with_low_product', 'API\BackendController@productWholePurchaseCreateWithLowProduct');
 
 // store stock list
-Route::middleware('auth:api')->get('/store_stock_list', 'API\BackendController@storeStockList');
+Route::middleware('auth:api')->post('/store_stock_list', 'API\BackendController@storeStockList');
 Route::middleware('auth:api')->get('/store_stock_low_list', 'API\BackendController@storeStockLowList');
 
 // stock transfer
@@ -168,7 +169,11 @@ Route::middleware('auth:api')->post('/product_pos_sale_delete', 'API\BackendCont
 
 // product sale return
 Route::middleware('auth:api')->get('/product_sale_invoice_list', 'API\BackendController@productSaleInvoiceList');
-Route::middleware('auth:api')->post('/product_sale_return', 'API\BackendController@productSaleReturn');
+Route::middleware('auth:api')->post('/product_sale_return_details', 'API\BackendController@productSaleReturnDetails');
+Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendController@productSaleReturnCreate');
+
+// transaction history
+Route::middleware('auth:api')->get('/transaction_history', 'API\BackendController@transactionHistory');
 
 // sslcommerz
 Route::post('/checkout/ssl/pay', 'API\PublicSslCommerzPaymentController@index');
