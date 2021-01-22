@@ -3316,5 +3316,301 @@ class BackendController extends Controller
         }
     }
 
+    public function todayPurchase(Request $request){
+        $today_purchase_history = DB::table('product_purchases')
+            ->where('purchase_date', date('Y-m-d'))
+            ->select(DB::raw('SUM(total_amount) as today_purchase'))
+            ->get();
 
+        if($today_purchase_history)
+        {
+            $success['today_purchase_history'] =  $today_purchase_history;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Today Purchase History Found!'], $this->failStatus);
+        }
+    }
+
+    public function totalPurchase(Request $request){
+        $total_purchase_history = DB::table('product_purchases')
+            ->select(DB::raw('SUM(total_amount) as total_purchase'))
+            ->get();
+
+        if($total_purchase_history)
+        {
+            $success['total_purchase_history'] =  $total_purchase_history;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Total Purchase History Found!'], $this->failStatus);
+        }
+    }
+
+    public function todaySale(Request $request){
+        $today_sale_history = DB::table('product_sales')
+            ->where('sale_date', date('Y-m-d'))
+            ->select(DB::raw('SUM(total_amount) as today_sale'))
+            ->get();
+
+        if($today_sale_history)
+        {
+            $success['today_sale_history'] =  $today_sale_history;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Today sale History Found!'], $this->failStatus);
+        }
+    }
+
+    public function totalSale(Request $request){
+        $total_sale_history = DB::table('product_sales')
+            ->select(DB::raw('SUM(total_amount) as total_sale'))
+            ->get();
+
+        if($total_sale_history)
+        {
+            $success['total_sale_history'] =  $total_sale_history;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Total sale History Found!'], $this->failStatus);
+        }
+    }
+
+    public function todayProfit(){
+        $sum_purchase_price = 0;
+        $sum_sale_price = 0;
+        $sum_purchase_return_price = 0;
+        $sum_sale_return_price = 0;
+        $sum_profit_amount = 0;
+        $sum_loss_amount = 0;
+
+        $productPurchaseDetails = DB::table('product_purchase_details')
+            ->join('product_purchases','product_purchases.id','=','product_purchase_details.product_purchase_id')
+            ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'), DB::raw('SUM(mrp_price) as mrp_price'), DB::raw('SUM(sub_total) as sub_total'))
+            ->where('product_purchases.purchase_date',date('Y-m-d'))
+            ->groupBy('product_id')
+            ->groupBy('product_unit_id')
+            ->groupBy('product_brand_id')
+            ->get();
+
+        if(!empty($productPurchaseDetails)){
+            foreach($productPurchaseDetails as $key => $productPurchaseDetail){
+                $purchase_average_price = $productPurchaseDetail->sub_total/$productPurchaseDetail->qty;
+                $sum_purchase_price += $productPurchaseDetail->sub_total;
+
+
+                // purchase return
+                $productPurchaseReturnDetails = DB::table('product_purchase_return_details')
+                    ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'))
+                    ->where('product_id',$productPurchaseDetail->product_id)
+                    ->where('product_unit_id',$productPurchaseDetail->product_unit_id)
+                    ->where('product_brand_id',$productPurchaseDetail->product_brand_id)
+                    ->groupBy('product_id')
+                    ->groupBy('product_unit_id')
+                    ->groupBy('product_brand_id')
+                    ->first();
+
+                if(!empty($productPurchaseReturnDetails))
+                {
+                    $purchase_return_total_qty = $productPurchaseReturnDetails->qty;
+                    $purchase_return_total_amount = $productPurchaseReturnDetails->price;
+                    $sum_purchase_return_price += $productPurchaseReturnDetails->price;
+                    $purchase_return_average_price = $purchase_return_total_amount/$productPurchaseReturnDetails->qty;
+
+                    if($purchase_return_total_qty > 0){
+                        $amount = $purchase_return_average_price - ($purchase_average_price*$purchase_return_total_qty);
+                        if($amount > 0){
+                            $sum_profit_amount += $amount;
+                        }else{
+                            $sum_loss_amount -= $amount;
+                        }
+                    }
+                }
+
+                // sale
+                $productSaleDetails = DB::table('product_sale_details')
+                    ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'), DB::raw('SUM(sub_total) as sub_total'))
+                    ->where('product_id',$productPurchaseDetail->product_id)
+                    ->where('product_unit_id',$productPurchaseDetail->product_unit_id)
+                    ->where('product_brand_id',$productPurchaseDetail->product_brand_id)
+                    ->groupBy('product_id')
+                    ->groupBy('product_unit_id')
+                    ->groupBy('product_brand_id')
+                    ->first();
+
+                if(!empty($productSaleDetails))
+                {
+                    $sale_total_qty = $productSaleDetails->qty;
+                    $sum_sale_price += $productSaleDetails->sub_total;
+                    $sale_average_price = $productSaleDetails->sub_total/ (int) $productSaleDetails->qty;
+
+                    if($sale_total_qty > 0){
+                        $amount = ($sale_average_price*$sale_total_qty) - ($purchase_average_price*$sale_total_qty);
+                        if($amount > 0){
+                            $sum_profit_amount += $amount;
+                        }else{
+                            $sum_loss_amount -= $amount;
+                        }
+
+                    }
+                }
+
+                // sale return
+                $productSaleReturnDetails = DB::table('product_sale_return_details')
+                    ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'))
+                    ->where('product_id',$productPurchaseDetail->product_id)
+                    ->where('product_unit_id',$productPurchaseDetail->product_unit_id)
+                    ->where('product_brand_id',$productPurchaseDetail->product_brand_id)
+                    ->groupBy('product_id')
+                    ->groupBy('product_unit_id')
+                    ->groupBy('product_brand_id')
+                    ->first();
+
+                if(!empty($productSaleReturnDetails))
+                {
+                    $sale_return_total_qty = $productSaleReturnDetails->qty;
+                    $sale_return_total_amount = $productSaleReturnDetails->price;
+                    $sum_sale_return_price += $productSaleReturnDetails->price;
+                    $sale_return_average_price = $sale_return_total_amount/$productSaleReturnDetails->qty;
+
+                    if($sale_return_total_qty > 0){
+                        $amount = $sale_return_average_price - ($purchase_average_price*$sale_return_total_qty);
+                        if($amount > 0){
+                            $sum_profit_amount -= $amount;
+                        }else{
+                            $sum_loss_amount += $amount;
+                        }
+                    }
+                }
+            }
+        }
+
+        if($sum_profit_amount)
+        {
+            $success['sum_profit_amount'] =  $sum_profit_amount;
+            $success['sum_loss_amount'] =  $sum_loss_amount;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Profit Or Loss History Found Today!'], $this->failStatus);
+        }
+    }
+
+    public function totalProfit(){
+        $sum_purchase_price = 0;
+        $sum_sale_price = 0;
+        $sum_purchase_return_price = 0;
+        $sum_sale_return_price = 0;
+        $sum_profit_amount = 0;
+        $sum_loss_amount = 0;
+
+        $productPurchaseDetails = DB::table('product_purchase_details')
+            ->join('product_purchases','product_purchases.id','=','product_purchase_details.product_purchase_id')
+            ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'), DB::raw('SUM(mrp_price) as mrp_price'), DB::raw('SUM(sub_total) as sub_total'))
+            //->where('product_purchases.store_id',$store->id)
+            //->where('product_purchases.ref_id',NULL)
+            //->where('product_purchases.purchase_product_type','Finish Goods')
+            ->groupBy('product_id')
+            ->groupBy('product_unit_id')
+            ->groupBy('product_brand_id')
+            ->get();
+
+        if(!empty($productPurchaseDetails)){
+            foreach($productPurchaseDetails as $key => $productPurchaseDetail){
+                $purchase_average_price = $productPurchaseDetail->sub_total/$productPurchaseDetail->qty;
+                $sum_purchase_price += $productPurchaseDetail->sub_total;
+
+
+                // purchase return
+                $productPurchaseReturnDetails = DB::table('product_purchase_return_details')
+                    ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'))
+                    ->where('product_id',$productPurchaseDetail->product_id)
+                    ->where('product_unit_id',$productPurchaseDetail->product_unit_id)
+                    ->where('product_brand_id',$productPurchaseDetail->product_brand_id)
+                    ->groupBy('product_id')
+                    ->groupBy('product_unit_id')
+                    ->groupBy('product_brand_id')
+                    ->first();
+
+                if(!empty($productPurchaseReturnDetails))
+                {
+                    $purchase_return_total_qty = $productPurchaseReturnDetails->qty;
+                    $purchase_return_total_amount = $productPurchaseReturnDetails->price;
+                    $sum_purchase_return_price += $productPurchaseReturnDetails->price;
+                    $purchase_return_average_price = $purchase_return_total_amount/$productPurchaseReturnDetails->qty;
+
+                    if($purchase_return_total_qty > 0){
+                        $amount = $purchase_return_average_price - ($purchase_average_price*$purchase_return_total_qty);
+                        if($amount > 0){
+                            $sum_profit_amount += $amount;
+                        }else{
+                            $sum_loss_amount -= $amount;
+                        }
+                    }
+                }
+
+                // sale
+                $productSaleDetails = DB::table('product_sale_details')
+                    ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'), DB::raw('SUM(sub_total) as sub_total'))
+                    ->where('product_id',$productPurchaseDetail->product_id)
+                    ->where('product_unit_id',$productPurchaseDetail->product_unit_id)
+                    ->where('product_brand_id',$productPurchaseDetail->product_brand_id)
+                    ->groupBy('product_id')
+                    ->groupBy('product_unit_id')
+                    ->groupBy('product_brand_id')
+                    ->first();
+
+                if(!empty($productSaleDetails))
+                {
+                    $sale_total_qty = $productSaleDetails->qty;
+                    $sum_sale_price += $productSaleDetails->sub_total;
+                    $sale_average_price = $productSaleDetails->sub_total/ (int) $productSaleDetails->qty;
+
+                    if($sale_total_qty > 0){
+                        $amount = ($sale_average_price*$sale_total_qty) - ($purchase_average_price*$sale_total_qty);
+                        if($amount > 0){
+                            $sum_profit_amount += $amount;
+                        }else{
+                            $sum_loss_amount -= $amount;
+                        }
+
+                    }
+                }
+
+                // sale return
+                $productSaleReturnDetails = DB::table('product_sale_return_details')
+                    ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'))
+                    ->where('product_id',$productPurchaseDetail->product_id)
+                    ->where('product_unit_id',$productPurchaseDetail->product_unit_id)
+                    ->where('product_brand_id',$productPurchaseDetail->product_brand_id)
+                    ->groupBy('product_id')
+                    ->groupBy('product_unit_id')
+                    ->groupBy('product_brand_id')
+                    ->first();
+
+                if(!empty($productSaleReturnDetails))
+                {
+                    $sale_return_total_qty = $productSaleReturnDetails->qty;
+                    $sale_return_total_amount = $productSaleReturnDetails->price;
+                    $sum_sale_return_price += $productSaleReturnDetails->price;
+                    $sale_return_average_price = $sale_return_total_amount/$productSaleReturnDetails->qty;
+
+                    if($sale_return_total_qty > 0){
+                        $amount = $sale_return_average_price - ($purchase_average_price*$sale_return_total_qty);
+                        if($amount > 0){
+                            $sum_profit_amount -= $amount;
+                        }else{
+                            $sum_loss_amount += $amount;
+                        }
+                    }
+                }
+            }
+        }
+
+        if($sum_profit_amount)
+        {
+            $success['sum_profit_amount'] =  $sum_profit_amount;
+            $success['sum_loss_amount'] =  $sum_loss_amount;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Profit Or Loss History Found!'], $this->failStatus);
+        }
+    }
 }

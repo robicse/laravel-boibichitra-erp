@@ -175,6 +175,14 @@ Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendC
 // transaction history
 Route::middleware('auth:api')->get('/transaction_history', 'API\BackendController@transactionHistory');
 
+// transaction history
+Route::middleware('auth:api')->get('/today_purchase', 'API\BackendController@todayPurchase');
+Route::middleware('auth:api')->get('/total_purchase', 'API\BackendController@totalPurchase');
+Route::middleware('auth:api')->get('/today_sale', 'API\BackendController@todaySale');
+Route::middleware('auth:api')->get('/total_sale', 'API\BackendController@totalSale');
+Route::middleware('auth:api')->get('/today_profit', 'API\BackendController@todayProfit');
+Route::middleware('auth:api')->get('/total_profit', 'API\BackendController@totalProfit');
+
 // sslcommerz
 Route::post('/checkout/ssl/pay', 'API\PublicSslCommerzPaymentController@index');
 Route::POST('/success', 'API\PublicSslCommerzPaymentController@success');
