@@ -22,7 +22,7 @@ class CreatePaymentCollectionsTable extends Migration
             $table->bigInteger('party_id')->unsigned();
             $table->bigInteger('warehouse_id')->unsigned()->nullable();
             $table->bigInteger('store_id')->unsigned()->nullable();
-            $table->enum('collection_type',['Sale','Return']);
+            $table->enum('collection_type',['Sale','Return Cash','Return Balance']);
             $table->float('collection_amount', 8,2);
             $table->float('due_amount', 8,2);
             $table->float('current_collection_amount', 8,2);

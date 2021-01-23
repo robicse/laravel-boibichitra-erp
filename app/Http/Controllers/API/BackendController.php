@@ -608,7 +608,7 @@ class BackendController extends Controller
     }
 
     public function partyList(){
-        $parties = DB::table('parties')->select('id','type','name','phone','address','status')->get();
+        $parties = DB::table('parties')->select('id','type','name','phone','address','virtual_balance','status')->get();
 
         if($parties)
         {
@@ -2136,53 +2136,53 @@ class BackendController extends Controller
         }
     }
 
-    public function storeStockList(Request $request){
-        $store_stock_list = DB::table('stocks')
-            ->leftJoin('users','stocks.user_id','users.id')
-            ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
-            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
-            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
-            ->leftJoin('products','stocks.product_id','products.id')
-            ->where('stocks.stock_where','store')
-            ->where('stocks.store_id',$request->store_id)
-            ->select('stocks.id as stock_id','users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.stock_in_out','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
-            ->latest('stocks.id','desc')
-            ->get();
+//    public function storeStockList(Request $request){
+//        $store_stock_list = DB::table('stocks')
+//            ->leftJoin('users','stocks.user_id','users.id')
+//            ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
+//            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+//            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+//            ->leftJoin('products','stocks.product_id','products.id')
+//            ->where('stocks.stock_where','store')
+//            ->where('stocks.store_id',$request->store_id)
+//            ->select('stocks.id as stock_id','users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.stock_in_out','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
+//            ->latest('stocks.id','desc')
+//            ->get();
+//
+//        if($store_stock_list)
+//        {
+//            $success['store_stock_list'] =  $store_stock_list;
+//            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Store Stock List Found!'], $this->failStatus);
+//        }
+//    }
 
-        if($store_stock_list)
-        {
-            $success['store_stock_list'] =  $store_stock_list;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Store Stock List Found!'], $this->failStatus);
-        }
-    }
-
-    public function storeStockLowList(){
-
-        $store_stock_low_list = DB::table('stocks')
-            ->leftJoin('users','stocks.user_id','users.id')
-            ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
-            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
-            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
-            ->leftJoin('products','stocks.product_id','products.id')
-            ->where('stocks.stock_where','store')
-            //->where('stocks.current_stock','<',2)
-            ->whereIn('stocks.id', function($query) {
-                $query->from('stocks')->where('current_stock','<', 2)->groupBy('product_id')->selectRaw('MAX(id)');
-            })
-            ->select('stocks.id as stock_id','users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.id as product_id','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
-            ->latest('stocks.id','desc')
-            ->get();
-
-        if($store_stock_low_list)
-        {
-            $success['store_stock_low_list'] =  $store_stock_low_list;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Store Stock Low List Found!'], $this->failStatus);
-        }
-    }
+//    public function storeStockLowList(){
+//
+//        $store_stock_low_list = DB::table('stocks')
+//            ->leftJoin('users','stocks.user_id','users.id')
+//            ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
+//            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+//            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+//            ->leftJoin('products','stocks.product_id','products.id')
+//            ->where('stocks.stock_where','store')
+//            //->where('stocks.current_stock','<',2)
+//            ->whereIn('stocks.id', function($query) {
+//                $query->from('stocks')->where('current_stock','<', 2)->groupBy('product_id')->selectRaw('MAX(id)');
+//            })
+//            ->select('stocks.id as stock_id','users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.id as product_id','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
+//            ->latest('stocks.id','desc')
+//            ->get();
+//
+//        if($store_stock_low_list)
+//        {
+//            $success['store_stock_low_list'] =  $store_stock_low_list;
+//            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Store Stock Low List Found!'], $this->failStatus);
+//        }
+//    }
 
     public function storeCurrentStockList(Request $request){
         $store_stock_product_list = Stock::where('store_id',$request->store_id)
@@ -3147,7 +3147,7 @@ class BackendController extends Controller
         $store_id = $request->store_id;
         $warehouse_id = Store::where('id',$store_id)->latest('id')->pluck('warehouse_id')->first();
 
-        // product purchase
+        // product sale return
         $productSaleReturn = new ProductSaleReturn();
         $productSaleReturn ->invoice_no = $final_invoice;
         $productSaleReturn ->product_sale_invoice_no = $request->product_sale_invoice_no;
@@ -3178,17 +3178,17 @@ class BackendController extends Controller
                 // product purchase detail
                 $purchase_sale_return_detail = new ProductSaleReturnDetail();
                 $purchase_sale_return_detail->pro_sale_return_id = $insert_id;
-                $purchase_sale_return_detail->pro_sale_detail_id = $request->pro_sale_detail_id;
+                $purchase_sale_return_detail->pro_sale_detail_id = $data['product_sale_detail_id'];
                 $purchase_sale_return_detail->product_unit_id = $data['product_unit_id'];
                 $purchase_sale_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_sale_return_detail->product_id = $product_id;
                 $purchase_sale_return_detail->barcode = $barcode;
                 $purchase_sale_return_detail->qty = $data['qty'];
-                $purchase_sale_return_detail->mrp_price = $data['mrp_price'];
+                $purchase_sale_return_detail->price = $data['mrp_price'];
                 $purchase_sale_return_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_sale_return_detail->save();
 
-                $check_previous_stock = Stock::where('product_id',$product_id)->latest('id','desc')->pluck('current_stock')->first();
+                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest('id','desc')->pluck('current_stock')->first();
                 if(!empty($check_previous_stock)){
                     $previous_stock = $check_previous_stock;
                 }else{
@@ -3214,39 +3214,94 @@ class BackendController extends Controller
                 $stock->stock_date = $date;
                 $stock->stock_date_time = $date_time;
                 $stock->save();
+
+
+
+
+
+
+
+                $check_return_last_date = ProductSaleDetail::where('id',$data['product_sale_detail_id'])->pluck('return_last_date')->first();
+                $today_date = date('Y-m-d');
+                if($check_return_last_date >= $today_date){
+                    // for sale return cash
+                    // transaction
+                    $transaction = new Transaction();
+                    $transaction->ref_id = $insert_id;
+                    $transaction->invoice_no = $final_invoice;
+                    $transaction->user_id = $user_id;
+                    $transaction->warehouse_id = $warehouse_id;
+                    $transaction->store_id = $store_id;
+                    $transaction->party_id = $request->party_id;
+                    $transaction->transaction_type = 'sale_return_cash';
+                    $transaction->payment_type = $request->payment_type;
+                    $transaction->amount = $data['qty']*$data['mrp_price'];
+                    $transaction->transaction_date = $date;
+                    $transaction->transaction_date_time = $date_time;
+                    $transaction->save();
+
+                    // payment paid
+                    $payment_collection = new PaymentCollection();
+                    $payment_collection->invoice_no = $final_invoice;
+                    $payment_collection->product_sale_id = $product_sale_id;
+                    $payment_collection->product_sale_return_id = $insert_id;
+                    $payment_collection->user_id = $user_id;
+                    $payment_collection->party_id = $request->party_id;
+                    $payment_collection->warehouse_id = $request->warehouse_id;
+                    $payment_collection->store_id = $request->store_id;
+                    $payment_collection->collection_type = 'Return Cash';
+                    $payment_collection->collection_amount = $data['qty']*$data['mrp_price'];
+                    $payment_collection->due_amount = 0;
+                    $payment_collection->current_collection_amount = $data['qty']*$data['mrp_price'];
+                    $payment_collection->collection_date = $date;
+                    $payment_collection->collection_date_time = $date_time;
+                    $payment_collection->save();
+                }else{
+                    // for sale return balance
+                    // transaction
+                    $transaction = new Transaction();
+                    $transaction->ref_id = $insert_id;
+                    $transaction->invoice_no = $final_invoice;
+                    $transaction->user_id = $user_id;
+                    $transaction->warehouse_id = $warehouse_id;
+                    $transaction->store_id = $store_id;
+                    $transaction->party_id = $request->party_id;
+                    $transaction->transaction_type = 'sale_return_balance';
+                    $transaction->payment_type = $request->payment_type;
+                    $transaction->amount = $data['qty']*$data['mrp_price'];
+                    $transaction->transaction_date = $date;
+                    $transaction->transaction_date_time = $date_time;
+                    $transaction->save();
+
+                    // payment paid
+                    $payment_collection = new PaymentCollection();
+                    $payment_collection->invoice_no = $final_invoice;
+                    $payment_collection->product_sale_id = $product_sale_id;
+                    $payment_collection->product_sale_return_id = $insert_id;
+                    $payment_collection->user_id = $user_id;
+                    $payment_collection->party_id = $request->party_id;
+                    $payment_collection->warehouse_id = $request->warehouse_id;
+                    $payment_collection->store_id = $request->store_id;
+                    $payment_collection->collection_type = 'Return Balance';
+                    $payment_collection->collection_amount = $data['qty']*$data['mrp_price'];
+                    $payment_collection->due_amount = 0;
+                    $payment_collection->current_collection_amount = $data['qty']*$data['mrp_price'];
+                    $payment_collection->collection_date = $date;
+                    $payment_collection->collection_date_time = $date_time;
+                    $payment_collection->save();
+
+                    // add balance
+                    $party_previous_virtual_balance = Party::where('id',$request->party_id)->pluck('virtual_balance')->first();
+
+                    $party = Party::find($request->party_id);
+                    $party->virtual_balance = $party_previous_virtual_balance + ($data['qty']*$data['mrp_price']);
+                    $party->update();
+
+                }
+
             }
 
-            // transaction
-            $transaction = new Transaction();
-            $transaction->ref_id = $insert_id;
-            $transaction->invoice_no = $final_invoice;
-            $transaction->user_id = $user_id;
-            $transaction->warehouse_id = $warehouse_id;
-            $transaction->store_id = $store_id;
-            $transaction->party_id = $request->party_id;
-            $transaction->transaction_type = 'sale_return';
-            $transaction->payment_type = $request->payment_type;
-            $transaction->amount = $request->paid_amount;
-            $transaction->transaction_date = $date;
-            $transaction->transaction_date_time = $date_time;
-            $transaction->save();
 
-            // payment paid
-            $payment_collection = new PaymentCollection();
-            $payment_collection->invoice_no = $final_invoice;
-            $payment_collection->product_sale_id = $product_sale_id;
-            $payment_collection->product_sale_return_id = $insert_id;
-            $payment_collection->user_id = $user_id;
-            $payment_collection->party_id = $request->party_id;
-            $payment_collection->warehouse_id = $request->warehouse_id;
-            $payment_collection->store_id = $request->store_id;
-            $payment_collection->collection_type = 'Return';
-            $payment_collection->collection_amount = $request->paid_amount;
-            $payment_collection->due_amount = $request->due_amount;
-            $payment_collection->current_collection_amount = $request->paid_amount;
-            $payment_collection->collection_date = $date;
-            $payment_collection->collection_date_time = $date_time;
-            $payment_collection->save();
 
 
             return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
@@ -3345,6 +3400,35 @@ class BackendController extends Controller
         }
     }
 
+    public function todayPurchaseReturn(Request $request){
+        $today_purchase_return_history = DB::table('product_purchase_returns')
+            ->where('product_purchase_return_date', date('Y-m-d'))
+            ->select(DB::raw('SUM(total_amount) as today_purchase_return'))
+            ->get();
+
+        if($today_purchase_return_history)
+        {
+            $success['today_purchase_return_history'] =  $today_purchase_return_history;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Today Purchase Return History Found!'], $this->failStatus);
+        }
+    }
+
+    public function totalPurchaseReturn(Request $request){
+        $total_purchase_return_history = DB::table('product_purchase_returns')
+            ->select(DB::raw('SUM(total_amount) as total_purchase_return'))
+            ->get();
+
+        if($total_purchase_return_history)
+        {
+            $success['total_purchase_return_history'] =  $total_purchase_return_history;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Total Purchase Return History Found!'], $this->failStatus);
+        }
+    }
+
     public function todaySale(Request $request){
         $today_sale_history = DB::table('product_sales')
             ->where('sale_date', date('Y-m-d'))
@@ -3371,6 +3455,35 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Total sale History Found!'], $this->failStatus);
+        }
+    }
+
+    public function todaySaleReturn(Request $request){
+        $today_sale_return_history = DB::table('product_sale_returns')
+            ->where('product_sale_return_date', date('Y-m-d'))
+            ->select(DB::raw('SUM(total_amount) as today_sale_return'))
+            ->get();
+
+        if($today_sale_return_history)
+        {
+            $success['today_sale_return_history'] =  $today_sale_return_history;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Today Sale Return History Found!'], $this->failStatus);
+        }
+    }
+
+    public function totalSaleReturn(Request $request){
+        $total_sale_return_history = DB::table('product_sale_returns')
+            ->select(DB::raw('SUM(total_amount) as total_sale_return'))
+            ->get();
+
+        if($total_sale_return_history)
+        {
+            $success['total_sale_return_history'] =  $total_sale_return_history;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Total Sale Return History Found!'], $this->failStatus);
         }
     }
 

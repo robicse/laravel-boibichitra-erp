@@ -143,8 +143,8 @@ Route::middleware('auth:api')->get('/warehouse_stock_low_list', 'API\BackendCont
 Route::middleware('auth:api')->post('/product_whole_purchase_create_with_low_product', 'API\BackendController@productWholePurchaseCreateWithLowProduct');
 
 // store stock list
-Route::middleware('auth:api')->post('/store_stock_list', 'API\BackendController@storeStockList');
-Route::middleware('auth:api')->get('/store_stock_low_list', 'API\BackendController@storeStockLowList');
+//Route::middleware('auth:api')->post('/store_stock_list', 'API\BackendController@storeStockList');
+//Route::middleware('auth:api')->get('/store_stock_low_list', 'API\BackendController@storeStockLowList');
 
 // stock transfer
 Route::middleware('auth:api')->post('/warehouse_current_stock_list', 'API\BackendController@warehouseCurrentStockList');
@@ -175,11 +175,15 @@ Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendC
 // transaction history
 Route::middleware('auth:api')->get('/transaction_history', 'API\BackendController@transactionHistory');
 
-// transaction history
+// dashboard history
 Route::middleware('auth:api')->get('/today_purchase', 'API\BackendController@todayPurchase');
 Route::middleware('auth:api')->get('/total_purchase', 'API\BackendController@totalPurchase');
+Route::middleware('auth:api')->get('/today_purchase_return', 'API\BackendController@todayPurchaseReturn');
+Route::middleware('auth:api')->get('/total_purchase_return', 'API\BackendController@totalPurchaseReturn');
 Route::middleware('auth:api')->get('/today_sale', 'API\BackendController@todaySale');
 Route::middleware('auth:api')->get('/total_sale', 'API\BackendController@totalSale');
+Route::middleware('auth:api')->get('/today_sale_return', 'API\BackendController@todaySaleReturn');
+Route::middleware('auth:api')->get('/total_sale_return', 'API\BackendController@totalSaleReturn');
 Route::middleware('auth:api')->get('/today_profit', 'API\BackendController@todayProfit');
 Route::middleware('auth:api')->get('/total_profit', 'API\BackendController@totalProfit');
 
