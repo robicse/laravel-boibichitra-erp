@@ -2896,7 +2896,7 @@ class BackendController extends Controller
                 $product_sale_detail->return_last_date = $add_two_day_date;
                 $product_sale_detail->save();
 
-                $check_previous_stock = Stock::where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                $check_previous_stock = Stock::where('id',$store_id)->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
                 if(!empty($check_previous_stock)){
                     $previous_stock = $check_previous_stock;
                 }else{
