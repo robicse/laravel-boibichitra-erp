@@ -145,10 +145,13 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Warehouse Found!'], $this->failStatus);
         }
 
-        $delete_warehouse = DB::table("warehouses")->where('id',$request->warehouse_id)->delete();
-        if($delete_warehouse)
+        //$delete_warehouse = DB::table("warehouses")->where('id',$request->warehouse_id)->delete();
+        $soft_delete_warehouse = Warehouse::find($request->warehouse_id);
+        $soft_delete_warehouse->status=0;
+        $affected_row = $soft_delete_warehouse->update();
+        if($affected_row)
         {
-            return response()->json(['success'=>true,'response' => 'Warehouse Successfully Deleted!'], $this->successStatus);
+            return response()->json(['success'=>true,'response' => 'Warehouse Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Warehouse Deleted!'], $this->failStatus);
         }
@@ -252,10 +255,13 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Store Found!'], $this->failStatus);
         }
 
-        $delete_store = DB::table("stores")->where('id',$request->store_id)->delete();
-        if($delete_store)
+        //$delete_store = DB::table("stores")->where('id',$request->store_id)->delete();
+        $store_soft_delete = Store::find($request->store_id);
+        $store_soft_delete->status=0;
+        $affected_row = $store_soft_delete->update();
+        if($affected_row)
         {
-            return response()->json(['success'=>true,'response' => 'Store Successfully Deleted!'], $this->successStatus);
+            return response()->json(['success'=>true,'response' => 'Store Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Store Deleted!'], $this->failStatus);
         }
@@ -598,10 +604,13 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No User Found, Using This Id!'], $this->failStatus);
         }
 
-        $delete_user = DB::table("users")->where('id',$request->user_id)->delete();
-        if($delete_user)
+        //$delete_user = DB::table("users")->where('id',$request->user_id)->delete();
+        $soft_delete_user = User::find($request->user_id);
+        $soft_delete_user->status=0;
+        $affected_row = $soft_delete_user->update();
+        if($affected_row)
         {
-            return response()->json(['success'=>true,'response' => 'User Successfully Deleted!'], $this->successStatus);
+            return response()->json(['success'=>true,'response' => 'User Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No User Deleted!'], $this->failStatus);
         }
@@ -814,10 +823,13 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Product Brand Found!'], $this->failStatus);
         }
 
-        $delete_party = DB::table("product_brands")->where('id',$request->product_brand_id)->delete();
-        if($delete_party)
+        //$delete_party = DB::table("product_brands")->where('id',$request->product_brand_id)->delete();
+        $soft_delete_product_brand = ProductBrand::find($request->product_brand_id);
+        $soft_delete_product_brand->status=0;
+        $affected_row = $soft_delete_product_brand->update();
+        if($affected_row)
         {
-            return response()->json(['success'=>true,'response' => 'Product Brand Successfully Deleted!'], $this->successStatus);
+            return response()->json(['success'=>true,'response' => 'Product Brand Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Brand Deleted!'], $this->failStatus);
         }
@@ -908,10 +920,13 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Product Unit Found!'], $this->failStatus);
         }
 
-        $delete_product_unit = DB::table("product_units")->where('id',$request->product_unit_id)->delete();
-        if($delete_product_unit)
+        //$delete_product_unit = DB::table("product_units")->where('id',$request->product_unit_id)->delete();
+        $soft_delete_product_unit = ProductUnit::find($request->product_unit_id);
+        $soft_delete_product_unit->status=0;
+        $affected_row = $soft_delete_product_unit->update();
+        if($affected_row)
         {
-            return response()->json(['success'=>true,'response' => 'Product Unit Successfully Deleted!'], $this->successStatus);
+            return response()->json(['success'=>true,'response' => 'Product Unit Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Unit Deleted!'], $this->failStatus);
         }
@@ -1041,10 +1056,13 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Product Found!'], $this->failStatus);
         }
 
-        $delete_product = DB::table("products")->where('id',$request->product_id)->delete();
-        if($delete_product)
+        //$delete_product = DB::table("products")->where('id',$request->product_id)->delete();
+        $soft_delete_product = Product::find($request->product_id);
+        $soft_delete_product->status=0;
+        $affected_row = $soft_delete_product->update();
+        if($affected_row)
         {
-            return response()->json(['success'=>true,'response' => 'Product Successfully Deleted!'], $this->successStatus);
+            return response()->json(['success'=>true,'response' => 'Product Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Deleted!'], $this->failStatus);
         }
@@ -2199,11 +2217,11 @@ class BackendController extends Controller
                 ->leftJoin('products','stocks.product_id','products.id')
                 ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
                 ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
-                ->where('stocks.stock_where','warehouse')
+                ->where('stocks.stock_where','store')
                 ->where('stocks.product_id',$data->product_id)
                 ->where('stocks.store_id',$request->store_id)
                 ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','product_units.name as product_unit_name','product_brands.name as product_brand_name')
-                ->latest('id','desc')
+                ->orderBy('stocks.id','desc')
                 ->first();
 
             if($stock_row){
@@ -3375,12 +3393,11 @@ class BackendController extends Controller
         $today_purchase_history = DB::table('product_purchases')
             ->where('purchase_date', date('Y-m-d'))
             ->select(DB::raw('SUM(total_amount) as today_purchase'))
-            ->get();
+            ->first();
 
         if($today_purchase_history)
         {
-            $success['today_purchase_history'] =  $today_purchase_history;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $today_purchase_history->today_purchase], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Today Purchase History Found!'], $this->failStatus);
         }
@@ -3389,12 +3406,11 @@ class BackendController extends Controller
     public function totalPurchase(Request $request){
         $total_purchase_history = DB::table('product_purchases')
             ->select(DB::raw('SUM(total_amount) as total_purchase'))
-            ->get();
+            ->first();
 
         if($total_purchase_history)
         {
-            $success['total_purchase_history'] =  $total_purchase_history;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $total_purchase_history->total_purchase], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Total Purchase History Found!'], $this->failStatus);
         }
@@ -3404,12 +3420,11 @@ class BackendController extends Controller
         $today_purchase_return_history = DB::table('product_purchase_returns')
             ->where('product_purchase_return_date', date('Y-m-d'))
             ->select(DB::raw('SUM(total_amount) as today_purchase_return'))
-            ->get();
+            ->first();
 
         if($today_purchase_return_history)
         {
-            $success['today_purchase_return_history'] =  $today_purchase_return_history;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $today_purchase_return_history->today_purchase_return], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Today Purchase Return History Found!'], $this->failStatus);
         }
@@ -3418,12 +3433,11 @@ class BackendController extends Controller
     public function totalPurchaseReturn(Request $request){
         $total_purchase_return_history = DB::table('product_purchase_returns')
             ->select(DB::raw('SUM(total_amount) as total_purchase_return'))
-            ->get();
+            ->first();
 
         if($total_purchase_return_history)
         {
-            $success['total_purchase_return_history'] =  $total_purchase_return_history;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $total_purchase_return_history->total_purchase_return], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Total Purchase Return History Found!'], $this->failStatus);
         }
@@ -3433,12 +3447,11 @@ class BackendController extends Controller
         $today_sale_history = DB::table('product_sales')
             ->where('sale_date', date('Y-m-d'))
             ->select(DB::raw('SUM(total_amount) as today_sale'))
-            ->get();
+            ->first();
 
         if($today_sale_history)
         {
-            $success['today_sale_history'] =  $today_sale_history;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $today_sale_history->today_sale], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Today sale History Found!'], $this->failStatus);
         }
@@ -3447,12 +3460,11 @@ class BackendController extends Controller
     public function totalSale(Request $request){
         $total_sale_history = DB::table('product_sales')
             ->select(DB::raw('SUM(total_amount) as total_sale'))
-            ->get();
+            ->first();
 
         if($total_sale_history)
         {
-            $success['total_sale_history'] =  $total_sale_history;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $total_sale_history->total_sale], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Total sale History Found!'], $this->failStatus);
         }
@@ -3462,12 +3474,11 @@ class BackendController extends Controller
         $today_sale_return_history = DB::table('product_sale_returns')
             ->where('product_sale_return_date', date('Y-m-d'))
             ->select(DB::raw('SUM(total_amount) as today_sale_return'))
-            ->get();
+            ->first();
 
         if($today_sale_return_history)
         {
-            $success['today_sale_return_history'] =  $today_sale_return_history;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $today_sale_return_history->today_sale_return], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Today Sale Return History Found!'], $this->failStatus);
         }
@@ -3476,12 +3487,11 @@ class BackendController extends Controller
     public function totalSaleReturn(Request $request){
         $total_sale_return_history = DB::table('product_sale_returns')
             ->select(DB::raw('SUM(total_amount) as total_sale_return'))
-            ->get();
+            ->first();
 
         if($total_sale_return_history)
         {
-            $success['total_sale_return_history'] =  $total_sale_return_history;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $total_sale_return_history->total_sale_return], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Total Sale Return History Found!'], $this->failStatus);
         }
@@ -3492,8 +3502,7 @@ class BackendController extends Controller
         $sum_sale_price = 0;
         $sum_purchase_return_price = 0;
         $sum_sale_return_price = 0;
-        $sum_profit_amount = 0;
-        $sum_loss_amount = 0;
+        $sum_profit_or_loss_amount = 0;
 
         $productPurchaseDetails = DB::table('product_purchase_details')
             ->join('product_purchases','product_purchases.id','=','product_purchase_details.product_purchase_id')
@@ -3531,9 +3540,9 @@ class BackendController extends Controller
                     if($purchase_return_total_qty > 0){
                         $amount = $purchase_return_average_price - ($purchase_average_price*$purchase_return_total_qty);
                         if($amount > 0){
-                            $sum_profit_amount += $amount;
+                            $sum_profit_or_loss_amount += $amount;
                         }else{
-                            $sum_loss_amount -= $amount;
+                            $sum_profit_or_loss_amount -= $amount;
                         }
                     }
                 }
@@ -3558,9 +3567,9 @@ class BackendController extends Controller
                     if($sale_total_qty > 0){
                         $amount = ($sale_average_price*$sale_total_qty) - ($purchase_average_price*$sale_total_qty);
                         if($amount > 0){
-                            $sum_profit_amount += $amount;
+                            $sum_profit_or_loss_amount += $amount;
                         }else{
-                            $sum_loss_amount -= $amount;
+                            $sum_profit_or_loss_amount -= $amount;
                         }
 
                     }
@@ -3587,20 +3596,18 @@ class BackendController extends Controller
                     if($sale_return_total_qty > 0){
                         $amount = $sale_return_average_price - ($purchase_average_price*$sale_return_total_qty);
                         if($amount > 0){
-                            $sum_profit_amount -= $amount;
+                            $sum_profit_or_loss_amount -= $amount;
                         }else{
-                            $sum_loss_amount += $amount;
+                            $sum_profit_or_loss_amount += $amount;
                         }
                     }
                 }
             }
         }
 
-        if($sum_profit_amount)
+        if($sum_profit_or_loss_amount)
         {
-            $success['sum_profit_amount'] =  $sum_profit_amount;
-            $success['sum_loss_amount'] =  $sum_loss_amount;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $sum_profit_or_loss_amount], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Profit Or Loss History Found Today!'], $this->failStatus);
         }
@@ -3611,8 +3618,7 @@ class BackendController extends Controller
         $sum_sale_price = 0;
         $sum_purchase_return_price = 0;
         $sum_sale_return_price = 0;
-        $sum_profit_amount = 0;
-        $sum_loss_amount = 0;
+        $sum_profit_or_loss_amount = 0;
 
         $productPurchaseDetails = DB::table('product_purchase_details')
             ->join('product_purchases','product_purchases.id','=','product_purchase_details.product_purchase_id')
@@ -3652,9 +3658,9 @@ class BackendController extends Controller
                     if($purchase_return_total_qty > 0){
                         $amount = $purchase_return_average_price - ($purchase_average_price*$purchase_return_total_qty);
                         if($amount > 0){
-                            $sum_profit_amount += $amount;
+                            $sum_profit_or_loss_amount += $amount;
                         }else{
-                            $sum_loss_amount -= $amount;
+                            $sum_profit_or_loss_amount -= $amount;
                         }
                     }
                 }
@@ -3679,9 +3685,9 @@ class BackendController extends Controller
                     if($sale_total_qty > 0){
                         $amount = ($sale_average_price*$sale_total_qty) - ($purchase_average_price*$sale_total_qty);
                         if($amount > 0){
-                            $sum_profit_amount += $amount;
+                            $sum_profit_or_loss_amount += $amount;
                         }else{
-                            $sum_loss_amount -= $amount;
+                            $sum_profit_or_loss_amount -= $amount;
                         }
 
                     }
@@ -3708,20 +3714,18 @@ class BackendController extends Controller
                     if($sale_return_total_qty > 0){
                         $amount = $sale_return_average_price - ($purchase_average_price*$sale_return_total_qty);
                         if($amount > 0){
-                            $sum_profit_amount -= $amount;
+                            $sum_profit_or_loss_amount -= $amount;
                         }else{
-                            $sum_loss_amount += $amount;
+                            $sum_profit_or_loss_amount += $amount;
                         }
                     }
                 }
             }
         }
 
-        if($sum_profit_amount)
+        if($sum_profit_or_loss_amount)
         {
-            $success['sum_profit_amount'] =  $sum_profit_amount;
-            $success['sum_loss_amount'] =  $sum_loss_amount;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $sum_profit_or_loss_amount], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Profit Or Loss History Found!'], $this->failStatus);
         }
