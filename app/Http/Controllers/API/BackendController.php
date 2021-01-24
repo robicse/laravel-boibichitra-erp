@@ -660,6 +660,16 @@ class BackendController extends Controller
         $insert_id = $parties->id;
 
         if($insert_id){
+//            if($request->type == 'customer'){
+//            $user_data['name'] = $request->name;
+//            $user_data['email'] = $request->email;
+//            $user_data['password'] = Hash::make(123456);
+//            $user_data['party_id'] = $insert_id;
+//            $user = User::create($user_data);
+            // first create customer role, then bellow code enable
+//            $user->assignRole('customer');
+//            }
+
             return response()->json(['success'=>true,'response' => $parties], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'Party Not Created Successfully!'], $this->failStatus);
@@ -737,6 +747,51 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Party Deleted!'], $this->failStatus);
         }
     }
+
+//    public function customerInformation(Request $request){
+//        $check_exists_user = DB::table("users")->where('id',$request->user_id)->pluck('id')->first();
+//        if($check_exists_user == null){
+//            return response()->json(['success'=>false,'response'=>'No User Found, using this id!'], $this->failStatus);
+//        }
+//
+//        $party = DB::table("parties")
+//            ->join('users','parties.id','=','users.party_id')
+//            ->where('users.id',$request->user_id)
+//            ->select('parties.virtual_balance','parties.id')
+//            ->first();
+//        if($party)
+//        {
+//            $success['virtual_balance'] = $party->virtual_balance;
+//
+//            $product_sales = DB::table('product_sales')
+//                ->leftJoin('users','product_sales.user_id','users.id')
+//                ->leftJoin('parties','product_sales.party_id','parties.id')
+//                ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+//                ->leftJoin('stores','product_sales.store_id','stores.id')
+//                ->where('product_sales.party_id',$party->id)
+//                ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+//                ->first();
+//
+//            if($product_sales){
+//
+//                $product_sale_details = DB::table('product_sales')
+//                    ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
+//                    ->leftJoin('products','product_sale_details.product_id','products.id')
+//                    ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
+//                    ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
+//                    ->where('product_sales.invoice_no',$product_sales->product_sale_no)
+//                    ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.sale_date','product_sale_details.return_among_day','product_sale_details.price as mrp_price')
+//                    ->get();
+//
+//                $success['product_sales'] = $product_sales;
+//                $success['product_sale_details'] = $product_sale_details;
+//            }
+//
+//            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Party Found!'], $this->failStatus);
+//        }
+//    }
 
     // product brand
     public function productBrandList(){
@@ -1067,6 +1122,104 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Product Deleted!'], $this->failStatus);
         }
     }
+
+    // delivery service
+//    public function deliveryServiceList(){
+//        $delivery_services = DB::table('delivery_services')->select('id','name','status')->get();
+//
+//        if($delivery_services)
+//        {
+//            $success['delivery_services'] =  $delivery_services;
+//            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Delivery Services List Found!'], $this->failStatus);
+//        }
+//    }
+//
+//
+//    public function deliveryServiceCreate(Request $request){
+//
+//        $validator = Validator::make($request->all(), [
+//            'name' => 'required|unique:delivery_services,name',
+//            'status'=> 'required',
+//        ]);
+//
+//        if ($validator->fails()) {
+//            $response = [
+//                'success' => false,
+//                'data' => 'Validation Error.',
+//                'message' => $validator->errors()
+//            ];
+//
+//            return response()->json($response, $this-> validationStatus);
+//        }
+//
+//
+//        $deliveryService = new deliveryService();
+//        $deliveryService->name = $request->name;
+//        $deliveryService->status = $request->status;
+//        $deliveryService->save();
+//        $insert_id = $deliveryService->id;
+//
+//        if($insert_id){
+//            return response()->json(['success'=>true,'response' => $deliveryService], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'Delivery Service Not Created Successfully!'], $this->failStatus);
+//        }
+//    }
+//
+//    public function deliveryServiceEdit(Request $request){
+//
+//        $validator = Validator::make($request->all(), [
+//            'delivery_service_id'=> 'required',
+//            'name' => 'required|unique:delivery_services,name,'.$request->delivery_service_id,
+//            'status'=> 'required',
+//        ]);
+//
+//        if ($validator->fails()) {
+//            $response = [
+//                'success' => false,
+//                'data' => 'Validation Error.',
+//                'message' => $validator->errors()
+//            ];
+//
+//            return response()->json($response, $this->validationStatus);
+//        }
+//
+//        $check_exists_delivery_service = DB::table("delivery_services")->where('id',$request->delivery_service_id)->pluck('id')->first();
+//        if($check_exists_delivery_service == null){
+//            return response()->json(['success'=>false,'response'=>'No Delivery Service Found!'], $this->failStatus);
+//        }
+//
+//        $deliveryService = deliveryService::find($request->delivery_service_id);
+//        $deliveryService->name = $request->name;
+//        $deliveryService->status = $request->status;
+//        $update_delivery_service = $deliveryService->save();
+//
+//        if($update_delivery_service){
+//            return response()->json(['success'=>true,'response' => $deliveryService], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'Delivery Service Not Created Successfully!'], $this->failStatus);
+//        }
+//    }
+//
+//    public function deliveryServiceDelete(Request $request){
+//        $check_exists_delivery_service = DB::table("delivery_services")->where('id',$request->delivery_service_id)->pluck('id')->first();
+//        if($check_exists_delivery_service == null){
+//            return response()->json(['success'=>false,'response'=>'No Delivery Service Found!'], $this->failStatus);
+//        }
+//
+//        //$delete_party = DB::table("product_brands")->where('id',$request->product_brand_id)->delete();
+//        $soft_delete_delivery_service = deliveryService::find($request->delivery_service_id);
+//        $soft_delete_delivery_service->status=0;
+//        $affected_row = $soft_delete_delivery_service->update();
+//        if($affected_row)
+//        {
+//            return response()->json(['success'=>true,'response' => 'Delivery Service Successfully Soft Deleted!'], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Product Brand Deleted!'], $this->failStatus);
+//        }
+//    }
 
     public function productUnitAndBrand(Request $request){
         $product_brand_and_unit = DB::table('products')

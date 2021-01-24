@@ -96,6 +96,9 @@ Route::middleware('auth:api')->post('/party_details', 'API\BackendController@par
 Route::middleware('auth:api')->post('/party_update', 'API\BackendController@partyUpdate');
 Route::middleware('auth:api')->post('/party_delete', 'API\BackendController@partyDelete');
 
+// customer panel
+//Route::middleware('auth:api')->post('/customer_information', 'API\BackendController@customerInformation');
+
 
 // product brand
 Route::middleware('auth:api')->get('/product_brand_list', 'API\BackendController@productBrandList');
@@ -115,6 +118,12 @@ Route::middleware('auth:api')->post('/product_create', 'API\BackendController@pr
 Route::middleware('auth:api')->post('/product_edit', 'API\BackendController@productEdit');
 Route::middleware('auth:api')->post('/product_delete', 'API\BackendController@productDelete');
 Route::middleware('auth:api')->post('/product_image', 'API\BackendController@productImage');
+
+// product brand
+//Route::middleware('auth:api')->get('/delivery_service_list', 'API\BackendController@deliveryServiceList');
+//Route::middleware('auth:api')->post('/delivery_service_create', 'API\BackendController@deliveryServiceCreate');
+//Route::middleware('auth:api')->post('/delivery_service_edit', 'API\BackendController@deliveryServiceEdit');
+//Route::middleware('auth:api')->post('/delivery_service_delete', 'API\BackendController@deliveryServiceDelete');
 
 // product purchase whole
 Route::middleware('auth:api')->post('/product_unit_and_brand', 'API\BackendController@productUnitAndBrand');
