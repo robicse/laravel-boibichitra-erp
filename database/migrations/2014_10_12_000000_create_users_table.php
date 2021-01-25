@@ -15,17 +15,16 @@ class CreateUsersTable extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('user_type');
+            //$table->string('user_type');
             $table->string('name');
             $table->string('slug')->nullable();
             $table->string('phone')->nullable();
             $table->string('email')->unique();
             $table->string('password')->nullable();
             $table->integer('status')->default(0);
-            //$table->bigInteger('warehouse_id')->unsigned();
-            //$table->bigInteger('store_id')->unsigned();
             $table->bigInteger('warehouse_id')->nullable();
             $table->bigInteger('store_id')->nullable();
+            $table->bigInteger('party_id')->nullable();
             $table->rememberToken();
             $table->timestamps();
             //$table->foreign('warehouses')->references('id')->on('warehouse_id')->onDelete('cascade');

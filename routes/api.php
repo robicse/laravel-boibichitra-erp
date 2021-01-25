@@ -97,7 +97,7 @@ Route::middleware('auth:api')->post('/party_update', 'API\BackendController@part
 Route::middleware('auth:api')->post('/party_delete', 'API\BackendController@partyDelete');
 
 // customer panel
-//Route::middleware('auth:api')->post('/customer_information', 'API\BackendController@customerInformation');
+Route::middleware('auth:api')->post('/customer_information', 'API\BackendController@customerInformation');
 
 
 // product brand
@@ -114,6 +114,7 @@ Route::middleware('auth:api')->post('/product_unit_delete', 'API\BackendControll
 
 // product
 Route::middleware('auth:api')->get('/product_list', 'API\BackendController@productList');
+Route::middleware('auth:api')->get('/all_active_product_list', 'API\BackendController@allActiveProductList');
 Route::middleware('auth:api')->post('/product_create', 'API\BackendController@productCreate');
 Route::middleware('auth:api')->post('/product_edit', 'API\BackendController@productEdit');
 Route::middleware('auth:api')->post('/product_delete', 'API\BackendController@productDelete');
