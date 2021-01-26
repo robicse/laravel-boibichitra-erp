@@ -1032,11 +1032,14 @@ class BackendController extends Controller
 
     public function productCreate(Request $request){
 
+        $fourRandomDigit = rand(1000,9999);
+        $barcode = time().$fourRandomDigit;
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|unique:products,name',
             'product_unit_id'=> 'required',
             //'barcode'=> 'required',
-            'barcode' => 'required|unique:products,barcode',
+            //'barcode' => 'required|unique:products,barcode',
             'purchase_price'=> 'required',
             'selling_price'=> 'required',
             'date'=> 'required',
@@ -1057,7 +1060,8 @@ class BackendController extends Controller
         $product->name = $request->name;
         $product->product_unit_id = $request->product_unit_id;
         $product->item_code = $request->item_code ? $request->item_code : NULL;
-        $product->barcode = $request->barcode;
+        //$product->barcode = $request->barcode;
+        $product->barcode = $barcode;
         $product->self_no = $request->self_no ? $request->self_no : NULL;
         $product->low_inventory_alert = $request->low_inventory_alert ? $request->low_inventory_alert : NULL;
         $product->product_brand_id = $request->product_brand_id ? $request->product_brand_id : NULL;
@@ -1084,7 +1088,7 @@ class BackendController extends Controller
             'name' => 'required|unique:products,name,'.$request->product_id,
             'product_unit_id'=> 'required',
             //'barcode'=> 'required',
-            'barcode' => 'required|unique:products,barcode,'.$request->product_id,
+            //'barcode' => 'required|unique:products,barcode,'.$request->product_id,
             'purchase_price'=> 'required',
             'selling_price'=> 'required',
             'date'=> 'required',
