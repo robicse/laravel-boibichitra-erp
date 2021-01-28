@@ -803,7 +803,7 @@ class BackendController extends Controller
 
     // product brand
     public function productBrandList(){
-        $product_brands = DB::table('product_brands')->select('id','name','status')->get();
+        $product_brands = DB::table('product_brands')->select('id','name','status')->orderBy('id','desc')->get();
 
         if($product_brands)
         {
@@ -3142,7 +3142,7 @@ class BackendController extends Controller
             $payment_collection->save();
 
             if($request->payment_type == 'SSL Commerz'){
-                return response()->json(['success'=>true,'transaction_id' => $transaction_id], $this->successStatus);
+                return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => 'SSL Commerz'], $this->successStatus);
             }else{
                 return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
             }
