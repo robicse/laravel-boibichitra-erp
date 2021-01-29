@@ -2297,7 +2297,7 @@ class BackendController extends Controller
             $check_previous_store_current_stock = Stock::where('warehouse_id',$warehouse_id)
                 ->where('store_id',$store_id)
                 ->where('product_id',$product_id)
-                ->where('stock_where','warehouse')
+                ->where('stock_where','store')
                 ->latest('id','desc')
                 ->pluck('current_stock')
                 ->first();
@@ -2734,7 +2734,7 @@ class BackendController extends Controller
                 $product_sale_detail->return_last_date = $add_two_day_date;
                 $product_sale_detail->save();
 
-                $check_previous_stock = Stock::where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
                 if(!empty($check_previous_stock)){
                     $previous_stock = $check_previous_stock;
                 }else{
@@ -3081,7 +3081,7 @@ class BackendController extends Controller
                 $product_sale_detail->return_last_date = $add_two_day_date;
                 $product_sale_detail->save();
 
-                $check_previous_stock = Stock::where('id',$store_id)->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
                 if(!empty($check_previous_stock)){
                     $previous_stock = $check_previous_stock;
                 }else{
@@ -3142,7 +3142,7 @@ class BackendController extends Controller
             $payment_collection->save();
 
             if($request->payment_type == 'SSL Commerz'){
-                return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => 'SSL Commerz'], $this->successStatus);
+                return response()->json(['success'=>true,'transaction_id' => $transaction_id], $this->successStatus);
             }else{
                 return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
             }
@@ -3693,9 +3693,7 @@ class BackendController extends Controller
         $sum_profit_or_loss_amount = 0;
 
         $productPurchaseDetails = DB::table('product_purchase_details')
-            ->join('product_purchases','product_purchases.id','=','product_purchase_details.product_purchase_id')
             ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'), DB::raw('SUM(mrp_price) as mrp_price'), DB::raw('SUM(sub_total) as sub_total'))
-            ->where('product_purchases.purchase_date',date('Y-m-d'))
             ->groupBy('product_id')
             ->groupBy('product_unit_id')
             ->groupBy('product_brand_id')
@@ -3709,13 +3707,15 @@ class BackendController extends Controller
 
                 // purchase return
                 $productPurchaseReturnDetails = DB::table('product_purchase_return_details')
-                    ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'))
-                    ->where('product_id',$productPurchaseDetail->product_id)
-                    ->where('product_unit_id',$productPurchaseDetail->product_unit_id)
-                    ->where('product_brand_id',$productPurchaseDetail->product_brand_id)
-                    ->groupBy('product_id')
-                    ->groupBy('product_unit_id')
-                    ->groupBy('product_brand_id')
+                    ->join('product_purchase_returns','product_purchase_return_details.pro_pur_return_id','=','product_purchase_returns.id')
+                    ->select('product_purchase_return_details.product_id','product_purchase_return_details.product_unit_id','product_purchase_return_details.product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'))
+                    ->where('product_purchase_return_details.product_id',$productPurchaseDetail->product_id)
+                    ->where('product_purchase_return_details.product_unit_id',$productPurchaseDetail->product_unit_id)
+                    ->where('product_purchase_return_details.product_brand_id',$productPurchaseDetail->product_brand_id)
+                    ->where('product_purchase_returns.product_purchase_return_date',date('Y-m-d'))
+                    ->groupBy('product_purchase_return_details.product_id')
+                    ->groupBy('product_purchase_return_details.product_unit_id')
+                    ->groupBy('product_purchase_return_details.product_brand_id')
                     ->first();
 
                 if(!empty($productPurchaseReturnDetails))
@@ -3726,11 +3726,11 @@ class BackendController extends Controller
                     $purchase_return_average_price = $purchase_return_total_amount/$productPurchaseReturnDetails->qty;
 
                     if($purchase_return_total_qty > 0){
-                        $amount = $purchase_return_average_price - ($purchase_average_price*$purchase_return_total_qty);
-                        if($amount > 0){
-                            $sum_profit_or_loss_amount += $amount;
+                        $purchase_return_amount = $purchase_return_average_price - ($purchase_average_price*$purchase_return_total_qty);
+                        if($purchase_return_amount > 0){
+                            $sum_profit_or_loss_amount += $purchase_return_amount;
                         }else{
-                            $sum_profit_or_loss_amount -= $amount;
+                            $sum_profit_or_loss_amount -= $purchase_return_amount;
                         }
                     }
                 }
@@ -3741,6 +3741,7 @@ class BackendController extends Controller
                     ->where('product_id',$productPurchaseDetail->product_id)
                     ->where('product_unit_id',$productPurchaseDetail->product_unit_id)
                     ->where('product_brand_id',$productPurchaseDetail->product_brand_id)
+                    ->where('sale_date',date('Y-m-d'))
                     ->groupBy('product_id')
                     ->groupBy('product_unit_id')
                     ->groupBy('product_brand_id')
@@ -3753,11 +3754,11 @@ class BackendController extends Controller
                     $sale_average_price = $productSaleDetails->sub_total/ (int) $productSaleDetails->qty;
 
                     if($sale_total_qty > 0){
-                        $amount = ($sale_average_price*$sale_total_qty) - ($purchase_average_price*$sale_total_qty);
-                        if($amount > 0){
-                            $sum_profit_or_loss_amount += $amount;
+                        $sale_amount = ($sale_average_price*$sale_total_qty) - ($purchase_average_price*$sale_total_qty);
+                        if($sale_amount > 0){
+                            $sum_profit_or_loss_amount += $sale_amount;
                         }else{
-                            $sum_profit_or_loss_amount -= $amount;
+                            $sum_profit_or_loss_amount -= $sale_amount;
                         }
 
                     }
@@ -3765,13 +3766,15 @@ class BackendController extends Controller
 
                 // sale return
                 $productSaleReturnDetails = DB::table('product_sale_return_details')
-                    ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'))
-                    ->where('product_id',$productPurchaseDetail->product_id)
-                    ->where('product_unit_id',$productPurchaseDetail->product_unit_id)
-                    ->where('product_brand_id',$productPurchaseDetail->product_brand_id)
-                    ->groupBy('product_id')
-                    ->groupBy('product_unit_id')
-                    ->groupBy('product_brand_id')
+                    ->join('product_sale_returns','product_sale_return_details.pro_sale_return_id','=','product_sale_returns.id')
+                    ->select('product_sale_return_details.product_id','product_sale_return_details.product_unit_id','product_sale_return_details.product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'))
+                    ->where('product_sale_return_details.product_id',$productPurchaseDetail->product_id)
+                    ->where('product_sale_return_details.product_unit_id',$productPurchaseDetail->product_unit_id)
+                    ->where('product_sale_return_details.product_brand_id',$productPurchaseDetail->product_brand_id)
+                    ->where('product_sale_returns.product_sale_return_date',date('Y-m-d'))
+                    ->groupBy('product_sale_return_details.product_id')
+                    ->groupBy('product_sale_return_details.product_unit_id')
+                    ->groupBy('product_sale_return_details.product_brand_id')
                     ->first();
 
                 if(!empty($productSaleReturnDetails))
@@ -3782,14 +3785,29 @@ class BackendController extends Controller
                     $sale_return_average_price = $sale_return_total_amount/$productSaleReturnDetails->qty;
 
                     if($sale_return_total_qty > 0){
-                        $amount = $sale_return_average_price - ($purchase_average_price*$sale_return_total_qty);
-                        if($amount > 0){
-                            $sum_profit_or_loss_amount -= $amount;
+                        $sale_return_amount = $sale_return_average_price - ($purchase_average_price*$sale_return_total_qty);
+                        if($sale_return_amount > 0){
+                            $sum_profit_or_loss_amount -= $sale_return_amount;
                         }else{
-                            $sum_profit_or_loss_amount += $amount;
+                            $sum_profit_or_loss_amount += $sale_return_amount;
                         }
                     }
                 }
+            }
+        }
+
+        $productSaleDiscounts = DB::table('product_sales')
+            ->select(DB::raw('SUM(discount_amount) as sum_discount'))
+            ->where('sale_date',date('Y-m-d'))
+            ->first();
+
+        if(!empty($productSaleDiscounts))
+        {
+            $sum_discount = $productSaleDiscounts->sum_discount;
+            if($sum_discount > 0){
+                $sum_profit_or_loss_amount += $sum_discount;
+            }else{
+                $sum_profit_or_loss_amount -= $sum_discount;
             }
         }
 
@@ -3809,7 +3827,6 @@ class BackendController extends Controller
         $sum_profit_or_loss_amount = 0;
 
         $productPurchaseDetails = DB::table('product_purchase_details')
-            ->join('product_purchases','product_purchases.id','=','product_purchase_details.product_purchase_id')
             ->select('product_id','product_unit_id','product_brand_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as price'), DB::raw('SUM(mrp_price) as mrp_price'), DB::raw('SUM(sub_total) as sub_total'))
             //->where('product_purchases.store_id',$store->id)
             //->where('product_purchases.ref_id',NULL)
@@ -3844,11 +3861,11 @@ class BackendController extends Controller
                     $purchase_return_average_price = $purchase_return_total_amount/$productPurchaseReturnDetails->qty;
 
                     if($purchase_return_total_qty > 0){
-                        $amount = $purchase_return_average_price - ($purchase_average_price*$purchase_return_total_qty);
-                        if($amount > 0){
-                            $sum_profit_or_loss_amount += $amount;
+                        $purchase_return_amount = $purchase_return_average_price - ($purchase_average_price*$purchase_return_total_qty);
+                        if($purchase_return_amount > 0){
+                            $sum_profit_or_loss_amount += $purchase_return_amount;
                         }else{
-                            $sum_profit_or_loss_amount -= $amount;
+                            $sum_profit_or_loss_amount -= $purchase_return_amount;
                         }
                     }
                 }
@@ -3871,11 +3888,11 @@ class BackendController extends Controller
                     $sale_average_price = $productSaleDetails->sub_total/ (int) $productSaleDetails->qty;
 
                     if($sale_total_qty > 0){
-                        $amount = ($sale_average_price*$sale_total_qty) - ($purchase_average_price*$sale_total_qty);
-                        if($amount > 0){
-                            $sum_profit_or_loss_amount += $amount;
+                        $sale_amount = ($sale_average_price*$sale_total_qty) - ($purchase_average_price*$sale_total_qty);
+                        if($sale_amount > 0){
+                            $sum_profit_or_loss_amount += $sale_amount;
                         }else{
-                            $sum_profit_or_loss_amount -= $amount;
+                            $sum_profit_or_loss_amount -= $sale_amount;
                         }
 
                     }
@@ -3900,14 +3917,28 @@ class BackendController extends Controller
                     $sale_return_average_price = $sale_return_total_amount/$productSaleReturnDetails->qty;
 
                     if($sale_return_total_qty > 0){
-                        $amount = $sale_return_average_price - ($purchase_average_price*$sale_return_total_qty);
-                        if($amount > 0){
-                            $sum_profit_or_loss_amount -= $amount;
+                        $sale_return_amount = $sale_return_average_price - ($purchase_average_price*$sale_return_total_qty);
+                        if($sale_return_amount > 0){
+                            $sum_profit_or_loss_amount -= $sale_return_amount;
                         }else{
-                            $sum_profit_or_loss_amount += $amount;
+                            $sum_profit_or_loss_amount += $sale_return_amount;
                         }
                     }
                 }
+            }
+        }
+
+        $productSaleDiscounts = DB::table('product_sales')
+            ->select(DB::raw('SUM(discount_amount) as sum_discount'))
+            ->first();
+
+        if(!empty($productSaleDiscounts))
+        {
+            $sum_discount = $productSaleDiscounts->sum_discount;
+            if($sum_discount > 0){
+                $sum_profit_or_loss_amount += $sum_discount;
+            }else{
+                $sum_profit_or_loss_amount -= $sum_discount;
             }
         }
 
