@@ -97,7 +97,9 @@ Route::middleware('auth:api')->post('/party_update', 'API\BackendController@part
 Route::middleware('auth:api')->post('/party_delete', 'API\BackendController@partyDelete');
 
 // customer panel
-Route::middleware('auth:api')->post('/customer_information', 'API\BackendController@customerInformation');
+Route::middleware('auth:api')->post('/customer_virtual_balance', 'API\BackendController@customerVirtualBalance');
+Route::middleware('auth:api')->post('/customer_sale_information', 'API\BackendController@customerSaleInformation');
+Route::middleware('auth:api')->post('/customer_sale_details_information', 'API\BackendController@customerSaleDetailsInformation');
 
 
 // product brand

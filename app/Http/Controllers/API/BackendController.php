@@ -753,7 +753,28 @@ class BackendController extends Controller
         }
     }
 
-    public function customerInformation(Request $request){
+    public function customerVirtualBalance(Request $request){
+        $check_exists_user = DB::table("users")->where('id',$request->user_id)->pluck('id')->first();
+        if($check_exists_user == null){
+            return response()->json(['success'=>false,'response'=>'No User Found, using this id!'], $this->failStatus);
+        }
+
+        $party = DB::table("parties")
+            ->join('users','parties.id','=','users.party_id')
+            ->where('users.id',$request->user_id)
+            ->select('parties.virtual_balance','parties.id')
+            ->first();
+        if($party)
+        {
+            $virtual_balance = $party->virtual_balance;
+
+            return response()->json(['success'=>true,'response' => $virtual_balance], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Party Found!'], $this->failStatus);
+        }
+    }
+
+    public function customerSaleInformation(Request $request){
         $check_exists_user = DB::table("users")->where('id',$request->user_id)->pluck('id')->first();
         if($check_exists_user == null){
             return response()->json(['success'=>false,'response'=>'No User Found, using this id!'], $this->failStatus);
@@ -775,29 +796,37 @@ class BackendController extends Controller
                 ->leftJoin('stores','product_sales.store_id','stores.id')
                 ->where('product_sales.party_id',$party->id)
                 ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
-                ->first();
+                ->get();
 
-            $product_sale_details = null;
-            if($product_sales){
-
-                $product_sale_details = DB::table('product_sales')
-                    ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
-                    ->leftJoin('products','product_sale_details.product_id','products.id')
-                    ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
-                    ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
-                    ->where('product_sales.invoice_no',$product_sales->invoice_no)
-                    ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.sale_date','product_sale_details.return_among_day','product_sale_details.price as mrp_price')
-                    ->get();
-
-                //$success['product_sales'] = $product_sales;
-                //$success['product_sale_details'] = $product_sale_details;
-            }
             $success['product_sales'] = $product_sales;
+
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Sale Found!'], $this->failStatus);
+        }
+    }
+
+    public function customerSaleDetailsInformation(Request $request){
+        $check_exists_user = DB::table("users")->where('id',$request->user_id)->pluck('id')->first();
+        if($check_exists_user == null){
+            return response()->json(['success'=>false,'response'=>'No User Found, using this id!'], $this->failStatus);
+        }
+
+        $product_sale_details = DB::table('product_sales')
+                ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
+                ->leftJoin('products','product_sale_details.product_id','products.id')
+                ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
+                ->where('product_sales.id',$request->sale_id)
+                ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.sale_date','product_sale_details.return_among_day','product_sale_details.price as mrp_price')
+                ->get();
+        if(count($product_sale_details) > 0){
+
             $success['product_sale_details'] = $product_sale_details;
 
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'No Party Found!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Sale Details Found!'], $this->failStatus);
         }
     }
 
@@ -2734,7 +2763,7 @@ class BackendController extends Controller
                 $product_sale_detail->return_last_date = $add_two_day_date;
                 $product_sale_detail->save();
 
-                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
                 if(!empty($check_previous_stock)){
                     $previous_stock = $check_previous_stock;
                 }else{
@@ -3081,7 +3110,7 @@ class BackendController extends Controller
                 $product_sale_detail->return_last_date = $add_two_day_date;
                 $product_sale_detail->save();
 
-                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
                 if(!empty($check_previous_stock)){
                     $previous_stock = $check_previous_stock;
                 }else{
