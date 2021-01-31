@@ -69,8 +69,8 @@ class PublicSslCommerzPaymentController extends Controller
         //echo "Transaction is Successful";
         $sslc = new SSLCommerz();
         #Start to received these value from session. which was saved in index function.
-        //$tran_id = $request->tran_id;
-        $tran_id = $_SESSION['payment_values']['tran_id'];
+        $tran_id = $request->tran_id;
+        //$tran_id = $_SESSION['payment_values']['tran_id'];
         #End to received these value from session. which was saved in index function.
         #Check order status in order tabel against the transaction id or order id.
 

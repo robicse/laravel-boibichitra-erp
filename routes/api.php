@@ -114,8 +114,12 @@ Route::middleware('auth:api')->post('/product_unit_create', 'API\BackendControll
 Route::middleware('auth:api')->post('/product_unit_edit', 'API\BackendController@productUnitEdit');
 Route::middleware('auth:api')->post('/product_unit_delete', 'API\BackendController@productUnitDelete');
 
+
+
 // product
 Route::middleware('auth:api')->get('/product_list', 'API\BackendController@productList');
+//Route::middleware('auth:api')->get('/product_list_pagination/{cursor}/{limit}', 'API\BackendController@productListPagination');
+Route::get('/product_list_pagination/{cursor}/{limit}', 'API\BackendController@productListPagination');
 Route::middleware('auth:api')->get('/all_active_product_list', 'API\BackendController@allActiveProductList');
 Route::middleware('auth:api')->post('/product_create', 'API\BackendController@productCreate');
 Route::middleware('auth:api')->post('/product_edit', 'API\BackendController@productEdit');
