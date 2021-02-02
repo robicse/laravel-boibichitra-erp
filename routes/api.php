@@ -118,13 +118,16 @@ Route::middleware('auth:api')->post('/product_unit_delete', 'API\BackendControll
 
 // product
 Route::middleware('auth:api')->get('/product_list', 'API\BackendController@productList');
-//Route::middleware('auth:api')->get('/product_list_pagination/{cursor}/{limit}', 'API\BackendController@productListPagination');
-Route::get('/product_list_pagination/{cursor}/{limit}', 'API\BackendController@productListPagination');
 Route::middleware('auth:api')->get('/all_active_product_list', 'API\BackendController@allActiveProductList');
 Route::middleware('auth:api')->post('/product_create', 'API\BackendController@productCreate');
 Route::middleware('auth:api')->post('/product_edit', 'API\BackendController@productEdit');
 Route::middleware('auth:api')->post('/product_delete', 'API\BackendController@productDelete');
 Route::middleware('auth:api')->post('/product_image', 'API\BackendController@productImage');
+
+// pagination
+//Route::middleware('auth:api')->get('/product_list_pagination/{cursor}/{limit}', 'API\BackendController@productListPagination');
+Route::get('/product_list_pagination', 'API\BackendController@productListPagination');
+Route::post('/product_list_pagination_barcode', 'API\BackendController@productListPaginationBarcode');
 
 // product brand
 //Route::middleware('auth:api')->get('/delivery_service_list', 'API\BackendController@deliveryServiceList');
@@ -187,6 +190,11 @@ Route::middleware('auth:api')->post('/product_pos_sale_delete', 'API\BackendCont
 Route::middleware('auth:api')->get('/product_sale_invoice_list', 'API\BackendController@productSaleInvoiceList');
 Route::middleware('auth:api')->post('/product_sale_return_details', 'API\BackendController@productSaleReturnDetails');
 Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendController@productSaleReturnCreate');
+
+// payment
+Route::middleware('auth:api')->get('/payment_paid_due_list', 'API\BackendController@paymentPaidDueList');
+//Route::middleware('auth:api')->post('/payment_paid_due_create', 'API\BackendController@paymentPaidDueCreate');
+Route::middleware('auth:api')->get('/payment_collection_due_list', 'API\BackendController@paymentCollectionDueList');
 
 // transaction history
 Route::middleware('auth:api')->get('/transaction_history', 'API\BackendController@transactionHistory');

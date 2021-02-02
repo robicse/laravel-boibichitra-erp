@@ -1043,21 +1043,42 @@ class BackendController extends Controller
 
 
 
-    public function productListPagination($cursor, $limit){
+    public function productListPagination(){
         $products = DB::table('products')
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
-            ->where('products.id','>',$cursor)
-            ->limit($limit)
+            //->where('products.id','>',$cursor)
+            //->limit($limit)
             ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
             //->orderBy('products.id','desc')1
-            ->get();
+            ->paginate(12);
 
         if($products)
         {
             $p=$products[$products->count()-1];
             $success['products'] =  $products;
             $success['nextCursor'] =  $p->id;
+
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product List Found!'], $this->failStatus);
+        }
+    }
+
+    public function productListPaginationBarcode(Request $request){
+        $products = DB::table('products')
+            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+            ->where('products.barcode',$request->barcode)
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
+            ->paginate(1);
+
+        if($products)
+        {
+            $p=$products[$products->count()-1];
+            $success['products'] =  $products;
+            //$success['nextCursor'] =  $p->id;
+            //$success['nextCursor'] =  1;
 
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
@@ -2185,6 +2206,125 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Purchase Data Found!'], $this->failStatus);
+        }
+    }
+
+    public function paymentPaidDueList(){
+        $payment_paid_due_amount = DB::table('product_purchases')
+            ->leftJoin('users','product_purchases.user_id','users.id')
+            ->leftJoin('parties','product_purchases.party_id','parties.id')
+            ->leftJoin('warehouses','product_purchases.warehouse_id','warehouses.id')
+            ->where('product_purchases.due_amount','>',0)
+            ->select('product_purchases.id','product_purchases.invoice_no','product_purchases.discount_type','product_purchases.discount_amount','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.id as supplier_id','parties.name as supplier_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
+            ->get();
+
+        if($payment_paid_due_amount)
+        {
+            $success['payment_paid_due_amount'] =  $payment_paid_due_amount;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Payment Due List Found!'], $this->failStatus);
+        }
+    }
+
+//    public function paymentPaidDueCreate(Request $request){
+//        //dd($request->all());
+//        $this->validate($request, [
+//            'party_id'=> 'required',
+//            'warehouse_id'=> 'required',
+//            'paid_amount'=> 'required',
+//            'due_amount'=> 'required',
+//            'total_amount'=> 'required',
+//            'payment_type'=> 'required',
+//            'product_purchase_invoice_no'=> 'required',
+//        ]);
+//
+//        $product_purchase_id = ProductPurchase::where('invoice_no',$request->product_purchase_invoice_no)->pluck('id')->first();
+//
+//        $get_invoice_no = ProductPurchaseReturn::latest('id','desc')->pluck('invoice_no')->first();
+//        if(!empty($get_invoice_no)){
+//            $get_invoice = str_replace("purchase-return","",$get_invoice_no);
+//            $invoice_no = $get_invoice+1;
+//        }else{
+//            $invoice_no = 5000;
+//        }
+//        $final_invoice = 'purchase-return'.$invoice_no;
+//
+//        $date = date('Y-m-d');
+//        $date_time = date('Y-m-d h:i:s');
+//
+//        $user_id = Auth::user()->id;
+//
+//        // product purchase
+//        $productPurchaseReturn = new ProductPurchaseReturn();
+//        $productPurchaseReturn ->invoice_no = $final_invoice;
+//        $productPurchaseReturn ->product_purchase_invoice_no = $request->product_purchase_invoice_no;
+//        $productPurchaseReturn ->user_id = $user_id;
+//        $productPurchaseReturn ->party_id = $request->party_id;
+//        $productPurchaseReturn ->warehouse_id = $request->warehouse_id;
+//        $productPurchaseReturn ->product_purchase_return_type = 'purchase_return';
+//        $productPurchaseReturn ->discount_type = $request->discount_type ? $request->discount_type : NULL;
+//        $productPurchaseReturn ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+//        $productPurchaseReturn ->paid_amount = $request->total_amount;
+//        $productPurchaseReturn ->due_amount = $request->due_amount;
+//        $productPurchaseReturn ->total_amount = $request->total_amount;
+//        $productPurchaseReturn ->product_purchase_return_date = $date;
+//        $productPurchaseReturn ->product_purchase_return_date_time = $date_time;
+//        $affectedRow = $productPurchaseReturn->save();
+//
+//        if($affectedRow) {
+//            // transaction
+//            $transaction = new Transaction();
+//            $transaction->ref_id = $insert_id;
+//            $transaction->invoice_no = $final_invoice;
+//            $transaction->user_id = $user_id;
+//            $transaction->warehouse_id = $request->warehouse_id;
+//            $transaction->party_id = $request->party_id;
+//            $transaction->transaction_type = 'purchase_return';
+//            $transaction->payment_type = $request->payment_type;
+//            $transaction->amount = $request->total_amount;
+//            $transaction->transaction_date = $date;
+//            $transaction->transaction_date_time = $date_time;
+//            $transaction->save();
+//
+//            // payment paid
+//            $payment_paid = new PaymentPaid();
+//            $payment_paid->invoice_no = $final_invoice;
+//            $payment_paid->product_purchase_id = $product_purchase_id;
+//            $payment_paid->product_purchase_return_id = $insert_id;
+//            $payment_paid->user_id = $user_id;
+//            $payment_paid->party_id = $request->party_id;
+//            $payment_paid->paid_type = 'Return';
+//            $payment_paid->paid_amount = $request->total_amount;
+//            $payment_paid->due_amount = $request->due_amount;
+//            $payment_paid->current_paid_amount = $request->total_amount;
+//            $payment_paid->paid_date = $date;
+//            $payment_paid->paid_date_time = $date_time;
+//            $payment_paid->save();
+//
+//
+//            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Role Created!'], $this->failStatus);
+//        }
+//    }
+
+    public function paymentCollectionDueList(){
+        $payment_collection_due_list = DB::table('product_sales')
+            ->leftJoin('users','product_sales.user_id','users.id')
+            ->leftJoin('parties','product_sales.party_id','parties.id')
+            ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+            ->leftJoin('stores','product_sales.store_id','stores.id')
+            ->where('product_sales.due_amount','>',0)
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->get();
+
+        if($payment_collection_due_list)
+        {
+            $success['payment_collection_due_list'] =  $payment_collection_due_list;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Payment Collection Due List Found!'], $this->failStatus);
         }
     }
 
