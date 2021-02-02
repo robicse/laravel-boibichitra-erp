@@ -193,8 +193,9 @@ Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendC
 
 // payment
 Route::middleware('auth:api')->get('/payment_paid_due_list', 'API\BackendController@paymentPaidDueList');
-//Route::middleware('auth:api')->post('/payment_paid_due_create', 'API\BackendController@paymentPaidDueCreate');
+Route::middleware('auth:api')->post('/payment_paid_due_create', 'API\BackendController@paymentPaidDueCreate');
 Route::middleware('auth:api')->get('/payment_collection_due_list', 'API\BackendController@paymentCollectionDueList');
+Route::middleware('auth:api')->post('/payment_collection_due_create', 'API\BackendController@paymentCollectionDueCreate');
 
 // transaction history
 Route::middleware('auth:api')->get('/transaction_history', 'API\BackendController@transactionHistory');

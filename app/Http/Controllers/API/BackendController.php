@@ -2227,87 +2227,138 @@ class BackendController extends Controller
         }
     }
 
-//    public function paymentPaidDueCreate(Request $request){
-//        //dd($request->all());
-//        $this->validate($request, [
-//            'party_id'=> 'required',
-//            'warehouse_id'=> 'required',
-//            'paid_amount'=> 'required',
-//            'due_amount'=> 'required',
-//            'total_amount'=> 'required',
-//            'payment_type'=> 'required',
-//            'product_purchase_invoice_no'=> 'required',
-//        ]);
-//
-//        $product_purchase_id = ProductPurchase::where('invoice_no',$request->product_purchase_invoice_no)->pluck('id')->first();
-//
-//        $get_invoice_no = ProductPurchaseReturn::latest('id','desc')->pluck('invoice_no')->first();
-//        if(!empty($get_invoice_no)){
-//            $get_invoice = str_replace("purchase-return","",$get_invoice_no);
-//            $invoice_no = $get_invoice+1;
-//        }else{
-//            $invoice_no = 5000;
-//        }
-//        $final_invoice = 'purchase-return'.$invoice_no;
-//
-//        $date = date('Y-m-d');
-//        $date_time = date('Y-m-d h:i:s');
-//
-//        $user_id = Auth::user()->id;
-//
-//        // product purchase
-//        $productPurchaseReturn = new ProductPurchaseReturn();
-//        $productPurchaseReturn ->invoice_no = $final_invoice;
-//        $productPurchaseReturn ->product_purchase_invoice_no = $request->product_purchase_invoice_no;
-//        $productPurchaseReturn ->user_id = $user_id;
-//        $productPurchaseReturn ->party_id = $request->party_id;
-//        $productPurchaseReturn ->warehouse_id = $request->warehouse_id;
-//        $productPurchaseReturn ->product_purchase_return_type = 'purchase_return';
-//        $productPurchaseReturn ->discount_type = $request->discount_type ? $request->discount_type : NULL;
-//        $productPurchaseReturn ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
-//        $productPurchaseReturn ->paid_amount = $request->total_amount;
-//        $productPurchaseReturn ->due_amount = $request->due_amount;
-//        $productPurchaseReturn ->total_amount = $request->total_amount;
-//        $productPurchaseReturn ->product_purchase_return_date = $date;
-//        $productPurchaseReturn ->product_purchase_return_date_time = $date_time;
-//        $affectedRow = $productPurchaseReturn->save();
-//
-//        if($affectedRow) {
-//            // transaction
-//            $transaction = new Transaction();
-//            $transaction->ref_id = $insert_id;
-//            $transaction->invoice_no = $final_invoice;
-//            $transaction->user_id = $user_id;
-//            $transaction->warehouse_id = $request->warehouse_id;
-//            $transaction->party_id = $request->party_id;
-//            $transaction->transaction_type = 'purchase_return';
-//            $transaction->payment_type = $request->payment_type;
-//            $transaction->amount = $request->total_amount;
-//            $transaction->transaction_date = $date;
-//            $transaction->transaction_date_time = $date_time;
-//            $transaction->save();
-//
-//            // payment paid
-//            $payment_paid = new PaymentPaid();
-//            $payment_paid->invoice_no = $final_invoice;
-//            $payment_paid->product_purchase_id = $product_purchase_id;
-//            $payment_paid->product_purchase_return_id = $insert_id;
-//            $payment_paid->user_id = $user_id;
-//            $payment_paid->party_id = $request->party_id;
-//            $payment_paid->paid_type = 'Return';
-//            $payment_paid->paid_amount = $request->total_amount;
-//            $payment_paid->due_amount = $request->due_amount;
-//            $payment_paid->current_paid_amount = $request->total_amount;
-//            $payment_paid->paid_date = $date;
-//            $payment_paid->paid_date_time = $date_time;
-//            $payment_paid->save();
-//
-//
-//            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
-//        }else{
-//            return response()->json(['success'=>false,'response'=>'No Role Created!'], $this->failStatus);
-//        }
-//    }
+    public function paymentPaidDueCreate(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'party_id'=> 'required',
+            'warehouse_id'=> 'required',
+            'paid_amount'=> 'required',
+            'new_paid_amount'=> 'required',
+            'due_amount'=> 'required',
+            'total_amount'=> 'required',
+            'payment_type'=> 'required',
+            'product_purchase_invoice_no'=> 'required',
+        ]);
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+
+        // product purchase
+        $productPurchase = ProductPurchase::find($request->product_purchase_invoice_no);
+        $productPurchase ->paid_amount = $request->paid_amount + $request->new_paid_amount;
+        $productPurchase ->due_amount = $request->due_amount;
+        //$productPurchase ->total_amount = $request->total_amount;
+        $affectedRow = $productPurchase->save();
+
+        if($affectedRow) {
+            // transaction
+            $transaction = new Transaction();
+            $transaction->ref_id = $productPurchase->id;
+            $transaction->invoice_no = $request->product_purchase_invoice_no;
+            $transaction->user_id = $user_id;
+            $transaction->warehouse_id = $request->warehouse_id;
+            $transaction->party_id = $request->party_id;
+            $transaction->transaction_type = 'payment_paid';
+            $transaction->payment_type = $request->payment_type;
+            $transaction->amount = $request->new_paid_amount;
+            $transaction->transaction_date = $date;
+            $transaction->transaction_date_time = $date_time;
+            $transaction->save();
+
+            // payment paid
+            $previous_current_paid_amount = PaymentPaid::where('invoice_no',$request->product_purchase_invoice_no)->latest()->pluck('current_paid_amount')->first();
+            $payment_paid = new PaymentPaid();
+            $payment_paid->invoice_no = $request->product_purchase_invoice_no;
+            $payment_paid->product_purchase_id = $productPurchase->id;
+            $payment_paid->product_purchase_return_id = NULL;
+            $payment_paid->user_id = $user_id;
+            $payment_paid->party_id = $request->party_id;
+            $payment_paid->paid_type = 'Purchase';
+            $payment_paid->paid_amount = $request->new_paid_amount;
+            $payment_paid->due_amount = $request->due_amount;
+            $payment_paid->current_paid_amount = $previous_current_paid_amount + $request->new_paid_amount;
+            $payment_paid->paid_date = $date;
+            $payment_paid->paid_date_time = $date_time;
+            $payment_paid->save();
+
+
+            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function paymentCollectionDueCreate(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'party_id'=> 'required',
+            'store_id'=> 'required',
+            'paid_amount'=> 'required',
+            'new_paid_amount'=> 'required',
+            'due_amount'=> 'required',
+            'total_amount'=> 'required',
+            'payment_type'=> 'required',
+            'product_sale_invoice_no'=> 'required',
+        ]);
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+        $store_id = $request->store_id;
+        $warehouse_id = Store::where('id',$store_id)->latest('id')->pluck('warehouse_id')->first();
+
+        // product sale return
+        $productSale = ProductSale::find($request->product_sale_invoice_no);
+        $productSale ->paid_amount = $request->total_amount + $request->new_paid_amount;
+        $productSale ->due_amount = $request->due_amount;
+        //$productSale ->total_amount = $request->total_amount;
+        $affectedRow = $productSale->save();
+
+        if($affectedRow)
+        {
+
+            // transaction
+            $transaction = new Transaction();
+            $transaction->ref_id = $productSale->id;
+            $transaction->invoice_no = $request->product_sale_invoice_no;
+            $transaction->user_id = $user_id;
+            $transaction->warehouse_id = $warehouse_id;
+            $transaction->store_id = $store_id;
+            $transaction->party_id = $request->party_id;
+            $transaction->transaction_type = 'payment_collection';
+            $transaction->payment_type = $request->payment_type;
+            $transaction->amount = $request->new_paid_amount;
+            $transaction->transaction_date = $date;
+            $transaction->transaction_date_time = $date_time;
+            $transaction->save();
+
+            // payment paid
+            $previous_current_collection_amount = PaymentCollection::where('invoice_no',$request->product_sale_invoice_no)->latest()->pluck('current_collection_amount')->first();
+            $payment_collection = new PaymentCollection();
+            $payment_collection->invoice_no = $request->product_sale_invoice_no;
+            $payment_collection->product_sale_id = $productSale->id;
+            $payment_collection->product_sale_return_id = NULL;
+            $payment_collection->user_id = $user_id;
+            $payment_collection->party_id = $request->party_id;
+            $payment_collection->warehouse_id = $request->warehouse_id;
+            $payment_collection->store_id = $request->store_id;
+            $payment_collection->collection_type = 'Sale';
+            $payment_collection->collection_amount = $request->new_paid_amount;
+            $payment_collection->due_amount = $productSale->due_amount;
+            $payment_collection->current_collection_amount = $previous_current_collection_amount + $request->new_paid_amount;
+            $payment_collection->collection_date = $date;
+            $payment_collection->collection_date_time = $date_time;
+            $payment_collection->save();
+
+
+            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
+        }
+    }
 
     public function paymentCollectionDueList(){
         $payment_collection_due_list = DB::table('product_sales')
