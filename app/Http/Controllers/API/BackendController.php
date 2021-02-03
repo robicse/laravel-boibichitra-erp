@@ -1086,6 +1086,47 @@ class BackendController extends Controller
         }
     }
 
+    public function productListPaginationItemcode(Request $request){
+        $products = DB::table('products')
+            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+            ->where('products.item_code',$request->item_code)
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
+            ->paginate(1);
+
+        if($products)
+        {
+            $p=$products[$products->count()-1];
+            $success['products'] =  $products;
+            //$success['nextCursor'] =  $p->id;
+            //$success['nextCursor'] =  1;
+
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product List Found!'], $this->failStatus);
+        }
+    }
+
+    public function productListPaginationProductname(Request $request){
+        $products = DB::table('products')
+            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+            ->where('products.name','like','%'.$request->name.'%')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
+            ->paginate(12);
+
+        if($products)
+        {
+            $p=$products[$products->count()-1];
+            $success['products'] =  $products;
+            //$success['nextCursor'] =  $p->id;
+
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product List Found!'], $this->failStatus);
+        }
+    }
+
     public function allActiveProductList(){
         $products = DB::table('products')
             ->leftJoin('product_units','products.product_unit_id','product_units.id')

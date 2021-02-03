@@ -128,6 +128,8 @@ Route::middleware('auth:api')->post('/product_image', 'API\BackendController@pro
 //Route::middleware('auth:api')->get('/product_list_pagination/{cursor}/{limit}', 'API\BackendController@productListPagination');
 Route::get('/product_list_pagination', 'API\BackendController@productListPagination');
 Route::post('/product_list_pagination_barcode', 'API\BackendController@productListPaginationBarcode');
+Route::post('/product_list_pagination_item_code', 'API\BackendController@productListPaginationItemcode');
+Route::post('/product_list_pagination_product_name', 'API\BackendController@productListPaginationProductname');
 
 // product brand
 //Route::middleware('auth:api')->get('/delivery_service_list', 'API\BackendController@deliveryServiceList');
