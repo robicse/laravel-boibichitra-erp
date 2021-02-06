@@ -114,7 +114,11 @@ Route::middleware('auth:api')->post('/product_unit_create', 'API\BackendControll
 Route::middleware('auth:api')->post('/product_unit_edit', 'API\BackendController@productUnitEdit');
 Route::middleware('auth:api')->post('/product_unit_delete', 'API\BackendController@productUnitDelete');
 
-
+// product vat
+Route::middleware('auth:api')->get('/product_vat_list', 'API\BackendController@productVatList');
+Route::middleware('auth:api')->post('/product_vat_create', 'API\BackendController@productVatCreate');
+Route::middleware('auth:api')->post('/product_vat_edit', 'API\BackendController@productVatEdit');
+Route::middleware('auth:api')->post('/product_vat_delete', 'API\BackendController@productVatDelete');
 
 // product
 Route::middleware('auth:api')->get('/product_list', 'API\BackendController@productList');
@@ -130,6 +134,14 @@ Route::get('/product_list_pagination', 'API\BackendController@productListPaginat
 Route::post('/product_list_pagination_barcode', 'API\BackendController@productListPaginationBarcode');
 Route::post('/product_list_pagination_item_code', 'API\BackendController@productListPaginationItemcode');
 Route::post('/product_list_pagination_product_name', 'API\BackendController@productListPaginationProductname');
+
+Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination', 'API\BackendController@warehouseCurrentStockListPagination');
+Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_barcode', 'API\BackendController@warehouseCurrentStockListPaginationBarcode');
+Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_item_code', 'API\BackendController@warehouseCurrentStockListPaginationItemcode');
+Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_product_name', 'API\BackendController@warehouseCurrentStockListPaginationProductName');
+
+Route::middleware('auth:api')->post('/store_current_stock_list_pagination', 'API\BackendController@storeCurrentStockListPagination');
+
 
 // product brand
 //Route::middleware('auth:api')->get('/delivery_service_list', 'API\BackendController@deliveryServiceList');

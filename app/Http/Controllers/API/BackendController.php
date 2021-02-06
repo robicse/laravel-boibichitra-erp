@@ -18,7 +18,10 @@ use App\ProductSaleDetail;
 use App\ProductSaleReturn;
 use App\ProductSaleReturnDetail;
 use App\ProductUnit;
+use App\ProductVat;
 use App\Stock;
+use App\StockTransfer;
+use App\StockTransferDetail;
 use App\Store;
 use App\Transaction;
 use App\User;
@@ -1024,11 +1027,111 @@ class BackendController extends Controller
         }
     }
 
+    // product vat
+    public function productVatList(){
+        $product_vats = DB::table('product_vats')->select('id','name','vat_percentage','status')->orderBy('id','desc')->get();
+
+        if($product_vats)
+        {
+            $success['product_vats'] =  $product_vats;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Vat List Found!'], $this->failStatus);
+        }
+    }
+
+    public function productVatCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:product_vats,name',
+            'vat_percentage'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $productVat = new ProductVat();
+        $productVat->name = $request->name;
+        $productVat->vat_percentage = $request->vat_percentage;
+        $productVat->status = $request->status;
+        $productVat->save();
+        $insert_id = $productVat->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $productVat], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Product Vat Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function productVatEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'product_vat_id'=> 'required',
+            'name' => 'required|unique:product_vats,name,'.$request->product_vat_id,
+            'vat_percentage'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_product_vat = DB::table("product_vats")->where('id',$request->product_vat_id)->pluck('id')->first();
+        if($check_exists_product_vat == null){
+            return response()->json(['success'=>false,'response'=>'No Product Vat Found!'], $this->failStatus);
+        }
+
+        $product_vats = ProductVat::find($request->product_vat_id);
+        $product_vats->name = $request->name;
+        $product_vats->vat_percentage = $request->vat_percentage;
+        $product_vats->status = $request->status;
+        $update_product_vat = $product_vats->save();
+
+        if($update_product_vat){
+            return response()->json(['success'=>true,'response' => $product_vats], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Product Vat Not Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function productVatDelete(Request $request){
+        $check_exists_product_vat = DB::table("product_vats")->where('id',$request->product_vat_id)->pluck('id')->first();
+        if($check_exists_product_vat == null){
+            return response()->json(['success'=>false,'response'=>'No Product Vat Found!'], $this->failStatus);
+        }
+
+        $soft_delete_product_vat = ProductVat::find($request->product_vat_id);
+        $soft_delete_product_vat->status=0;
+        $affected_row = $soft_delete_product_vat->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Product Vat Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Vat Deleted!'], $this->failStatus);
+        }
+    }
+
     public function productList(){
         $products = DB::table('products')
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             ->orderBy('products.id','desc')
             ->get();
 
@@ -1049,7 +1152,7 @@ class BackendController extends Controller
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             //->where('products.id','>',$cursor)
             //->limit($limit)
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             //->orderBy('products.id','desc')1
             ->paginate(12);
 
@@ -1070,7 +1173,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('products.barcode',$request->barcode)
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             ->paginate(1);
 
         if($products)
@@ -1091,7 +1194,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('products.item_code',$request->item_code)
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             ->paginate(1);
 
         if($products)
@@ -1112,7 +1215,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('products.name','like','%'.$request->name.'%')
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             ->paginate(12);
 
         if($products)
@@ -1132,7 +1235,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('products.status',1)
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             ->orderBy('products.id','desc')
             ->get();
 
@@ -1159,6 +1262,7 @@ class BackendController extends Controller
             'selling_price'=> 'required',
             'date'=> 'required',
             'status'=> 'required',
+            'vat_status'=> 'required',
         ]);
 
         if ($validator->fails()) {
@@ -1169,6 +1273,16 @@ class BackendController extends Controller
             ];
 
             return response()->json($response, $this-> validationStatus);
+        }
+
+        $product_vat = ProductVat::latest()->first();
+        $vat_percentage = NULL;
+        $vat_amount = NULL;
+        if($product_vat){
+            $vat_percentage = $product_vat->vat_percentage;
+            if($request->selling_price){
+                $vat_amount = $request->selling_price*$vat_percentage/100;
+            }
         }
 
         $product = new Product();
@@ -1182,6 +1296,9 @@ class BackendController extends Controller
         $product->product_brand_id = $request->product_brand_id ? $request->product_brand_id : NULL;
         $product->purchase_price = $request->purchase_price;
         $product->selling_price = $request->selling_price;
+        $product->vat_status = $request->vat_status;
+        $product->vat_percentage = $vat_percentage;
+        $product->vat_amount = $vat_amount;
         $product->note = $request->note ? $request->note : NULL;
         $product->date = $request->date;
         $product->status = $request->status;
@@ -1227,6 +1344,16 @@ class BackendController extends Controller
 
         $image = Product::where('id',$request->product_id)->pluck('image')->first();
 
+        $product_vat = ProductVat::latest()->first();
+        $vat_percentage = NULL;
+        $vat_amount = NULL;
+        if($product_vat){
+            $vat_percentage = $product_vat->vat_percentage;
+            if($request->selling_price){
+                $vat_amount = $request->selling_price*$vat_percentage/100;
+            }
+        }
+
         $product = Product::find($request->product_id);
         $product->name = $request->name;
         $product->product_unit_id = $request->product_unit_id;
@@ -1237,6 +1364,9 @@ class BackendController extends Controller
         $product->product_brand_id = $request->product_brand_id ? $request->product_brand_id : NULL;
         $product->purchase_price = $request->purchase_price;
         $product->selling_price = $request->selling_price;
+        $product->vat_status = $request->vat_status;
+        $product->vat_percentage = $vat_percentage;
+        $product->vat_amount = $vat_amount;
         $product->note = $request->note ? $request->note : NULL;
         $product->date = $request->date;
         $product->status = $request->status;
@@ -2485,7 +2615,7 @@ class BackendController extends Controller
                 ->where('stocks.stock_where','warehouse')
                 ->where('stocks.product_id',$data->product_id)
                 ->where('stocks.warehouse_id',$request->warehouse_id)
-                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
                 ->latest('id','desc')
                 ->first();
 
@@ -2519,6 +2649,284 @@ class BackendController extends Controller
         }
     }
 
+    public function warehouseCurrentStockListPagination(Request $request){
+        $warehouse_stock_product_list = Stock::where('warehouse_id',$request->warehouse_id)
+            ->select('product_id')
+            ->groupBy('product_id')
+            ->latest('id')
+            ->paginate(12);
+
+        //return response()->json(['success'=>true,'response' => $warehouse_stock_product_list], $this->successStatus);
+
+        $warehouse_stock_product = [];
+        foreach($warehouse_stock_product_list as $data){
+
+            $stock_row = DB::table('stocks')
+                ->join('warehouses','stocks.warehouse_id','warehouses.id')
+                ->leftJoin('products','stocks.product_id','products.id')
+                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+                ->where('stocks.stock_where','warehouse')
+                ->where('stocks.product_id',$data->product_id)
+                ->where('stocks.warehouse_id',$request->warehouse_id)
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->latest('id','desc')
+                ->first();
+
+            if($stock_row){
+                $nested_data['stock_id'] = $stock_row->id;
+                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+                $nested_data['product_id'] = $stock_row->product_id;
+                $nested_data['product_name'] = $stock_row->product_name;
+                $nested_data['purchase_price'] = $stock_row->purchase_price;
+                $nested_data['selling_price'] = $stock_row->selling_price;
+                $nested_data['item_code'] = $stock_row->item_code;
+                $nested_data['barcode'] = $stock_row->barcode;
+                $nested_data['image'] = $stock_row->image;
+                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+                $nested_data['current_stock'] = $stock_row->current_stock;
+
+                array_push($warehouse_stock_product,$nested_data);
+            }
+        }
+
+        if($warehouse_stock_product)
+        {
+            $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseCurrentStockListPaginationBarcode(Request $request){
+
+        $warehouse_stock_product_list = DB::table('stocks')
+            ->join('products','stocks.product_id','=','products.id')
+            ->where('products.barcode',$request->barcode)
+            ->select('stocks.product_id')
+            ->groupBy('stocks.product_id')
+            ->latest('stocks.id')
+            ->paginate(1);
+
+
+        $warehouse_stock_product = [];
+        foreach($warehouse_stock_product_list as $data){
+
+            $stock_row = DB::table('stocks')
+                ->join('warehouses','stocks.warehouse_id','warehouses.id')
+                ->leftJoin('products','stocks.product_id','products.id')
+                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+                ->where('stocks.stock_where','warehouse')
+                ->where('stocks.product_id',$data->product_id)
+                ->where('stocks.warehouse_id',$request->warehouse_id)
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->latest('id','desc')
+                ->first();
+
+            if($stock_row){
+                $nested_data['stock_id'] = $stock_row->id;
+                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+                $nested_data['product_id'] = $stock_row->product_id;
+                $nested_data['product_name'] = $stock_row->product_name;
+                $nested_data['purchase_price'] = $stock_row->purchase_price;
+                $nested_data['selling_price'] = $stock_row->selling_price;
+                $nested_data['item_code'] = $stock_row->item_code;
+                $nested_data['barcode'] = $stock_row->barcode;
+                $nested_data['image'] = $stock_row->image;
+                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+                $nested_data['current_stock'] = $stock_row->current_stock;
+
+                array_push($warehouse_stock_product,$nested_data);
+            }
+        }
+
+        if($warehouse_stock_product)
+        {
+            $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseCurrentStockListPaginationItemcode(Request $request){
+
+        $warehouse_stock_product_list = DB::table('stocks')
+            ->join('products','stocks.product_id','=','products.id')
+            ->where('products.item_code',$request->item_code)
+            ->select('stocks.product_id')
+            ->groupBy('stocks.product_id')
+            ->latest('stocks.id')
+            ->paginate(1);
+
+
+        $warehouse_stock_product = [];
+        foreach($warehouse_stock_product_list as $data){
+
+            $stock_row = DB::table('stocks')
+                ->join('warehouses','stocks.warehouse_id','warehouses.id')
+                ->leftJoin('products','stocks.product_id','products.id')
+                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+                ->where('stocks.stock_where','warehouse')
+                ->where('stocks.product_id',$data->product_id)
+                ->where('stocks.warehouse_id',$request->warehouse_id)
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->latest('id','desc')
+                ->first();
+
+            if($stock_row){
+                $nested_data['stock_id'] = $stock_row->id;
+                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+                $nested_data['product_id'] = $stock_row->product_id;
+                $nested_data['product_name'] = $stock_row->product_name;
+                $nested_data['purchase_price'] = $stock_row->purchase_price;
+                $nested_data['selling_price'] = $stock_row->selling_price;
+                $nested_data['item_code'] = $stock_row->item_code;
+                $nested_data['barcode'] = $stock_row->barcode;
+                $nested_data['image'] = $stock_row->image;
+                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+                $nested_data['current_stock'] = $stock_row->current_stock;
+
+                array_push($warehouse_stock_product,$nested_data);
+            }
+        }
+
+        if($warehouse_stock_product)
+        {
+            $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseCurrentStockListPaginationProductName(Request $request){
+
+        $warehouse_stock_product_list = DB::table('stocks')
+            ->join('products','stocks.product_id','=','products.id')
+            ->where('products.name','like','%'.$request->name.'%')
+            ->select('stocks.product_id')
+            ->groupBy('stocks.product_id')
+            ->latest('stocks.id')
+            ->paginate(1);
+
+
+        $warehouse_stock_product = [];
+        foreach($warehouse_stock_product_list as $data){
+
+            $stock_row = DB::table('stocks')
+                ->join('warehouses','stocks.warehouse_id','warehouses.id')
+                ->leftJoin('products','stocks.product_id','products.id')
+                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+                ->where('stocks.stock_where','warehouse')
+                ->where('stocks.product_id',$data->product_id)
+                ->where('stocks.warehouse_id',$request->warehouse_id)
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->latest('id','desc')
+                ->first();
+
+            if($stock_row){
+                $nested_data['stock_id'] = $stock_row->id;
+                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+                $nested_data['product_id'] = $stock_row->product_id;
+                $nested_data['product_name'] = $stock_row->product_name;
+                $nested_data['purchase_price'] = $stock_row->purchase_price;
+                $nested_data['selling_price'] = $stock_row->selling_price;
+                $nested_data['item_code'] = $stock_row->item_code;
+                $nested_data['barcode'] = $stock_row->barcode;
+                $nested_data['image'] = $stock_row->image;
+                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+                $nested_data['current_stock'] = $stock_row->current_stock;
+
+                array_push($warehouse_stock_product,$nested_data);
+            }
+        }
+
+        if($warehouse_stock_product)
+        {
+            $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeCurrentStockListPagination(Request $request){
+
+        $store_stock_product_list = Stock::where('store_id',$request->store_id)
+            ->select('product_id')
+            ->groupBy('product_id')
+            ->latest('id')
+            ->paginate(12);
+
+        $store_stock_product = [];
+        foreach($store_stock_product_list as $data){
+
+            $stock_row = DB::table('stocks')
+                ->join('warehouses','stocks.warehouse_id','warehouses.id')
+                ->leftJoin('products','stocks.product_id','products.id')
+                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+                ->where('stocks.stock_where','store')
+                ->where('stocks.product_id',$data->product_id)
+                ->where('stocks.store_id',$request->store_id)
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->orderBy('stocks.id','desc')
+                ->first();
+
+            if($stock_row){
+                $nested_data['stock_id'] = $stock_row->id;
+                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+                $nested_data['product_id'] = $stock_row->product_id;
+                $nested_data['product_name'] = $stock_row->product_name;
+                $nested_data['purchase_price'] = $stock_row->purchase_price;
+                $nested_data['selling_price'] = $stock_row->selling_price;
+                $nested_data['vat_status'] = $stock_row->vat_status;
+                $nested_data['vat_percentage'] = $stock_row->vat_percentage;
+                $nested_data['vat_amount'] = $stock_row->vat_amount;
+                $nested_data['item_code'] = $stock_row->item_code;
+                $nested_data['barcode'] = $stock_row->barcode;
+                $nested_data['image'] = $stock_row->image;
+                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+                $nested_data['current_stock'] = $stock_row->current_stock;
+
+                array_push($store_stock_product,$nested_data);
+            }
+        }
+
+        if($store_stock_product)
+        {
+            $success['store_current_stock_list'] =  $store_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
 //    public function checkWarehouseProductCurrentStock(Request $request){
 //        $check_warehouse_product_current_stock = Stock::where('warehouse_id',$request->warehouse_id)
 //            ->where('product_id',$request->product_id)
@@ -2549,10 +2957,55 @@ class BackendController extends Controller
         $warehouse_id = $request->warehouse_id;
         $store_id = $request->store_id;
 
+
+        $get_invoice_no = StockTransfer::latest()->pluck('invoice_no')->first();
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("Stock-transfer-","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
+        }else{
+            $invoice_no = 1;
+        }
+
+        $total_amount = 0;
+        foreach ($request->products as $data) {
+            $product_id = $data['product_id'];
+            $price = Product::where('id',$product_id)->pluck('purchase_price')->first();
+            $total_amount += $price;
+        }
+
+        $final_invoice = 'Stock-transfer-'.$invoice_no;
+        $stock_transfer = new StockTransfer();
+        $stock_transfer->invoice_no=$final_invoice;
+        $stock_transfer->user_id=Auth::user()->id;
+        $stock_transfer->warehouse_id = $warehouse_id;
+        $stock_transfer->store_id = $store_id;
+        $stock_transfer->total_amount = $total_amount;
+        $stock_transfer->paid_amount = 0;
+        $stock_transfer->due_amount = $total_amount;
+        $stock_transfer->issue_date = $date;
+        $stock_transfer->due_date = $date;
+        $stock_transfer->save();
+        $stock_transfer_insert_id = $stock_transfer->id;
+
         $insert_id = false;
 
         foreach ($request->products as $data) {
+
             $product_id = $data['product_id'];
+            $product_info = Product::where('id',$product_id)->first();
+
+
+            $stock_transfer_detail = new StockTransferDetail();
+            $stock_transfer_detail->stock_transfer_id = $stock_transfer_insert_id;
+            $stock_transfer_detail->product_unit_id = $data['product_unit_id'];
+            $stock_transfer_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $stock_transfer_detail->product_id = $product_id;
+            $stock_transfer_detail->barcode = $product_info->barcode;
+            $stock_transfer_detail->qty = $data['qty'];
+            $stock_transfer_detail->price = $product_info->purchase_price;
+            $stock_transfer_detail->sub_total = $data['qty']*$product_info->purchase_price;
+            $stock_transfer_detail->issue_date = $date;
+            $stock_transfer_detail->save();
 
 
             $check_previous_warehouse_current_stock = Stock::where('warehouse_id',$warehouse_id)
@@ -2699,7 +3152,7 @@ class BackendController extends Controller
                 ->where('stocks.stock_where','store')
                 ->where('stocks.product_id',$data->product_id)
                 ->where('stocks.store_id',$request->store_id)
-                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
                 ->orderBy('stocks.id','desc')
                 ->first();
 
@@ -2711,6 +3164,9 @@ class BackendController extends Controller
                 $nested_data['product_name'] = $stock_row->product_name;
                 $nested_data['purchase_price'] = $stock_row->purchase_price;
                 $nested_data['selling_price'] = $stock_row->selling_price;
+                $nested_data['vat_status'] = $stock_row->vat_status;
+                $nested_data['vat_percentage'] = $stock_row->vat_percentage;
+                $nested_data['vat_amount'] = $stock_row->vat_amount;
                 $nested_data['item_code'] = $stock_row->item_code;
                 $nested_data['barcode'] = $stock_row->barcode;
                 $nested_data['image'] = $stock_row->image;
@@ -2954,6 +3410,7 @@ class BackendController extends Controller
         $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale->paid_amount = $request->paid_amount;
         $productSale->due_amount = $request->due_amount;
+        $productSale->total_vat_amount = $request->total_vat_amount;
         $productSale->total_amount = $request->total_amount;
         $productSale->sale_date = $date;
         $productSale->sale_date_time = $date_time;
@@ -3022,7 +3479,8 @@ class BackendController extends Controller
                 $product_sale_detail->product_id = $product_id;
                 $product_sale_detail->qty = $data['qty'];
                 $product_sale_detail->price = $data['mrp_price'];
-                $product_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $product_sale_detail->vat_amount = $data['vat_amount'];
+                $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
                 $product_sale_detail->barcode = $barcode;
                 $product_sale_detail->sale_date = $date;
                 $product_sale_detail->return_among_day = 2;
@@ -3125,6 +3583,7 @@ class BackendController extends Controller
         $productSale ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale ->paid_amount = $request->paid_amount;
         $productSale ->due_amount = $request->due_amount;
+        $productSale ->total_vat_amount = $request->total_vat_amount;
         $productSale ->total_amount = $request->total_amount;
         $productSale->update();
         $affectedRows = $productSale->id;
@@ -3141,8 +3600,9 @@ class BackendController extends Controller
                 $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $product_sale_detail->product_id = $product_id;
                 $product_sale_detail->qty = $data['qty'];
+                $product_sale_detail->vat_amount = $data['vat_amount'];
                 $product_sale_detail->price = $data['mrp_price'];
-                $product_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
                 $product_sale_detail->barcode = $barcode;
                 $product_sale_detail->update();
 
@@ -3306,6 +3766,7 @@ class BackendController extends Controller
         $productSale ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale ->paid_amount = $request->paid_amount;
         $productSale ->due_amount = $request->due_amount;
+        $productSale ->total_vat_amount = $request->total_vat_amount;
         $productSale ->total_amount = $request->total_amount;
         $productSale ->sale_date = $date;
         $productSale ->sale_date_time = $date_time;
@@ -3375,7 +3836,8 @@ class BackendController extends Controller
                 $product_sale_detail->barcode = $barcode;
                 $product_sale_detail->qty = $data['qty'];
                 $product_sale_detail->price = $data['mrp_price'];
-                $product_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $product_sale_detail->vat_amount = $data['vat_amount'];
+                $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
                 $product_sale_detail->sale_date = $date;
                 $product_sale_detail->return_among_day = 2;
                 $product_sale_detail->return_last_date = $add_two_day_date;
@@ -3478,6 +3940,7 @@ class BackendController extends Controller
         $productSale ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale ->paid_amount = $request->paid_amount;
         $productSale ->due_amount = $request->due_amount;
+        $productSale ->total_vat_amount = $request->total_vat_amount;
         $productSale ->total_amount = $request->total_amount;
         $productSale->update();
         $affectedRows = $productSale->id;
@@ -3495,7 +3958,8 @@ class BackendController extends Controller
                 $purchase_sale_detail->product_id = $product_id;
                 $purchase_sale_detail->qty = $data['qty'];
                 $purchase_sale_detail->price = $data['mrp_price'];
-                $purchase_sale_detail->sub_total = $data['qty']*$data['mrp_price'];
+                $purchase_sale_detail->vat_amount = $data['vat_amount'];
+                $purchase_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
                 $purchase_sale_detail->barcode = $barcode;
                 $purchase_sale_detail->update();
 
