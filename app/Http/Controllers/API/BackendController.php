@@ -1131,7 +1131,7 @@ class BackendController extends Controller
         $products = DB::table('products')
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.whole_sale_price as whole_sale_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount')
             ->orderBy('products.id','desc')
             ->get();
 
@@ -1152,7 +1152,7 @@ class BackendController extends Controller
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             //->where('products.id','>',$cursor)
             //->limit($limit)
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             //->orderBy('products.id','desc')1
             ->paginate(12);
 
@@ -1173,7 +1173,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('products.barcode',$request->barcode)
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             ->paginate(1);
 
         if($products)
@@ -1194,7 +1194,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('products.item_code',$request->item_code)
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             ->paginate(1);
 
         if($products)
@@ -1215,7 +1215,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('products.name','like','%'.$request->name.'%')
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             ->paginate(12);
 
         if($products)
@@ -1235,7 +1235,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('products.status',1)
-            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             ->orderBy('products.id','desc')
             ->get();
 
@@ -1259,6 +1259,7 @@ class BackendController extends Controller
             //'barcode'=> 'required',
             //'barcode' => 'required|unique:products,barcode',
             'purchase_price'=> 'required',
+            'whole_sale_price'=> 'required',
             'selling_price'=> 'required',
             'date'=> 'required',
             'status'=> 'required',
@@ -1278,10 +1279,14 @@ class BackendController extends Controller
         $product_vat = ProductVat::latest()->first();
         $vat_percentage = NULL;
         $vat_amount = NULL;
+        $vat_whole_amount = NULL;
         if($product_vat){
             $vat_percentage = $product_vat->vat_percentage;
-            if($request->selling_price){
+            if($request->selling_price > 0){
                 $vat_amount = $request->selling_price*$vat_percentage/100;
+            }
+            if($request->whole_sale_price > 0){
+                $vat_whole_amount = $request->whole_sale_price*$vat_percentage/100;
             }
         }
 
@@ -1295,10 +1300,12 @@ class BackendController extends Controller
         $product->low_inventory_alert = $request->low_inventory_alert ? $request->low_inventory_alert : NULL;
         $product->product_brand_id = $request->product_brand_id ? $request->product_brand_id : NULL;
         $product->purchase_price = $request->purchase_price;
+        $product->whole_sale_price = $request->whole_sale_price;
         $product->selling_price = $request->selling_price;
         $product->vat_status = $request->vat_status;
         $product->vat_percentage = $vat_percentage;
         $product->vat_amount = $vat_amount;
+        $product->vat_whole_amount = $vat_whole_amount;
         $product->note = $request->note ? $request->note : NULL;
         $product->date = $request->date;
         $product->status = $request->status;
@@ -1322,6 +1329,7 @@ class BackendController extends Controller
             //'barcode'=> 'required',
             //'barcode' => 'required|unique:products,barcode,'.$request->product_id,
             'purchase_price'=> 'required',
+            'whole_sale_price'=> 'required',
             'selling_price'=> 'required',
             'date'=> 'required',
             'status'=> 'required',
@@ -1347,10 +1355,14 @@ class BackendController extends Controller
         $product_vat = ProductVat::latest()->first();
         $vat_percentage = NULL;
         $vat_amount = NULL;
+        $vat_whole_amount = NULL;
         if($product_vat){
             $vat_percentage = $product_vat->vat_percentage;
             if($request->selling_price){
                 $vat_amount = $request->selling_price*$vat_percentage/100;
+            }
+            if($request->whole_sale_price > 0){
+                $vat_whole_amount = $request->whole_sale_price*$vat_percentage/100;
             }
         }
 
@@ -1363,10 +1375,12 @@ class BackendController extends Controller
         $product->low_inventory_alert = $request->low_inventory_alert ? $request->low_inventory_alert : NULL;
         $product->product_brand_id = $request->product_brand_id ? $request->product_brand_id : NULL;
         $product->purchase_price = $request->purchase_price;
+        $product->whole_sale_price = $request->whole_sale_price;
         $product->selling_price = $request->selling_price;
         $product->vat_status = $request->vat_status;
         $product->vat_percentage = $vat_percentage;
         $product->vat_amount = $vat_amount;
+        $product->vat_whole_amount = $vat_whole_amount;
         $product->note = $request->note ? $request->note : NULL;
         $product->date = $request->date;
         $product->status = $request->status;
@@ -2967,10 +2981,13 @@ class BackendController extends Controller
         }
 
         $total_amount = 0;
+        $total_vat_amount = 0;
         foreach ($request->products as $data) {
             $product_id = $data['product_id'];
-            $price = Product::where('id',$product_id)->pluck('purchase_price')->first();
-            $total_amount += $price;
+            //$price = Product::where('id',$product_id)->pluck('purchase_price')->first();
+            $Product_info = Product::where('id',$product_id)->first();
+            $total_amount += $Product_info->purchase_price;
+            $total_vat_amount += ($data['qty']*$Product_info->whole_sale_price);
         }
 
         $final_invoice = 'Stock-transfer-'.$invoice_no;
@@ -2979,6 +2996,7 @@ class BackendController extends Controller
         $stock_transfer->user_id=Auth::user()->id;
         $stock_transfer->warehouse_id = $warehouse_id;
         $stock_transfer->store_id = $store_id;
+        $stock_transfer->total_vat_amount = $total_vat_amount;
         $stock_transfer->total_amount = $total_amount;
         $stock_transfer->paid_amount = 0;
         $stock_transfer->due_amount = $total_amount;
@@ -3002,8 +3020,9 @@ class BackendController extends Controller
             $stock_transfer_detail->product_id = $product_id;
             $stock_transfer_detail->barcode = $product_info->barcode;
             $stock_transfer_detail->qty = $data['qty'];
+            $stock_transfer_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
             $stock_transfer_detail->price = $product_info->purchase_price;
-            $stock_transfer_detail->sub_total = $data['qty']*$product_info->purchase_price;
+            $stock_transfer_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
             $stock_transfer_detail->issue_date = $date;
             $stock_transfer_detail->save();
 
@@ -3086,6 +3105,44 @@ class BackendController extends Controller
         }
     }
 
+    public function stockTransferList(){
+        $stock_transfer_lists = DB::table('stock_transfers')
+            ->leftJoin('users','stock_transfers.user_id','users.id')
+            ->leftJoin('warehouses','stock_transfers.warehouse_id','warehouses.id')
+            ->leftJoin('stores','stock_transfers.store_id','stores.id')
+            //->where('stock_transfers.sale_type','whole_sale')
+            ->select('stock_transfers.id','stock_transfers.invoice_no','stock_transfers.total_amount','stock_transfers.issue_date','stock_transfers.total_vat_amount','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
+            ->get();
+
+        if($stock_transfer_lists)
+        {
+            $success['stock_transfer_list'] =  $stock_transfer_lists;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Stock Transfer List Found!'], $this->failStatus);
+        }
+    }
+
+    public function stockTransferDetails(Request $request){
+        $stock_transfer_details = DB::table('stock_transfers')
+            ->join('stock_transfer_details','stock_transfers.id','stock_transfer_details.stock_transfer_id')
+            ->leftJoin('products','stock_transfer_details.product_id','products.id')
+            ->leftJoin('product_units','stock_transfer_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stock_transfer_details.product_brand_id','product_brands.id')
+            ->where('stock_transfers.id',$request->stock_transfer_id)
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','stock_transfer_details.qty','stock_transfer_details.id as stock_transfer_detail_id','stock_transfer_details.price','stock_transfer_details.sub_total','stock_transfer_details.vat_amount')
+            ->get();
+
+        if($stock_transfer_details)
+        {
+            $success['stock_transfer_details'] =  $stock_transfer_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Stock Transfer Details Found!'], $this->failStatus);
+        }
+    }
+
+
 //    public function storeStockList(Request $request){
 //        $store_stock_list = DB::table('stocks')
 //            ->leftJoin('users','stocks.user_id','users.id')
@@ -3152,7 +3209,7 @@ class BackendController extends Controller
                 ->where('stocks.stock_where','store')
                 ->where('stocks.product_id',$data->product_id)
                 ->where('stocks.store_id',$request->store_id)
-                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
                 ->orderBy('stocks.id','desc')
                 ->first();
 
@@ -3163,10 +3220,12 @@ class BackendController extends Controller
                 $nested_data['product_id'] = $stock_row->product_id;
                 $nested_data['product_name'] = $stock_row->product_name;
                 $nested_data['purchase_price'] = $stock_row->purchase_price;
+                $nested_data['whole_sale_price'] = $stock_row->whole_sale_price;
                 $nested_data['selling_price'] = $stock_row->selling_price;
                 $nested_data['vat_status'] = $stock_row->vat_status;
                 $nested_data['vat_percentage'] = $stock_row->vat_percentage;
                 $nested_data['vat_amount'] = $stock_row->vat_amount;
+                $nested_data['vat_whole_amount'] = $stock_row->vat_whole_amount;
                 $nested_data['item_code'] = $stock_row->item_code;
                 $nested_data['barcode'] = $stock_row->barcode;
                 $nested_data['image'] = $stock_row->image;
@@ -3320,7 +3379,7 @@ class BackendController extends Controller
             ->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.sale_type','whole_sale')
             //->select('product_purchases.id','product_purchases.invoice_no','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.name as supplier_name')
-            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
             ->get();
 
         if($product_whole_sales)
@@ -3358,7 +3417,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
             ->where('product_sales.id',$request->product_sale_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price')
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.vat_amount')
             ->get();
 
         if($product_sale_details)
@@ -3693,7 +3752,7 @@ class BackendController extends Controller
             ->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.sale_type','pos_sale')
             //->select('product_purchases.id','product_purchases.invoice_no','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.name as supplier_name')
-            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
             ->get();
 
         if($product_pos_sales)
@@ -3712,7 +3771,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
             ->where('product_sales.id',$request->product_sale_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price')
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.vat_amount')
             ->get();
 
         if($product_sale_details)

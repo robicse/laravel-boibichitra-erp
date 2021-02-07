@@ -184,6 +184,9 @@ Route::middleware('auth:api')->post('/warehouse_current_stock_list', 'API\Backen
 //Route::middleware('auth:api')->post('/check_warehouse_product_current_stock', 'API\BackendController@checkWarehouseProductCurrentStock');
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\BackendController@warehouseToStoreStockCreate');
 Route::middleware('auth:api')->post('/store_current_stock_list', 'API\BackendController@storeCurrentStockList');
+Route::middleware('auth:api')->get('/stock_transfer_list', 'API\BackendController@stockTransferList');
+Route::middleware('auth:api')->post('/stock_transfer_details', 'API\BackendController@stockTransferDetails');
+
 
 // product sale whole
 Route::middleware('auth:api')->get('/product_whole_sale_list', 'API\BackendController@productWholeSaleList');

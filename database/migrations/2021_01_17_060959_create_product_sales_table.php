@@ -25,6 +25,7 @@ class CreateProductSalesTable extends Migration
             $table->string('discount_amount')->nullable();
             $table->float('paid_amount', 8,2);
             $table->float('due_amount', 8,2);
+            $table->float('total_vat_amount', 8,2);
             $table->float('total_amount', 8,2);
             $table->string('sale_date');
             $table->string('sale_date_time');

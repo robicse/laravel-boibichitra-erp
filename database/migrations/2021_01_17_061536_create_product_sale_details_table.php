@@ -22,6 +22,7 @@ class CreateProductSaleDetailsTable extends Migration
             $table->string('barcode');
             $table->integer('qty');
             $table->float('price', 8,2);
+            $table->float('vat_amount', 8,2);
             $table->float('sub_total', 8,2);
             $table->string('sale_date');
             $table->string('return_among_day');

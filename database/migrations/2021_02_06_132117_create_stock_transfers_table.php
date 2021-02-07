@@ -19,6 +19,7 @@ class CreateStockTransfersTable extends Migration
             $table->bigInteger('user_id');
             $table->bigInteger('warehouse_id')->unsigned()->nullable();
             $table->bigInteger('store_id')->unsigned();
+            $table->float('total_vat_amount', 8,2);
             $table->float('total_amount', 8,2);
             $table->float('paid_amount', 8,2);
             $table->float('due_amount', 8,2);

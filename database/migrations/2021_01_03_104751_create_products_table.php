@@ -23,10 +23,12 @@ class CreateProductsTable extends Migration
             $table->integer('low_inventory_alert')->nullable();
             $table->bigInteger('product_brand_id')->unsigned()->nullable();
             $table->float('purchase_price',8,2);
+            $table->float('whole_sale_price',8,2);
             $table->float('selling_price',8,2);
             $table->integer('vat_status')->default(0);
-            $table->integer('vat_percentage')->nullable();
-            $table->float('vat_price',8,2);
+            $table->integer('vat_percentage')->default(0);
+            $table->float('vat_whole_amount',8,2)->default(0);
+            $table->float('vat_amount',8,2)->default(0);
             $table->text('note')->nullable();
             $table->string('date');
             $table->integer('status')->default(1);
