@@ -3069,7 +3069,7 @@ class BackendController extends Controller
             $stock->ref_id = NULL;
             $stock->user_id = $user_id;
             $stock->warehouse_id = $warehouse_id;
-            $stock->store_id = $store_id;
+            $stock->store_id = NULL;
             $stock->product_id = $product_id;
             $stock->product_unit_id = $data['product_unit_id'];
             $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
