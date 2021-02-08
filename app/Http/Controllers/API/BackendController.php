@@ -3066,7 +3066,7 @@ class BackendController extends Controller
 
             // stock out warehouse product
             $stock = new Stock();
-            $stock->ref_id = NULL;
+            $stock->ref_id = $stock_transfer_insert_id;
             $stock->user_id = $user_id;
             $stock->warehouse_id = $warehouse_id;
             $stock->store_id = NULL;
@@ -3101,7 +3101,7 @@ class BackendController extends Controller
 
             // stock in store product
             $stock = new Stock();
-            $stock->ref_id = NULL;
+            $stock->ref_id = $stock_transfer_insert_id;
             $stock->user_id = $user_id;
             $stock->warehouse_id = $warehouse_id;
             $stock->store_id = $store_id;
