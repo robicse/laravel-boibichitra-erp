@@ -1277,10 +1277,10 @@ class BackendController extends Controller
         }
 
         $product_vat = ProductVat::latest()->first();
-        $vat_percentage = NULL;
-        $vat_amount = NULL;
-        $vat_whole_amount = NULL;
-        if($product_vat){
+        $vat_percentage = 0;
+        $vat_amount = 0;
+        $vat_whole_amount = 0;
+        if($product_vat && ($request->vat_status == 1)){
             $vat_percentage = $product_vat->vat_percentage;
             if($request->selling_price > 0){
                 $vat_amount = $request->selling_price*$vat_percentage/100;
@@ -1353,12 +1353,12 @@ class BackendController extends Controller
         $image = Product::where('id',$request->product_id)->pluck('image')->first();
 
         $product_vat = ProductVat::latest()->first();
-        $vat_percentage = NULL;
-        $vat_amount = NULL;
-        $vat_whole_amount = NULL;
-        if($product_vat){
+        $vat_percentage = 0;
+        $vat_amount = 0;
+        $vat_whole_amount = 0;
+        if($product_vat && ($request->vat_status == 1)){
             $vat_percentage = $product_vat->vat_percentage;
-            if($request->selling_price){
+            if($request->selling_price > 0){
                 $vat_amount = $request->selling_price*$vat_percentage/100;
             }
             if($request->whole_sale_price > 0){
@@ -2401,12 +2401,51 @@ class BackendController extends Controller
             ->leftJoin('warehouses','product_purchases.warehouse_id','warehouses.id')
             ->where('product_purchases.due_amount','>',0)
             ->select('product_purchases.id','product_purchases.invoice_no','product_purchases.discount_type','product_purchases.discount_amount','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.id as supplier_id','parties.name as supplier_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
-            ->get();
+            ->paginate(12);
 
         if($payment_paid_due_amount)
         {
+            $total_payment_paid_due_amount = 0;
+            $sum_payment_paid_due_amount = DB::table('product_purchases')
+                ->where('product_purchases.due_amount','>',0)
+                ->select(DB::raw('SUM(due_amount) as total_payment_paid_due_amount'))
+                ->first();
+            if($sum_payment_paid_due_amount){
+                $total_payment_paid_due_amount = $sum_payment_paid_due_amount->total_payment_paid_due_amount;
+            }
+
             $success['payment_paid_due_amount'] =  $payment_paid_due_amount;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $success,'total_payment_paid_due_amount'=>$total_payment_paid_due_amount], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Payment Due List Found!'], $this->failStatus);
+        }
+    }
+
+    public function paymentPaidDueListBySupplier(Request $request){
+        $payment_paid_due_amount = DB::table('product_purchases')
+            ->leftJoin('users','product_purchases.user_id','users.id')
+            ->leftJoin('parties','product_purchases.party_id','parties.id')
+            ->leftJoin('warehouses','product_purchases.warehouse_id','warehouses.id')
+            ->where('product_purchases.due_amount','>',0)
+            ->where('product_purchases.party_id',$request->supplier_id)
+            ->select('product_purchases.id','product_purchases.invoice_no','product_purchases.discount_type','product_purchases.discount_amount','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.id as supplier_id','parties.name as supplier_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
+            ->paginate(12);
+
+
+        if($payment_paid_due_amount)
+        {
+            $total_payment_paid_due_amount = 0;
+            $sum_payment_paid_due_amount = DB::table('product_purchases')
+                ->where('product_purchases.due_amount','>',0)
+                ->where('product_purchases.party_id',$request->supplier_id)
+                ->select(DB::raw('SUM(due_amount) as total_payment_paid_due_amount'))
+                ->first();
+            if($sum_payment_paid_due_amount){
+                $total_payment_paid_due_amount = $sum_payment_paid_due_amount->total_payment_paid_due_amount;
+            }
+
+            $success['payment_paid_due_amount'] =  $payment_paid_due_amount;
+            return response()->json(['success'=>true,'response' => $success,'total_payment_paid_due_amount'=>$total_payment_paid_due_amount], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Payment Due List Found!'], $this->failStatus);
         }
@@ -2415,14 +2454,14 @@ class BackendController extends Controller
     public function paymentPaidDueCreate(Request $request){
         //dd($request->all());
         $this->validate($request, [
-            'party_id'=> 'required',
+            'supplier_id'=> 'required',
             'warehouse_id'=> 'required',
             'paid_amount'=> 'required',
             'new_paid_amount'=> 'required',
             'due_amount'=> 'required',
-            'total_amount'=> 'required',
+            //'total_amount'=> 'required',
             'payment_type'=> 'required',
-            'product_purchase_invoice_no'=> 'required',
+            'invoice_no'=> 'required',
         ]);
 
         $date = date('Y-m-d');
@@ -2431,9 +2470,9 @@ class BackendController extends Controller
         $user_id = Auth::user()->id;
 
         // product purchase
-        $productPurchase = ProductPurchase::find($request->product_purchase_invoice_no);
-        $productPurchase ->paid_amount = $request->paid_amount + $request->new_paid_amount;
-        $productPurchase ->due_amount = $request->due_amount;
+        $productPurchase = ProductPurchase::where('invoice_no',$request->invoice_no)->first();
+        $productPurchase->paid_amount = $request->paid_amount;
+        $productPurchase->due_amount = $request->due_amount;
         //$productPurchase ->total_amount = $request->total_amount;
         $affectedRow = $productPurchase->save();
 
@@ -2441,25 +2480,26 @@ class BackendController extends Controller
             // transaction
             $transaction = new Transaction();
             $transaction->ref_id = $productPurchase->id;
-            $transaction->invoice_no = $request->product_purchase_invoice_no;
+            $transaction->invoice_no = $request->invoice_no;
             $transaction->user_id = $user_id;
             $transaction->warehouse_id = $request->warehouse_id;
-            $transaction->party_id = $request->party_id;
+            $transaction->party_id = $request->supplier_id;
             $transaction->transaction_type = 'payment_paid';
             $transaction->payment_type = $request->payment_type;
             $transaction->amount = $request->new_paid_amount;
             $transaction->transaction_date = $date;
             $transaction->transaction_date_time = $date_time;
             $transaction->save();
+            $transaction_id = $transaction->id;
 
             // payment paid
-            $previous_current_paid_amount = PaymentPaid::where('invoice_no',$request->product_purchase_invoice_no)->latest()->pluck('current_paid_amount')->first();
+            $previous_current_paid_amount = PaymentPaid::where('invoice_no',$request->invoice_no)->latest()->pluck('current_paid_amount')->first();
             $payment_paid = new PaymentPaid();
-            $payment_paid->invoice_no = $request->product_purchase_invoice_no;
+            $payment_paid->invoice_no = $request->invoice_no;
             $payment_paid->product_purchase_id = $productPurchase->id;
             $payment_paid->product_purchase_return_id = NULL;
             $payment_paid->user_id = $user_id;
-            $payment_paid->party_id = $request->party_id;
+            $payment_paid->party_id = $request->supplier_id;
             $payment_paid->paid_type = 'Purchase';
             $payment_paid->paid_amount = $request->new_paid_amount;
             $payment_paid->due_amount = $request->due_amount;
@@ -2469,7 +2509,11 @@ class BackendController extends Controller
             $payment_paid->save();
 
 
-            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+            if($request->payment_type == 'SSL Commerz'){
+                return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => $request->payment_type], $this->successStatus);
+            }else{
+                return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+            }
         }else{
             return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
         }
@@ -2478,14 +2522,14 @@ class BackendController extends Controller
     public function paymentCollectionDueCreate(Request $request){
         //dd($request->all());
         $this->validate($request, [
-            'party_id'=> 'required',
+            'customer_id'=> 'required',
             'store_id'=> 'required',
             'paid_amount'=> 'required',
             'new_paid_amount'=> 'required',
             'due_amount'=> 'required',
-            'total_amount'=> 'required',
+            //'total_amount'=> 'required',
             'payment_type'=> 'required',
-            'product_sale_invoice_no'=> 'required',
+            'invoice_no'=> 'required',
         ]);
 
         $date = date('Y-m-d');
@@ -2496,8 +2540,8 @@ class BackendController extends Controller
         $warehouse_id = Store::where('id',$store_id)->latest('id')->pluck('warehouse_id')->first();
 
         // product sale return
-        $productSale = ProductSale::find($request->product_sale_invoice_no);
-        $productSale ->paid_amount = $request->total_amount + $request->new_paid_amount;
+        $productSale = ProductSale::where('invoice_no',$request->invoice_no)->first();
+        $productSale ->paid_amount = $request->paid_amount;
         $productSale ->due_amount = $request->due_amount;
         //$productSale ->total_amount = $request->total_amount;
         $affectedRow = $productSale->save();
@@ -2508,26 +2552,27 @@ class BackendController extends Controller
             // transaction
             $transaction = new Transaction();
             $transaction->ref_id = $productSale->id;
-            $transaction->invoice_no = $request->product_sale_invoice_no;
+            $transaction->invoice_no = $request->invoice_no;
             $transaction->user_id = $user_id;
             $transaction->warehouse_id = $warehouse_id;
             $transaction->store_id = $store_id;
-            $transaction->party_id = $request->party_id;
+            $transaction->party_id = $request->customer_id;
             $transaction->transaction_type = 'payment_collection';
             $transaction->payment_type = $request->payment_type;
             $transaction->amount = $request->new_paid_amount;
             $transaction->transaction_date = $date;
             $transaction->transaction_date_time = $date_time;
             $transaction->save();
+            $transaction_id = $transaction->id;
 
             // payment paid
-            $previous_current_collection_amount = PaymentCollection::where('invoice_no',$request->product_sale_invoice_no)->latest()->pluck('current_collection_amount')->first();
+            $previous_current_collection_amount = PaymentCollection::where('invoice_no',$request->invoice_no)->latest()->pluck('current_collection_amount')->first();
             $payment_collection = new PaymentCollection();
-            $payment_collection->invoice_no = $request->product_sale_invoice_no;
+            $payment_collection->invoice_no = $request->invoice_no;
             $payment_collection->product_sale_id = $productSale->id;
             $payment_collection->product_sale_return_id = NULL;
             $payment_collection->user_id = $user_id;
-            $payment_collection->party_id = $request->party_id;
+            $payment_collection->party_id = $request->customer_id;
             $payment_collection->warehouse_id = $request->warehouse_id;
             $payment_collection->store_id = $request->store_id;
             $payment_collection->collection_type = 'Sale';
@@ -2538,8 +2583,11 @@ class BackendController extends Controller
             $payment_collection->collection_date_time = $date_time;
             $payment_collection->save();
 
-
-            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+            if($request->payment_type == 'SSL Commerz'){
+                return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => $request->payment_type], $this->successStatus);
+            }else{
+                return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+            }
         }else{
             return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
         }
@@ -2553,12 +2601,55 @@ class BackendController extends Controller
             ->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.due_amount','>',0)
             ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
-            ->get();
+            ->paginate(12);
 
         if($payment_collection_due_list)
         {
+
+            $total_payment_collection_due_amount = 0;
+            $sum_payment_collection_due_amount = DB::table('product_sales')
+                ->where('product_sales.due_amount','>',0)
+                ->select(DB::raw('SUM(due_amount) as total_payment_collection_due_amount'))
+                ->first();
+            if($sum_payment_collection_due_amount){
+                $total_payment_collection_due_amount = $sum_payment_collection_due_amount->total_payment_collection_due_amount;
+            }
+
             $success['payment_collection_due_list'] =  $payment_collection_due_list;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+
+            return response()->json(['success'=>true,'response' => $success,'total_payment_collection_due_amount'=>$total_payment_collection_due_amount], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Payment Collection Due List Found!'], $this->failStatus);
+        }
+    }
+
+    public function paymentCollectionDueListByCustomer(Request $request){
+        $payment_collection_due_list = DB::table('product_sales')
+            ->leftJoin('users','product_sales.user_id','users.id')
+            ->leftJoin('parties','product_sales.party_id','parties.id')
+            ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+            ->leftJoin('stores','product_sales.store_id','stores.id')
+            ->where('product_sales.due_amount','>',0)
+            ->where('product_sales.party_id',$request->customer_id)
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->paginate(12);
+
+        if($payment_collection_due_list)
+        {
+
+            $total_payment_collection_due_amount = 0;
+            $sum_payment_collection_due_amount = DB::table('product_sales')
+                ->where('product_sales.due_amount','>',0)
+                ->where('product_sales.party_id',$request->customer_id)
+                ->select(DB::raw('SUM(due_amount) as total_payment_collection_due_amount'))
+                ->first();
+            if($sum_payment_collection_due_amount){
+                $total_payment_collection_due_amount = $sum_payment_collection_due_amount->total_payment_collection_due_amount;
+            }
+
+            $success['payment_collection_due_list'] =  $payment_collection_due_list;
+
+            return response()->json(['success'=>true,'response' => $success,'total_payment_collection_due_amount'=>$total_payment_collection_due_amount], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Payment Collection Due List Found!'], $this->failStatus);
         }
@@ -2664,49 +2755,21 @@ class BackendController extends Controller
     }
 
     public function warehouseCurrentStockListPagination(Request $request){
-        $warehouse_stock_product_list = Stock::where('warehouse_id',$request->warehouse_id)
-            ->select('product_id')
-            ->groupBy('product_id')
-            ->latest('id')
-            ->paginate(12);
 
-        //return response()->json(['success'=>true,'response' => $warehouse_stock_product_list], $this->successStatus);
-
-        $warehouse_stock_product = [];
-        foreach($warehouse_stock_product_list as $data){
-
-            $stock_row = DB::table('stocks')
+        $warehouse_stock_product = DB::table('stocks')
                 ->join('warehouses','stocks.warehouse_id','warehouses.id')
                 ->leftJoin('products','stocks.product_id','products.id')
                 ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
                 ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
                 ->where('stocks.stock_where','warehouse')
-                ->where('stocks.product_id',$data->product_id)
+                ->whereIn('stocks.id', function($query) {
+                    $query->from('stocks')->groupBy('product_id')->selectRaw('MAX(id)');
+                })
                 ->where('stocks.warehouse_id',$request->warehouse_id)
                 ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
                 ->latest('id','desc')
-                ->first();
+                ->paginate(12);
 
-            if($stock_row){
-                $nested_data['stock_id'] = $stock_row->id;
-                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
-                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
-                $nested_data['product_id'] = $stock_row->product_id;
-                $nested_data['product_name'] = $stock_row->product_name;
-                $nested_data['purchase_price'] = $stock_row->purchase_price;
-                $nested_data['selling_price'] = $stock_row->selling_price;
-                $nested_data['item_code'] = $stock_row->item_code;
-                $nested_data['barcode'] = $stock_row->barcode;
-                $nested_data['image'] = $stock_row->image;
-                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
-                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
-                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
-                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
-                $nested_data['current_stock'] = $stock_row->current_stock;
-
-                array_push($warehouse_stock_product,$nested_data);
-            }
-        }
 
         if($warehouse_stock_product)
         {
@@ -2719,50 +2782,20 @@ class BackendController extends Controller
 
     public function warehouseCurrentStockListPaginationBarcode(Request $request){
 
-        $warehouse_stock_product_list = DB::table('stocks')
-            ->join('products','stocks.product_id','=','products.id')
+        $warehouse_stock_product = DB::table('stocks')
+            ->join('warehouses','stocks.warehouse_id','warehouses.id')
+            ->leftJoin('products','stocks.product_id','products.id')
+            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+            ->where('stocks.stock_where','warehouse')
+            ->whereIn('stocks.id', function($query) {
+                $query->from('stocks')->groupBy('product_id')->selectRaw('MAX(id)');
+            })
             ->where('products.barcode',$request->barcode)
-            ->select('stocks.product_id')
-            ->groupBy('stocks.product_id')
-            ->latest('stocks.id')
+            ->where('stocks.warehouse_id',$request->warehouse_id)
+            ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+            ->latest('id','desc')
             ->paginate(1);
-
-
-        $warehouse_stock_product = [];
-        foreach($warehouse_stock_product_list as $data){
-
-            $stock_row = DB::table('stocks')
-                ->join('warehouses','stocks.warehouse_id','warehouses.id')
-                ->leftJoin('products','stocks.product_id','products.id')
-                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
-                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
-                ->where('stocks.stock_where','warehouse')
-                ->where('stocks.product_id',$data->product_id)
-                ->where('stocks.warehouse_id',$request->warehouse_id)
-                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
-                ->latest('id','desc')
-                ->first();
-
-            if($stock_row){
-                $nested_data['stock_id'] = $stock_row->id;
-                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
-                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
-                $nested_data['product_id'] = $stock_row->product_id;
-                $nested_data['product_name'] = $stock_row->product_name;
-                $nested_data['purchase_price'] = $stock_row->purchase_price;
-                $nested_data['selling_price'] = $stock_row->selling_price;
-                $nested_data['item_code'] = $stock_row->item_code;
-                $nested_data['barcode'] = $stock_row->barcode;
-                $nested_data['image'] = $stock_row->image;
-                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
-                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
-                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
-                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
-                $nested_data['current_stock'] = $stock_row->current_stock;
-
-                array_push($warehouse_stock_product,$nested_data);
-            }
-        }
 
         if($warehouse_stock_product)
         {
@@ -2775,50 +2808,20 @@ class BackendController extends Controller
 
     public function warehouseCurrentStockListPaginationItemcode(Request $request){
 
-        $warehouse_stock_product_list = DB::table('stocks')
-            ->join('products','stocks.product_id','=','products.id')
+        $warehouse_stock_product = DB::table('stocks')
+            ->join('warehouses','stocks.warehouse_id','warehouses.id')
+            ->leftJoin('products','stocks.product_id','products.id')
+            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+            ->where('stocks.stock_where','warehouse')
+            ->whereIn('stocks.id', function($query) {
+                $query->from('stocks')->groupBy('product_id')->selectRaw('MAX(id)');
+            })
             ->where('products.item_code',$request->item_code)
-            ->select('stocks.product_id')
-            ->groupBy('stocks.product_id')
-            ->latest('stocks.id')
+            ->where('stocks.warehouse_id',$request->warehouse_id)
+            ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+            ->latest('id','desc')
             ->paginate(1);
-
-
-        $warehouse_stock_product = [];
-        foreach($warehouse_stock_product_list as $data){
-
-            $stock_row = DB::table('stocks')
-                ->join('warehouses','stocks.warehouse_id','warehouses.id')
-                ->leftJoin('products','stocks.product_id','products.id')
-                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
-                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
-                ->where('stocks.stock_where','warehouse')
-                ->where('stocks.product_id',$data->product_id)
-                ->where('stocks.warehouse_id',$request->warehouse_id)
-                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
-                ->latest('id','desc')
-                ->first();
-
-            if($stock_row){
-                $nested_data['stock_id'] = $stock_row->id;
-                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
-                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
-                $nested_data['product_id'] = $stock_row->product_id;
-                $nested_data['product_name'] = $stock_row->product_name;
-                $nested_data['purchase_price'] = $stock_row->purchase_price;
-                $nested_data['selling_price'] = $stock_row->selling_price;
-                $nested_data['item_code'] = $stock_row->item_code;
-                $nested_data['barcode'] = $stock_row->barcode;
-                $nested_data['image'] = $stock_row->image;
-                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
-                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
-                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
-                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
-                $nested_data['current_stock'] = $stock_row->current_stock;
-
-                array_push($warehouse_stock_product,$nested_data);
-            }
-        }
 
         if($warehouse_stock_product)
         {
@@ -2831,50 +2834,20 @@ class BackendController extends Controller
 
     public function warehouseCurrentStockListPaginationProductName(Request $request){
 
-        $warehouse_stock_product_list = DB::table('stocks')
-            ->join('products','stocks.product_id','=','products.id')
+        $warehouse_stock_product = DB::table('stocks')
+            ->join('warehouses','stocks.warehouse_id','warehouses.id')
+            ->leftJoin('products','stocks.product_id','products.id')
+            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+            ->where('stocks.stock_where','warehouse')
+            ->whereIn('stocks.id', function($query) {
+                $query->from('stocks')->groupBy('product_id')->selectRaw('MAX(id)');
+            })
             ->where('products.name','like','%'.$request->name.'%')
-            ->select('stocks.product_id')
-            ->groupBy('stocks.product_id')
-            ->latest('stocks.id')
-            ->paginate(1);
-
-
-        $warehouse_stock_product = [];
-        foreach($warehouse_stock_product_list as $data){
-
-            $stock_row = DB::table('stocks')
-                ->join('warehouses','stocks.warehouse_id','warehouses.id')
-                ->leftJoin('products','stocks.product_id','products.id')
-                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
-                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
-                ->where('stocks.stock_where','warehouse')
-                ->where('stocks.product_id',$data->product_id)
-                ->where('stocks.warehouse_id',$request->warehouse_id)
-                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
-                ->latest('id','desc')
-                ->first();
-
-            if($stock_row){
-                $nested_data['stock_id'] = $stock_row->id;
-                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
-                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
-                $nested_data['product_id'] = $stock_row->product_id;
-                $nested_data['product_name'] = $stock_row->product_name;
-                $nested_data['purchase_price'] = $stock_row->purchase_price;
-                $nested_data['selling_price'] = $stock_row->selling_price;
-                $nested_data['item_code'] = $stock_row->item_code;
-                $nested_data['barcode'] = $stock_row->barcode;
-                $nested_data['image'] = $stock_row->image;
-                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
-                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
-                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
-                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
-                $nested_data['current_stock'] = $stock_row->current_stock;
-
-                array_push($warehouse_stock_product,$nested_data);
-            }
-        }
+            ->where('stocks.warehouse_id',$request->warehouse_id)
+            ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+            ->latest('id','desc')
+            ->paginate(12);
 
         if($warehouse_stock_product)
         {
@@ -2887,50 +2860,101 @@ class BackendController extends Controller
 
     public function storeCurrentStockListPagination(Request $request){
 
-        $store_stock_product_list = Stock::where('store_id',$request->store_id)
-            ->select('product_id')
-            ->groupBy('product_id')
-            ->latest('id')
-            ->paginate(12);
-
-        $store_stock_product = [];
-        foreach($store_stock_product_list as $data){
-
-            $stock_row = DB::table('stocks')
+        $store_stock_product = DB::table('stocks')
                 ->join('warehouses','stocks.warehouse_id','warehouses.id')
                 ->leftJoin('products','stocks.product_id','products.id')
                 ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
                 ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
                 ->where('stocks.stock_where','store')
-                ->where('stocks.product_id',$data->product_id)
+                ->whereIn('stocks.id', function($query) {
+                    $query->from('stocks')->groupBy('product_id')->selectRaw('MAX(id)');
+                })
                 ->where('stocks.store_id',$request->store_id)
                 ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
                 ->orderBy('stocks.id','desc')
-                ->first();
+                ->paginate(12);
 
-            if($stock_row){
-                $nested_data['stock_id'] = $stock_row->id;
-                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
-                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
-                $nested_data['product_id'] = $stock_row->product_id;
-                $nested_data['product_name'] = $stock_row->product_name;
-                $nested_data['purchase_price'] = $stock_row->purchase_price;
-                $nested_data['selling_price'] = $stock_row->selling_price;
-                $nested_data['vat_status'] = $stock_row->vat_status;
-                $nested_data['vat_percentage'] = $stock_row->vat_percentage;
-                $nested_data['vat_amount'] = $stock_row->vat_amount;
-                $nested_data['item_code'] = $stock_row->item_code;
-                $nested_data['barcode'] = $stock_row->barcode;
-                $nested_data['image'] = $stock_row->image;
-                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
-                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
-                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
-                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
-                $nested_data['current_stock'] = $stock_row->current_stock;
-
-                array_push($store_stock_product,$nested_data);
-            }
+        if($store_stock_product)
+        {
+            $success['store_current_stock_list'] =  $store_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Current Stock List Found!'], $this->failStatus);
         }
+    }
+
+
+
+    public function storeCurrentStockListPaginationBarcode(Request $request){
+
+        $store_stock_product = DB::table('stocks')
+            ->join('warehouses','stocks.warehouse_id','warehouses.id')
+            ->leftJoin('products','stocks.product_id','products.id')
+            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+            ->where('stocks.stock_where','store')
+            ->whereIn('stocks.id', function($query) {
+                $query->from('stocks')->groupBy('product_id')->selectRaw('MAX(id)');
+            })
+            ->where('products.barcode',$request->barcode)
+            ->where('stocks.store_id',$request->store_id)
+            ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+            ->orderBy('stocks.id','desc')
+            ->paginate(1);
+
+        if($store_stock_product)
+        {
+            $success['store_current_stock_list'] =  $store_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeCurrentStockListPaginationItemcode(Request $request){
+
+        $store_stock_product = DB::table('stocks')
+            ->join('warehouses','stocks.warehouse_id','warehouses.id')
+            ->leftJoin('products','stocks.product_id','products.id')
+            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+            ->where('stocks.stock_where','store')
+            ->whereIn('stocks.id', function($query) {
+                $query->from('stocks')->groupBy('product_id')->selectRaw('MAX(id)');
+            })
+            ->where('products.item_code',$request->item_code)
+            ->where('stocks.store_id',$request->store_id)
+            ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+            ->orderBy('stocks.id','desc')
+            ->paginate(1);
+
+        if($store_stock_product)
+        {
+            $success['store_current_stock_list'] =  $store_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
+
+
+    public function storeCurrentStockListPaginationProductName(Request $request){
+
+        $store_stock_product = DB::table('stocks')
+            ->join('warehouses','stocks.warehouse_id','warehouses.id')
+            ->leftJoin('products','stocks.product_id','products.id')
+            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+            ->where('stocks.stock_where','store')
+            ->whereIn('stocks.id', function($query) {
+                $query->from('stocks')->groupBy('product_id')->selectRaw('MAX(id)');
+            })
+            ->where('products.name','like','%'.$request->name.'%')
+            ->where('stocks.store_id',$request->store_id)
+            ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+            ->orderBy('stocks.id','desc')
+            ->paginate(12);
 
         if($store_stock_product)
         {

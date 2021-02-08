@@ -141,6 +141,11 @@ Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_it
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_product_name', 'API\BackendController@warehouseCurrentStockListPaginationProductName');
 
 Route::middleware('auth:api')->post('/store_current_stock_list_pagination', 'API\BackendController@storeCurrentStockListPagination');
+Route::middleware('auth:api')->post('/store_current_stock_list_pagination_barcode', 'API\BackendController@storeCurrentStockListPaginationBarcode');
+Route::middleware('auth:api')->post('/store_current_stock_list_pagination_item_code', 'API\BackendController@storeCurrentStockListPaginationItemcode');
+Route::middleware('auth:api')->post('/store_current_stock_list_pagination_product_name', 'API\BackendController@storeCurrentStockListPaginationProductName');
+
+
 
 
 // product brand
@@ -210,9 +215,12 @@ Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendC
 
 // payment
 Route::middleware('auth:api')->get('/payment_paid_due_list', 'API\BackendController@paymentPaidDueList');
+Route::middleware('auth:api')->post('/payment_paid_due_list_by_supplier', 'API\BackendController@paymentPaidDueListBySupplier');
 Route::middleware('auth:api')->post('/payment_paid_due_create', 'API\BackendController@paymentPaidDueCreate');
 Route::middleware('auth:api')->get('/payment_collection_due_list', 'API\BackendController@paymentCollectionDueList');
+Route::middleware('auth:api')->post('/payment_collection_due_list_by_customer', 'API\BackendController@paymentCollectionDueListByCustomer');
 Route::middleware('auth:api')->post('/payment_collection_due_create', 'API\BackendController@paymentCollectionDueCreate');
+
 
 // transaction history
 Route::middleware('auth:api')->get('/transaction_history', 'API\BackendController@transactionHistory');
