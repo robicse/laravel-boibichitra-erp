@@ -214,12 +214,16 @@ Route::middleware('auth:api')->post('/product_sale_return_details', 'API\Backend
 Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendController@productSaleReturnCreate');
 
 // payment
+Route::middleware('auth:api')->get('/supplier_list', 'API\BackendController@supplierList');
+Route::middleware('auth:api')->get('/customer_list', 'API\BackendController@customerList');
 Route::middleware('auth:api')->get('/payment_paid_due_list', 'API\BackendController@paymentPaidDueList');
 Route::middleware('auth:api')->post('/payment_paid_due_list_by_supplier', 'API\BackendController@paymentPaidDueListBySupplier');
 Route::middleware('auth:api')->post('/payment_paid_due_create', 'API\BackendController@paymentPaidDueCreate');
 Route::middleware('auth:api')->get('/payment_collection_due_list', 'API\BackendController@paymentCollectionDueList');
 Route::middleware('auth:api')->post('/payment_collection_due_list_by_customer', 'API\BackendController@paymentCollectionDueListByCustomer');
 Route::middleware('auth:api')->post('/payment_collection_due_create', 'API\BackendController@paymentCollectionDueCreate');
+Route::middleware('auth:api')->get('/store_due_paid_list', 'API\BackendController@storeDuePaidList');
+Route::middleware('auth:api')->post('/store_due_paid_list_by_store_date_difference', 'API\BackendController@storeDuePaidListByStoreDateDifference');
 
 
 // transaction history

@@ -2394,6 +2394,36 @@ class BackendController extends Controller
         }
     }
 
+    public function supplierList(){
+        $supplier_lists = DB::table('parties')
+            ->where('type','supplier')
+            ->select('id','name')
+            ->get();
+
+        if(count($supplier_lists) > 0)
+        {
+            $success['supplier_lists'] =  $supplier_lists;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Supplier List Found!'], $this->failStatus);
+        }
+    }
+
+    public function customerList(){
+        $customer_lists = DB::table('parties')
+            ->where('type','customer')
+            ->select('id','name')
+            ->get();
+
+        if(count($customer_lists) > 0)
+        {
+            $success['customer_lists'] =  $customer_lists;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Customer List Found!'], $this->failStatus);
+        }
+    }
+
     public function paymentPaidDueList(){
         $payment_paid_due_amount = DB::table('product_purchases')
             ->leftJoin('users','product_purchases.user_id','users.id')
@@ -2652,6 +2682,37 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success,'total_payment_collection_due_amount'=>$total_payment_collection_due_amount], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Payment Collection Due List Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeDuePaidList(){
+        $store_due_paid_amount = DB::table('stock_transfers')
+            ->select('id','invoice_no','issue_date','total_vat_amount','total_amount','paid_amount','due_amount')
+            ->paginate(12);
+
+        if($store_due_paid_amount)
+        {
+            $success['store_due_paid_amount'] =  $store_due_paid_amount;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Due Paid List Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeDuePaidListByStoreDateDifference(Request $request){
+        $store_due_paid_amount = DB::table('stock_transfers')
+            ->where('store_id',$request->store_id)
+            ->where('issue_date','>=',$request->start_date)
+            ->where('issue_date','<=',$request->end_date)
+            ->select('id','invoice_no','issue_date','total_vat_amount','total_amount','paid_amount','due_amount')
+            ->paginate(12);
+
+        if($store_due_paid_amount)
+        {
+            $success['store_due_paid_amount'] =  $store_due_paid_amount;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Due Paid List Found!'], $this->failStatus);
         }
     }
 
@@ -3120,6 +3181,21 @@ class BackendController extends Controller
             $stock->save();
             $insert_id = $stock->id;
         }
+
+        // transaction
+//        $transaction = new Transaction();
+//        $transaction->ref_id = $stock_transfer_insert_id;
+//        $transaction->invoice_no = $final_invoice;
+//        $transaction->user_id = $user_id;
+//        $transaction->warehouse_id = $request->warehouse_id;
+//        $transaction->party_id = $request->party_id;
+//        $transaction->transaction_type = '';
+//        $transaction->payment_type = 'Cash';
+//        $transaction->amount = $request->total_amount;
+//        $transaction->transaction_date = $date;
+//        $transaction->transaction_date_time = $date_time;
+//        $transaction->save();
+
 
 
         if($insert_id){
