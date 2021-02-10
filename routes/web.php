@@ -40,8 +40,8 @@ Route::get('/view-clear', function() {
 });
 
 
-
-
+// stock_sync
+Route::get('/stock_sync', 'StockSyncController@stock_sync')->name('stock_sync');
 
 
 Route::get('/', function () {

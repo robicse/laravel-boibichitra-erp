@@ -241,6 +241,9 @@ Route::middleware('auth:api')->get('/total_sale_return', 'API\BackendController@
 Route::middleware('auth:api')->get('/today_profit', 'API\BackendController@todayProfit');
 Route::middleware('auth:api')->get('/total_profit', 'API\BackendController@totalProfit');
 
+// stock_sync
+Route::middleware('auth:api')->get('/stock_sync', 'API\BackendController@stock_sync');
+
 // sslcommerz
 Route::post('/checkout/ssl/pay', 'API\PublicSslCommerzPaymentController@index');
 Route::POST('/success', 'API\PublicSslCommerzPaymentController@success');

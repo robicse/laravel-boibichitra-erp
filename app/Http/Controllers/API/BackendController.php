@@ -4872,4 +4872,109 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Profit Or Loss History Found!'], $this->failStatus);
         }
     }
+
+
+
+
+    // stock sync
+    function product_store_stock_sync($warehouse_id,$store_id,$product_id){
+
+        if($store_id){
+            $stock_data = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->get();
+        }else{
+            $stock_data = Stock::where('warehouse_id',$warehouse_id)->where('store_id','=',NULL)->where('product_id',$product_id)->get();
+        }
+
+        $row_count = count($stock_data);
+        if($row_count > 0) {
+            $store_previous_row_current_stock = null;
+            $stock_in_flag = 0;
+            $stock_out_flag = 0;
+
+            foreach ($stock_data as $key => $data) {
+
+                $id = $data->id;
+                $previous_stock = $data->previous_stock;
+                $stock_in = $data->stock_in;
+                $stock_out = $data->stock_out;
+                $current_stock = $data->current_stock;
+
+                if($key == 0) {
+                    $stock = Stock::find($id);
+                    $stock->previous_stock = 0;
+                    $stock->current_stock = $stock_in;
+                    $affectedRow = $stock->update();
+                    if($affectedRow){
+                        $current_stock = $stock->current_stock;
+                    }
+                }else{
+                    // update part
+                    if($stock_in > 0){
+                        if($stock_in_flag == 1){
+                            $stock = Stock::find($id);
+                            $stock->previous_stock = $store_previous_row_current_stock;
+                            $stock->current_stock = $store_previous_row_current_stock + $stock_in;
+                            $affectedRow = $stock->update();
+                            if($affectedRow){
+                                $current_stock = $stock->current_stock;
+                            }
+                        }else if($previous_stock != $store_previous_row_current_stock){
+                            $stock_in_flag = 1;
+
+                            $stock = Stock::find($id);
+                            $stock->previous_stock = $store_previous_row_current_stock;
+                            $stock->current_stock = $store_previous_row_current_stock + $stock_in;
+                            $affectedRow = $stock->update();
+                            if($affectedRow){
+                                $current_stock = $stock->current_stock;
+                            }
+                        }else{}
+                    }else if($stock_out > 0){
+                        if($stock_out_flag == 1) {
+                            $stock = Stock::find($id);
+                            $stock->previous_stock = $store_previous_row_current_stock;
+                            $stock->current_stock = $store_previous_row_current_stock - $stock_out;
+                            $affectedRow = $stock->update();
+                            if ($affectedRow) {
+                                $current_stock = $stock->current_stock;
+                            }
+                        }else if($previous_stock != $store_previous_row_current_stock) {
+                            $stock_out_flag = 1;
+
+                            $stock = Stock::find($id);
+                            $stock->previous_stock = $store_previous_row_current_stock;
+                            $stock->current_stock = $store_previous_row_current_stock - $stock_out;
+                            $affectedRow = $stock->update();
+                            if ($affectedRow) {
+                                $current_stock = $stock->current_stock;
+                            }
+                        }else{}
+                    }else{}
+                }
+                $store_previous_row_current_stock = $current_stock;
+            }
+        }else{}
+    }
+
+
+    function stock_sync(){
+        $stock_data = Stock::whereIn('id', function($query) {
+            $query->from('stocks')->groupBy('warehouse_id')->groupBy('store_id')->groupBy('product_id')->selectRaw('MIN(id)');
+        })->get();
+
+        $row_count = count($stock_data);
+        if($row_count > 0){
+            foreach ($stock_data as $key => $data){
+                $warehouse_id = $data->warehouse_id;
+                $store_id = $data->store_id;
+                $product_id = $data->product_id;
+                $this->product_store_stock_sync($warehouse_id,$store_id,$product_id);
+            }
+            return response()->json(['success'=>true,'response' => 'Data Successfully Updated.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Data Found!'], $this->failStatus);
+        }
+    }
+
+
 }
