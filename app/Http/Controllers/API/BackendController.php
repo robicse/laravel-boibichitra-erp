@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Department;
+use App\Designation;
 use App\Helpers\UserInfo;
+use App\Holiday;
 use App\Http\Controllers\Controller;
+use App\LeaveCategory;
 use App\Party;
 use App\PaymentCollection;
 use App\PaymentPaid;
@@ -4974,6 +4978,407 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Data Successfully Updated.'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Data Found!'], $this->failStatus);
+        }
+    }
+
+
+
+
+
+
+    // start HRM + Accounting
+
+    public function departmentList(){
+        $departments = DB::table('departments')->select('id','name','status')->orderBy('id','desc')->get();
+
+        if($departments)
+        {
+            $success['departments'] =  $departments;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Departments List Found!'], $this->failStatus);
+        }
+    }
+
+    public function departmentCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:departments,name',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $departments = new Department();
+        $departments->name = $request->name;
+        $departments->status = $request->status;
+        $departments->save();
+        $insert_id = $departments->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $departments], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Departments Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function departmentEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'department_id'=> 'required',
+            'name' => 'required|unique:departments,name,'.$request->department_id,
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_department = DB::table("departments")->where('id',$request->department_id)->pluck('id')->first();
+        if($check_exists_department == null){
+            return response()->json(['success'=>false,'response'=>'No Department Found!'], $this->failStatus);
+        }
+
+        $department = Department::find($request->department_id);
+        $department->name = $request->name;
+        $department->status = $request->status;
+        $update_department = $department->save();
+
+        if($update_department){
+            return response()->json(['success'=>true,'response' => $department], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Department Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function departmentDelete(Request $request){
+        $check_exists_department = DB::table("departments")->where('id',$request->department_id)->pluck('id')->first();
+        if($check_exists_department == null){
+            return response()->json(['success'=>false,'response'=>'No Department Found!'], $this->failStatus);
+        }
+
+        //$delete_party = DB::table("product_brands")->where('id',$request->product_brand_id)->delete();
+        $soft_delete_department = Department::find($request->department_id);
+        $soft_delete_department->status=0;
+        $affected_row = $soft_delete_department->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Department Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Department Deleted!'], $this->failStatus);
+        }
+    }
+
+    public function designationList(){
+        $designations = DB::table('designations')->select('id','name','status')->orderBy('id','desc')->get();
+
+        if($designations)
+        {
+            $success['designations'] =  $designations;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Designations List Found!'], $this->failStatus);
+        }
+    }
+
+    public function designationCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:designations,name',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $designations = new Designation();
+        $designations->name = $request->name;
+        $designations->status = $request->status;
+        $designations->save();
+        $insert_id = $designations->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $designations], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'designations Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function designationEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'designation_id'=> 'required',
+            'name' => 'required|unique:designations,name,'.$request->designation_id,
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_designation = DB::table("designations")->where('id',$request->designation_id)->pluck('id')->first();
+        if($check_exists_designation == null){
+            return response()->json(['success'=>false,'response'=>'No Designation Found!'], $this->failStatus);
+        }
+
+        $designation = Designation::find($request->designation_id);
+        $designation->name = $request->name;
+        $designation->status = $request->status;
+        $update_designation = $designation->save();
+
+        if($update_designation){
+            return response()->json(['success'=>true,'response' => $designation], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Designation Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function designationDelete(Request $request){
+        $check_exists_designation = DB::table("designations")->where('id',$request->designation_id)->pluck('id')->first();
+        if($check_exists_designation == null){
+            return response()->json(['success'=>false,'response'=>'No Designation Found!'], $this->failStatus);
+        }
+
+        $soft_delete_designation = Designation::find($request->designation_id);
+        $soft_delete_designation->status=0;
+        $affected_row = $soft_delete_designation->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Designation Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Designation Deleted!'], $this->failStatus);
+        }
+    }
+
+    public function holidayList(){
+        $holidays = DB::table('holidays')->select('id','name','date','details','status')->orderBy('id','desc')->get();
+
+        if($holidays)
+        {
+            $success['holidays'] =  $holidays;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Holidays List Found!'], $this->failStatus);
+        }
+    }
+
+    public function holidayCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:holidays,name',
+            'date'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $holiday = new Holiday();
+        $holiday->name = $request->name;
+        $holiday->date = $request->date;
+        $holiday->details = $request->details;
+        $holiday->status = $request->status;
+        $holiday->save();
+        $insert_id = $holiday->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $holiday], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Holidays Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function holidayEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'holiday_id'=> 'required',
+            'name' => 'required|unique:holidays,name,'.$request->holiday_id,
+            'date'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_holiday = DB::table("holidays")->where('id',$request->holiday_id)->pluck('id')->first();
+        if($check_exists_holiday == null){
+            return response()->json(['success'=>false,'response'=>'No holiday Found!'], $this->failStatus);
+        }
+
+        $holiday = Holiday::find($request->holiday_id);
+        $holiday->name = $request->name;
+        $holiday->date = $request->date;
+        $holiday->details = $request->details;
+        $holiday->status = $request->status;
+        $update_holiday = $holiday->save();
+
+        if($update_holiday){
+            return response()->json(['success'=>true,'response' => $holiday], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'holiday Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function holidayDelete(Request $request){
+        $check_exists_holiday = DB::table("holidays")->where('id',$request->holiday_id)->pluck('id')->first();
+        if($check_exists_holiday == null){
+            return response()->json(['success'=>false,'response'=>'No Holiday Found!'], $this->failStatus);
+        }
+
+        $soft_delete_holiday = Holiday::find($request->holiday_id);
+        $soft_delete_holiday->status=0;
+        $affected_row = $soft_delete_holiday->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Holiday Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Holiday Deleted!'], $this->failStatus);
+        }
+    }
+
+    // leave category
+    public function leaveCategoryList(){
+        $leave_categories = DB::table('leave_categories')->select('id','name','limit','duration','status')->orderBy('id','desc')->get();
+
+        if($leave_categories)
+        {
+            $success['leave_categories'] =  $leave_categories;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Leave Category List Found!'], $this->failStatus);
+        }
+    }
+
+    public function leaveCategoryCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:leave_categories,name',
+            'limit'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $leave_category = new LeaveCategory();
+        $leave_category->name = $request->name;
+        $leave_category->limit = $request->limit;
+        $leave_category->duration = $request->duration;
+        $leave_category->status = $request->status;
+        $leave_category->save();
+        $insert_id = $leave_category->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $leave_category], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Leave Category Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function leaveCategoryEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'leave_category_id'=> 'required',
+            'name' => 'required|unique:leave_categories,name,'.$request->leave_category_id,
+            'limit'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_leave_categories = DB::table("leave_categories")->where('id',$request->leave_category_id)->pluck('id')->first();
+        if($check_exists_leave_categories == null){
+            return response()->json(['success'=>false,'response'=>'No Leave Category Found!'], $this->failStatus);
+        }
+
+        $leave_category = LeaveCategory::find($request->leave_category_id);
+        $leave_category->name = $request->name;
+        $leave_category->limit = $request->limit;
+        $leave_category->duration = $request->duration;
+        $leave_category->status = $request->status;
+        $update_leave_category = $leave_category->save();
+
+        if($update_leave_category){
+            return response()->json(['success'=>true,'response' => $leave_category], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Leave Category Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function leaveCategoryDelete(Request $request){
+        $check_exists_leave_category = DB::table("holidays")->where('id',$request->leave_category_id)->pluck('id')->first();
+        if($check_exists_leave_category == null){
+            return response()->json(['success'=>false,'response'=>'No Holiday Found!'], $this->failStatus);
+        }
+
+        $soft_delete_leave_category = LeaveCategory::find($request->leave_category_id);
+        $soft_delete_leave_category->status=0;
+        $affected_row = $soft_delete_leave_category->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Leave Category Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Leave Category Deleted!'], $this->failStatus);
         }
     }
 

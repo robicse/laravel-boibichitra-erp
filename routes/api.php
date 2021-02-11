@@ -252,3 +252,32 @@ Route::POST('/cancel', 'API\PublicSslCommerzPaymentController@cancel');
 Route::POST('/ipn', 'API\PublicSslCommerzPaymentController@ipn');
 
 Route::get('/ssl/redirect/{status}','API\PublicSslCommerzPaymentController@status');
+
+
+
+
+// start HRM + Accounting
+
+// department
+Route::middleware('auth:api')->get('/department_list', 'API\BackendController@departmentList');
+Route::middleware('auth:api')->post('/department_create', 'API\BackendController@departmentCreate');
+Route::middleware('auth:api')->post('/department_edit', 'API\BackendController@departmentEdit');
+Route::middleware('auth:api')->post('/department_delete', 'API\BackendController@departmentDelete');
+
+// designation
+Route::middleware('auth:api')->get('/designation_list', 'API\BackendController@designationList');
+Route::middleware('auth:api')->post('/designation_create', 'API\BackendController@designationCreate');
+Route::middleware('auth:api')->post('/designation_edit', 'API\BackendController@designationEdit');
+Route::middleware('auth:api')->post('/designation_delete', 'API\BackendController@designationDelete');
+
+// holiday
+Route::middleware('auth:api')->get('/holiday_list', 'API\BackendController@holidayList');
+Route::middleware('auth:api')->post('/holiday_create', 'API\BackendController@holidayCreate');
+Route::middleware('auth:api')->post('/holiday_edit', 'API\BackendController@holidayEdit');
+Route::middleware('auth:api')->post('/holiday_delete', 'API\BackendController@holidayDelete');
+
+// leave Category
+Route::middleware('auth:api')->get('/leave_category_list', 'API\BackendController@leaveCategoryList');
+Route::middleware('auth:api')->post('/leave_category_create', 'API\BackendController@leaveCategoryCreate');
+Route::middleware('auth:api')->post('/leave_category_edit', 'API\BackendController@leaveCategoryEdit');
+Route::middleware('auth:api')->post('/leave_category_delete', 'API\BackendController@leaveCategoryDelete');
