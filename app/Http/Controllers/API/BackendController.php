@@ -3071,8 +3071,9 @@ class BackendController extends Controller
             $product_id = $data['product_id'];
             //$price = Product::where('id',$product_id)->pluck('purchase_price')->first();
             $Product_info = Product::where('id',$product_id)->first();
-            $total_amount += $Product_info->purchase_price;
             $total_vat_amount += ($data['qty']*$Product_info->whole_sale_price);
+            //$total_amount += $Product_info->purchase_price;
+            $total_amount += ($data['qty']*$Product_info->whole_sale_price) + ($data['qty']*$Product_info->purchase_price);
         }
 
         $final_invoice = 'Stock-transfer-'.$invoice_no;
@@ -3082,7 +3083,7 @@ class BackendController extends Controller
         $stock_transfer->warehouse_id = $warehouse_id;
         $stock_transfer->store_id = $store_id;
         $stock_transfer->total_vat_amount = $total_vat_amount;
-        $stock_transfer->total_amount = $total_amount;
+        //$stock_transfer->total_amount = $total_amount;
         $stock_transfer->paid_amount = 0;
         $stock_transfer->due_amount = $total_amount;
         $stock_transfer->issue_date = $date;

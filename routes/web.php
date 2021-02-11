@@ -43,6 +43,9 @@ Route::get('/view-clear', function() {
 // stock_sync
 Route::get('/stock_sync', 'StockSyncController@stock_sync')->name('stock_sync');
 
+// test
+Route::get('/test', 'HomeController@test')->name('test');
+
 
 Route::get('/', function () {
     //return view('welcome');
