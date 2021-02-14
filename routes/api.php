@@ -281,3 +281,9 @@ Route::middleware('auth:api')->get('/leave_category_list', 'API\BackendControlle
 Route::middleware('auth:api')->post('/leave_category_create', 'API\BackendController@leaveCategoryCreate');
 Route::middleware('auth:api')->post('/leave_category_edit', 'API\BackendController@leaveCategoryEdit');
 Route::middleware('auth:api')->post('/leave_category_delete', 'API\BackendController@leaveCategoryDelete');
+
+// Employee
+Route::middleware('auth:api')->get('/employee_list', 'API\BackendController@EmployeeList');
+Route::middleware('auth:api')->post('/employee_create', 'API\BackendController@EmployeeCreate');
+Route::middleware('auth:api')->post('/employee_edit', 'API\BackendController@EmployeeEdit');
+Route::middleware('auth:api')->post('/employee_delete', 'API\BackendController@EmployeeDelete');

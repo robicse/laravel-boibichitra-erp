@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Department;
 use App\Designation;
+use App\Employee;
 use App\Helpers\UserInfo;
 use App\Holiday;
 use App\Http\Controllers\Controller;
@@ -5379,6 +5380,120 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Leave Category Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Leave Category Deleted!'], $this->failStatus);
+        }
+    }
+
+    // Employee
+    public function EmployeeList(){
+        $employees = DB::table('employees')->select('id','name','email','phone','gender','date_of_birth','marital_status','present_address','permanent_address','status')->orderBy('id','desc')->get();
+
+        if($employees)
+        {
+            $success['employees'] =  $employees;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Employees List Found!'], $this->failStatus);
+        }
+    }
+
+    public function EmployeeCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:employees,name',
+            'email'=> 'required',
+            'phone'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $employee = new Employee();
+        $employee->name = $request->name;
+        $employee->email = $request->email;
+        $employee->phone = $request->phone;
+        $employee->gender = $request->gender;
+        $employee->date_of_birth = $request->date_of_birth;
+        $employee->marital_status = $request->marital_status;
+        $employee->present_address = $request->present_address;
+        $employee->permanent_address = $request->permanent_address;
+        $employee->status = $request->status;
+        $employee->save();
+        $insert_id = $employee->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $employee], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Leave Employee Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function EmployeeEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'employee_id'=> 'required',
+            'name' => 'required|unique:employees,name,'.$request->employee_id,
+            'email'=> 'required',
+            'phone'=> 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_employees = DB::table("employees")->where('id',$request->employee_id)->pluck('id')->first();
+        if($check_exists_employees == null){
+            return response()->json(['success'=>false,'response'=>'No Employee Found!'], $this->failStatus);
+        }
+
+        $employee = Employee::find($request->employee_id);
+        $employee->name = $request->name;
+        $employee->email = $request->email;
+        $employee->phone = $request->phone;
+        $employee->gender = $request->gender;
+        $employee->date_of_birth = $request->date_of_birth;
+        $employee->marital_status = $request->marital_status;
+        $employee->present_address = $request->present_address;
+        $employee->permanent_address = $request->permanent_address;
+        $employee->status = $request->status;
+        $update_leave_employee = $employee->save();
+
+        if($update_leave_employee){
+            return response()->json(['success'=>true,'response' => $employee], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Employee Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function EmployeeDelete(Request $request){
+        $check_exists_employees = DB::table("employees")->where('id',$request->employee_id)->pluck('id')->first();
+        if($check_exists_employees == null){
+            return response()->json(['success'=>false,'response'=>'No Employee Found!'], $this->failStatus);
+        }
+
+        $soft_delete_leave_employee = Employee::find($request->employee_id);
+        $soft_delete_leave_employee->status=0;
+        $affected_row = $soft_delete_leave_employee->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Employee Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Employee Deleted!'], $this->failStatus);
         }
     }
 
