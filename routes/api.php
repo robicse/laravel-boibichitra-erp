@@ -283,7 +283,13 @@ Route::middleware('auth:api')->post('/leave_category_edit', 'API\BackendControll
 Route::middleware('auth:api')->post('/leave_category_delete', 'API\BackendController@leaveCategoryDelete');
 
 // Employee
-Route::middleware('auth:api')->get('/employee_list', 'API\BackendController@EmployeeList');
-Route::middleware('auth:api')->post('/employee_create', 'API\BackendController@EmployeeCreate');
-Route::middleware('auth:api')->post('/employee_edit', 'API\BackendController@EmployeeEdit');
-Route::middleware('auth:api')->post('/employee_delete', 'API\BackendController@EmployeeDelete');
+Route::middleware('auth:api')->get('/employee_list', 'API\BackendController@employeeList');
+Route::middleware('auth:api')->post('/employee_create', 'API\BackendController@employeeCreate');
+Route::middleware('auth:api')->post('/employee_edit', 'API\BackendController@employeeEdit');
+Route::middleware('auth:api')->post('/employee_delete', 'API\BackendController@employeeDelete');
+
+// Employee Office Information
+Route::middleware('auth:api')->get('/employee_office_information_list', 'API\BackendController@employeeOfficeInformationList');
+Route::middleware('auth:api')->post('/employee_office_information_create', 'API\BackendController@employeeOfficeInformationCreate');
+Route::middleware('auth:api')->post('/employee_office_information_edit', 'API\BackendController@employeeOfficeInformationEdit');
+Route::middleware('auth:api')->post('/employee_office_information_delete', 'API\BackendController@employeeOfficeInformationDelete');

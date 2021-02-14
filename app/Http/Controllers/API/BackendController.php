@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Department;
 use App\Designation;
 use App\Employee;
+use App\EmployeeOfficeInformation;
 use App\Helpers\UserInfo;
 use App\Holiday;
 use App\Http\Controllers\Controller;
@@ -5384,7 +5385,7 @@ class BackendController extends Controller
     }
 
     // Employee
-    public function EmployeeList(){
+    public function employeeList(){
         $employees = DB::table('employees')->select('id','name','email','phone','gender','date_of_birth','marital_status','present_address','permanent_address','status')->orderBy('id','desc')->get();
 
         if($employees)
@@ -5396,7 +5397,7 @@ class BackendController extends Controller
         }
     }
 
-    public function EmployeeCreate(Request $request){
+    public function employeeCreate(Request $request){
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|unique:employees,name',
@@ -5436,7 +5437,7 @@ class BackendController extends Controller
         }
     }
 
-    public function EmployeeEdit(Request $request){
+    public function employeeEdit(Request $request){
 
         $validator = Validator::make($request->all(), [
             'employee_id'=> 'required',
@@ -5480,7 +5481,7 @@ class BackendController extends Controller
         }
     }
 
-    public function EmployeeDelete(Request $request){
+    public function employeeDelete(Request $request){
         $check_exists_employees = DB::table("employees")->where('id',$request->employee_id)->pluck('id')->first();
         if($check_exists_employees == null){
             return response()->json(['success'=>false,'response'=>'No Employee Found!'], $this->failStatus);
@@ -5494,6 +5495,126 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Employee Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Employee Deleted!'], $this->failStatus);
+        }
+    }
+
+    // employee office information
+    public function employeeOfficeInformationList(){
+        $employee_office_informations = DB::table('employee_office_informations')
+            ->join('employees','employee_office_informations.employee_id','=','employees.id')
+            ->join('departments','employee_office_informations.department_id','=','departments.id')
+            ->join('designations','employee_office_informations.designation_id','=','designations.id')
+            ->select('employee_office_informations.id','employee_office_informations.employee_type','employee_office_informations.card_no','employee_office_informations.joining_date','employee_office_informations.resignation_date','employee_office_informations.last_office_date','employee_office_informations.status','employee_office_informations.employee_id','employees.name as employee_name','employee_office_informations.department_id','departments.name as department_name','employee_office_informations.designation_id','designations.name as designation_name')
+            ->orderBy('id','desc')
+            ->get();
+
+        if($employee_office_informations)
+        {
+            $success['employee_office_informations'] =  $employee_office_informations;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Employee Office Informations List Found!'], $this->failStatus);
+        }
+    }
+
+    public function employeeOfficeInformationCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'employee_id'=> 'required',
+            'employee_type'=> 'required',
+            'card_no'=> 'required',
+            'department_id'=> 'required',
+            'designation_id'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $employee_office_information = new EmployeeOfficeInformation();
+        $employee_office_information->employee_id = $request->employee_id;
+        $employee_office_information->employee_type = $request->employee_type;
+        $employee_office_information->card_no = $request->card_no;
+        $employee_office_information->department_id = $request->department_id;
+        $employee_office_information->designation_id = $request->designation_id;
+        $employee_office_information->joining_date = $request->joining_date;
+        $employee_office_information->resignation_date = $request->resignation_date;
+        $employee_office_information->last_office_date = $request->last_office_date;
+        $employee_office_information->save();
+        $insert_id = $employee_office_information->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $employee_office_information], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Leave Employee Office Information Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function employeeOfficeInformationEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'employee_office_information_id'=> 'required',
+            'employee_id'=> 'required',
+            'employee_type'=> 'required',
+            'card_no'=> 'required',
+            'department_id'=> 'required',
+            'designation_id'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_employee_office_informations = DB::table("employee_office_informations")->where('id',$request->employee_office_information_id)->pluck('id')->first();
+        if($check_exists_employee_office_informations == null){
+            return response()->json(['success'=>false,'response'=>'No Employee Office Information Found!'], $this->failStatus);
+        }
+
+        $employee_office_information = EmployeeOfficeInformation::find($request->employee_office_information_id);
+        $employee_office_information->employee_id = $request->employee_id;
+        $employee_office_information->employee_type = $request->employee_type;
+        $employee_office_information->card_no = $request->card_no;
+        $employee_office_information->department_id = $request->department_id;
+        $employee_office_information->designation_id = $request->designation_id;
+        $employee_office_information->joining_date = $request->joining_date;
+        $employee_office_information->resignation_date = $request->resignation_date;
+        $employee_office_information->last_office_date = $request->last_office_date;
+        $update_employee_office_information = $employee_office_information->save();
+
+        if($update_employee_office_information){
+            return response()->json(['success'=>true,'response' => $employee_office_information], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Employee Office Information Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function employeeOfficeInformationDelete(Request $request){
+        $check_exists_employee_office_informations = DB::table("employee_office_informations")->where('id',$request->employee_office_information_id)->pluck('id')->first();
+        if($check_exists_employee_office_informations == null){
+            return response()->json(['success'=>false,'response'=>'No Employee Office Information Found!'], $this->failStatus);
+        }
+
+        $soft_delete_employee_office_information = EmployeeOfficeInformation::find($request->employee_office_information_id);
+        $soft_delete_employee_office_information->status=0;
+        $affected_row = $soft_delete_employee_office_information->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Employee Office Information Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Employee Office Information Deleted!'], $this->failStatus);
         }
     }
 
