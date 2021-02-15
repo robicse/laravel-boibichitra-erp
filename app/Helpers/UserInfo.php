@@ -37,9 +37,13 @@ class UserInfo
 
     public static function smsAPI($receiver_number, $sms_text)
     {
-        $api ="http://isms.zaman-it.com/smsapi?api_key=C20000365d831ca2c90451.06457950&type=text&contacts=".$receiver_number."&senderid=8809612451614&msg=".urlencode($sms_text);
+        //$api ="http://isms.zaman-it.com/smsapi?api_key=C20000365d831ca2c90451.06457950&type=text&contacts=".$receiver_number."&senderid=8809612451614&msg=".urlencode($sms_text);
+        $api = "https://api.mobireach.com.bd/SendTextMessage?Username=bbichitra&Password=1@BoiBichitrax360&From=BoiBichitra&To=".$receiver_number."&Message=". urlencode($sms_text);
+
         //$api = "http://api.zaman-it.com/api/sendsms/plain?user=bd01689063954&password=ABCDabcd123@!&sender=EverydayNeedandCare&SMSText=" . urlencode($sms_text) . "&GSM=" . $receiver_number . "&type=longSMS";
         //$api = "https://api.mobireach.com.bd/SendTextMessage?Username=taxman&Password=Abcd@2020&From=TaxManBD&To=".$receiver_number."&Message=". urlencode($sms_text);
+
+
         $curl = curl_init();
         curl_setopt_array($curl, array(
             CURLOPT_URL => $api,

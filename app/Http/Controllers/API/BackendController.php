@@ -6,9 +6,11 @@ use App\Department;
 use App\Designation;
 use App\Employee;
 use App\EmployeeOfficeInformation;
+use App\EmployeeSalaryInformation;
 use App\Helpers\UserInfo;
 use App\Holiday;
 use App\Http\Controllers\Controller;
+use App\LeaveApplication;
 use App\LeaveCategory;
 use App\Party;
 use App\PaymentCollection;
@@ -5547,6 +5549,7 @@ class BackendController extends Controller
         $employee_office_information->joining_date = $request->joining_date;
         $employee_office_information->resignation_date = $request->resignation_date;
         $employee_office_information->last_office_date = $request->last_office_date;
+        $employee_office_information->status = $request->status;
         $employee_office_information->save();
         $insert_id = $employee_office_information->id;
 
@@ -5592,6 +5595,7 @@ class BackendController extends Controller
         $employee_office_information->joining_date = $request->joining_date;
         $employee_office_information->resignation_date = $request->resignation_date;
         $employee_office_information->last_office_date = $request->last_office_date;
+        $employee_office_information->status = $request->status;
         $update_employee_office_information = $employee_office_information->save();
 
         if($update_employee_office_information){
@@ -5615,6 +5619,237 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Employee Office Information Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Employee Office Information Deleted!'], $this->failStatus);
+        }
+    }
+
+    // employee salary information
+    public function employeeSalaryInformationList(){
+        $employee_salary_informations = DB::table('employee_salary_informations')
+            ->join('employees','employee_salary_informations.employee_id','=','employees.id')
+            ->select('employee_salary_informations.id','employee_salary_informations.gross_salary','employee_salary_informations.basic','employee_salary_informations.house_rent','employee_salary_informations.medical','employee_salary_informations.conveyance','employee_salary_informations.special','employee_salary_informations.status','employee_salary_informations.id as employee_id','employees.name as employee_name')
+            ->orderBy('id','desc')
+            ->get();
+
+        if($employee_salary_informations)
+        {
+            $success['employee_salary_informations'] =  $employee_salary_informations;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Employee Salary Informations List Found!'], $this->failStatus);
+        }
+    }
+
+    public function employeeSalaryInformationCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'employee_id'=> 'required',
+            'gross_salary'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $employee_salary_information = new EmployeeSalaryInformation();
+        $employee_salary_information->employee_id = $request->employee_id;
+        $employee_salary_information->gross_salary = $request->gross_salary;
+        $employee_salary_information->basic = $request->basic;
+        $employee_salary_information->house_rent = $request->house_rent;
+        $employee_salary_information->medical = $request->medical;
+        $employee_salary_information->conveyance = $request->conveyance;
+        $employee_salary_information->special = $request->special;
+        $employee_salary_information->status = $request->status;
+        $employee_salary_information->save();
+        $insert_id = $employee_salary_information->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $employee_salary_information], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Leave Employee Salary Information Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function employeesalaryInformationEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'employee_salary_information_id'=> 'required',
+            'employee_id'=> 'required',
+            'gross_salary'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_employee_salary_informations = DB::table("employee_salary_informations")->where('id',$request->employee_salary_information_id)->pluck('id')->first();
+        if($check_exists_employee_salary_informations == null){
+            return response()->json(['success'=>false,'response'=>'No Employee salary Information Found!'], $this->failStatus);
+        }
+
+        $employee_salary_information = EmployeesalaryInformation::find($request->employee_salary_information_id);
+        $employee_salary_information->employee_id = $request->employee_id;
+        $employee_salary_information->gross_salary = $request->gross_salary;
+        $employee_salary_information->basic = $request->basic;
+        $employee_salary_information->house_rent = $request->house_rent;
+        $employee_salary_information->medical = $request->medical;
+        $employee_salary_information->conveyance = $request->conveyance;
+        $employee_salary_information->special = $request->special;
+        $employee_salary_information->status = $request->status;
+        $update_employee_salary_information = $employee_salary_information->save();
+
+        if($update_employee_salary_information){
+            return response()->json(['success'=>true,'response' => $employee_salary_information], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Employee Salary Information Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function employeesalaryInformationDelete(Request $request){
+        $check_exists_employee_salary_informations = DB::table("employee_salary_informations")->where('id',$request->employee_salary_information_id)->pluck('id')->first();
+        if($check_exists_employee_salary_informations == null){
+            return response()->json(['success'=>false,'response'=>'No Employee Salary Information Found!'], $this->failStatus);
+        }
+
+        $soft_delete_employee_salary_information = EmployeesalaryInformation::find($request->employee_salary_information_id);
+        $soft_delete_employee_salary_information->status=0;
+        $affected_row = $soft_delete_employee_salary_information->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Employee Salary Information Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Employee Salary Information Deleted!'], $this->failStatus);
+        }
+    }
+
+    // Leave Application
+    public function leaveApplicationList(){
+        $leave_applications = DB::table('leave_applications')
+            ->join('employees','leave_applications.employee_id','=','employees.id')
+            ->join('leave_categories','leave_applications.leave_category_id','=','leave_categories.id')
+            ->select('leave_applications.id','leave_applications.start_date','leave_applications.end_date','leave_applications.duration','leave_applications.reason','leave_applications.approval_status','leave_applications.status','leave_applications.id as employee_id','employees.name as employee_name','leave_categories.id as leave_category_id','leave_categories.name as leave_category_name')
+            ->orderBy('id','desc')
+            ->get();
+
+        if($leave_applications)
+        {
+            $success['leave_applications'] =  $leave_applications;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Leave Application List Found!'], $this->failStatus);
+        }
+    }
+
+    public function leaveApplicationCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'employee_id'=> 'required',
+            'leave_category_id'=> 'required',
+            'start_date'=> 'required',
+            'end_date'=> 'required',
+            'duration'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $leave_application = new LeaveApplication();
+        $leave_application->employee_id = $request->employee_id;
+        $leave_application->leave_category_id = $request->leave_category_id;
+        $leave_application->start_date = $request->start_date;
+        $leave_application->end_date = $request->end_date;
+        $leave_application->duration = $request->duration;
+        $leave_application->reason = $request->reason;
+        //$leave_application->approval_status = $request->approval_status;
+        $leave_application->status = $request->status;
+        $leave_application->save();
+        $insert_id = $leave_application->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $leave_application], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Leave Application Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function leaveApplicationEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'leave_application_id'=> 'required',
+            'employee_id'=> 'required',
+            'leave_category_id'=> 'required',
+            'start_date'=> 'required',
+            'end_date'=> 'required',
+            'duration'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_leave_applications = DB::table("leave_applications")->where('id',$request->leave_application_id)->pluck('id')->first();
+        if($check_exists_leave_applications == null){
+            return response()->json(['success'=>false,'response'=>'No Leave Application Found!'], $this->failStatus);
+        }
+
+        $leave_application = LeaveApplication::find($request->leave_application_id);
+        $leave_application->employee_id = $request->employee_id;
+        $leave_application->leave_category_id = $request->leave_category_id;
+        $leave_application->start_date = $request->start_date;
+        $leave_application->end_date = $request->end_date;
+        $leave_application->duration = $request->duration;
+        $leave_application->reason = $request->reason;
+        //$leave_application->approval_status = $request->approval_status;
+        $leave_application->status = $request->status;
+        $update_leave_application = $leave_application->save();
+
+        if($update_leave_application){
+            return response()->json(['success'=>true,'response' => $leave_application], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Leave Application Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function leaveApplicationDelete(Request $request){
+        $check_exists_leave_applications = DB::table("leave_applications")->where('id',$request->leave_application_id)->pluck('id')->first();
+        if($check_exists_leave_applications == null){
+            return response()->json(['success'=>false,'response'=>'No Leave Application Found!'], $this->failStatus);
+        }
+
+        $soft_delete_leave_application = LeaveApplication::find($request->leave_application_id);
+        $soft_delete_leave_application->status=0;
+        $affected_row = $soft_delete_leave_application->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Leave Application Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Leave Application Deleted!'], $this->failStatus);
         }
     }
 

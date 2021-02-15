@@ -293,3 +293,16 @@ Route::middleware('auth:api')->get('/employee_office_information_list', 'API\Bac
 Route::middleware('auth:api')->post('/employee_office_information_create', 'API\BackendController@employeeOfficeInformationCreate');
 Route::middleware('auth:api')->post('/employee_office_information_edit', 'API\BackendController@employeeOfficeInformationEdit');
 Route::middleware('auth:api')->post('/employee_office_information_delete', 'API\BackendController@employeeOfficeInformationDelete');
+
+// Employee Salary Information
+Route::middleware('auth:api')->get('/employee_salary_information_list', 'API\BackendController@employeeSalaryInformationList');
+Route::middleware('auth:api')->post('/employee_salary_information_create', 'API\BackendController@employeeSalaryInformationCreate');
+Route::middleware('auth:api')->post('/employee_salary_information_edit', 'API\BackendController@employeeSalaryInformationEdit');
+Route::middleware('auth:api')->post('/employee_salary_information_delete', 'API\BackendController@employeeSalaryInformationDelete');
+
+
+// Leave Application
+Route::middleware('auth:api')->get('/leave_application_list', 'API\BackendController@leaveApplicationList');
+Route::middleware('auth:api')->post('/leave_application_create', 'API\BackendController@leaveApplicationCreate');
+Route::middleware('auth:api')->post('/leave_application_edit', 'API\BackendController@leaveApplicationEdit');
+Route::middleware('auth:api')->post('/leave_application_delete', 'API\BackendController@leaveApplicationDelete');

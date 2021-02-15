@@ -16,7 +16,7 @@ class CreateEmployeeOfficeInformationsTable extends Migration
         Schema::create('employee_office_informations', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('employee_id')->unsigned();
-            $table->enum('employee_type', ['Permanent','Probation']);
+            $table->enum('employee_type', ['Permanent','Provisional']);
             $table->string('card_no')->unique();
             $table->bigInteger('department_id')->unsigned();
             $table->bigInteger('designation_id')->unsigned();
