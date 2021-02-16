@@ -5433,6 +5433,18 @@ class BackendController extends Controller
         $insert_id = $employee->id;
 
         if($insert_id){
+//            $user_data['name'] = $request->name;
+//            $user_data['email'] = $request->email;
+//            $user_data['phone'] = $request->phone;
+//            $user_data['password'] = Hash::make(123456);
+//            $user_data['employee_id'] = $insert_id;
+//            $user = User::create($user_data);
+//            // first create employee role, then bellow assignRole code enable
+//            $user->assignRole('customer');
+//
+//            $text = "Dear ".$request->name." Sir, Your Username is ".$request->phone." and password is: 123456";
+//            UserInfo::smsAPI("88".$request->phone,$text);
+
             return response()->json(['success'=>true,'response' => $employee], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'Leave Employee Not Created Successfully!'], $this->failStatus);
@@ -5477,6 +5489,18 @@ class BackendController extends Controller
         $update_leave_employee = $employee->save();
 
         if($update_leave_employee){
+//            $user_data['name'] = $request->name;
+//            $user_data['email'] = $request->email;
+//            $user_data['phone'] = $request->phone;
+//            $user_data['password'] = Hash::make(123456);
+//            $user_data['employee_id'] = $employee->id;
+//            $user = User::create($user_data);
+//            // first create employee role, then bellow assignRole code enable
+//            $user->assignRole('customer');
+//
+//            $text = "Dear ".$request->name." Sir, Your Username is ".$request->phone." and password is: 123456";
+//            UserInfo::smsAPI("88".$request->phone,$text);
+
             return response()->json(['success'=>true,'response' => $employee], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'Employee Not Created Successfully!'], $this->failStatus);

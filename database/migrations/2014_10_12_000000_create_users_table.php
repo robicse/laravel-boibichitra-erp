@@ -25,6 +25,7 @@ class CreateUsersTable extends Migration
             $table->bigInteger('warehouse_id')->nullable();
             $table->bigInteger('store_id')->nullable();
             $table->bigInteger('party_id')->nullable();
+            $table->bigInteger('employee_id')->nullable();
             $table->rememberToken();
             $table->timestamps();
             //$table->foreign('warehouses')->references('id')->on('warehouse_id')->onDelete('cascade');
