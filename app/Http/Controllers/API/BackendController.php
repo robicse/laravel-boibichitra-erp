@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Attendance;
 use App\Department;
 use App\Designation;
 use App\Employee;
@@ -34,6 +35,7 @@ use App\Store;
 use App\Transaction;
 use App\User;
 use App\Warehouse;
+use App\Weekend;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -5433,17 +5435,17 @@ class BackendController extends Controller
         $insert_id = $employee->id;
 
         if($insert_id){
-//            $user_data['name'] = $request->name;
-//            $user_data['email'] = $request->email;
-//            $user_data['phone'] = $request->phone;
-//            $user_data['password'] = Hash::make(123456);
-//            $user_data['employee_id'] = $insert_id;
-//            $user = User::create($user_data);
-//            // first create employee role, then bellow assignRole code enable
-//            $user->assignRole('customer');
-//
-//            $text = "Dear ".$request->name." Sir, Your Username is ".$request->phone." and password is: 123456";
-//            UserInfo::smsAPI("88".$request->phone,$text);
+            $user_data['name'] = $request->name;
+            $user_data['email'] = $request->email;
+            $user_data['phone'] = $request->phone;
+            $user_data['password'] = Hash::make(123456);
+            $user_data['employee_id'] = $insert_id;
+            $user = User::create($user_data);
+            // first create employee role, then bellow assignRole code enable
+            $user->assignRole('employee');
+
+            $text = "Dear ".$request->name." Sir, Your Username is ".$request->phone." and password is: 123456";
+            UserInfo::smsAPI("88".$request->phone,$text);
 
             return response()->json(['success'=>true,'response' => $employee], $this->successStatus);
         }else{
@@ -5489,17 +5491,6 @@ class BackendController extends Controller
         $update_leave_employee = $employee->save();
 
         if($update_leave_employee){
-//            $user_data['name'] = $request->name;
-//            $user_data['email'] = $request->email;
-//            $user_data['phone'] = $request->phone;
-//            $user_data['password'] = Hash::make(123456);
-//            $user_data['employee_id'] = $employee->id;
-//            $user = User::create($user_data);
-//            // first create employee role, then bellow assignRole code enable
-//            $user->assignRole('customer');
-//
-//            $text = "Dear ".$request->name." Sir, Your Username is ".$request->phone." and password is: 123456";
-//            UserInfo::smsAPI("88".$request->phone,$text);
 
             return response()->json(['success'=>true,'response' => $employee], $this->successStatus);
         }else{
@@ -5877,5 +5868,245 @@ class BackendController extends Controller
         }
     }
 
+    // Attendance
+    public function attendanceList(){
+        $attendances = DB::table('attendances')
+            ->join('employees','attendances.employee_id','=','employees.id')
+            ->select('attendances.id','attendances.employee_card','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.work_in_time','attendances.work_out_time','attendances.in_time','attendances.out_time','attendances.late_status','attendances.present_status','attendances.note','attendances.id as employee_id','employees.name as employee_name')
+            ->orderBy('id','desc')
+            ->get();
+
+        if($attendances)
+        {
+            $success['attendances'] =  $attendances;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Attendance List Found!'], $this->failStatus);
+        }
+    }
+
+    public function attendanceCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'employee_id'=> 'required',
+            'employee_card'=> 'required',
+            'employee_name'=> 'required',
+            'date'=> 'required',
+            'year'=> 'required',
+            'month'=> 'required',
+            'work_in_time'=> 'required',
+            'work_out_time'=> 'required',
+            'in_time'=> 'required',
+            'out_time'=> 'required',
+            'late_status'=> 'required',
+            'present_status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $attendance = new Attendance();
+        $attendance->employee_id = $request->employee_id;
+        $attendance->employee_card = $request->employee_card;
+        $attendance->employee_name = $request->employee_name;
+        $attendance->date = $request->date;
+        $attendance->year = $request->year;
+        $attendance->month = $request->month;
+        $attendance->work_in_time = $request->work_in_time;
+        $attendance->work_out_time = $request->work_out_time;
+        $attendance->in_time = $request->in_time;
+        $attendance->out_time = $request->out_time;
+        $attendance->late_status = $request->late_status;
+        $attendance->present_status = $request->present_status;
+        $attendance->note = $request->note;
+        $attendance->save();
+        $insert_id = $attendance->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $attendance], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Attendance Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function attendanceEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'attendance_id'=> 'required',
+            'employee_id'=> 'required',
+            'employee_card'=> 'required',
+            'employee_name'=> 'required',
+            'date'=> 'required',
+            'year'=> 'required',
+            'month'=> 'required',
+            'work_in_time'=> 'required',
+            'work_out_time'=> 'required',
+            'in_time'=> 'required',
+            'out_time'=> 'required',
+            'late_status'=> 'required',
+            'present_status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_attendances = DB::table("attendances")->where('id',$request->attendance_id)->pluck('id')->first();
+        if($check_exists_attendances == null){
+            return response()->json(['success'=>false,'response'=>'No Attendance Found!'], $this->failStatus);
+        }
+
+        $attendance = Attendance::find($request->attendance_id);
+        $attendance->employee_id = $request->employee_id;
+        $attendance->employee_card = $request->employee_card;
+        $attendance->employee_name = $request->employee_name;
+        $attendance->date = $request->date;
+        $attendance->year = $request->year;
+        $attendance->month = $request->month;
+        $attendance->work_in_time = $request->work_in_time;
+        $attendance->work_out_time = $request->work_out_time;
+        $attendance->in_time = $request->in_time;
+        $attendance->out_time = $request->out_time;
+        $attendance->late_status = $request->late_status;
+        $attendance->present_status = $request->present_status;
+        $attendance->note = $request->note;
+        $update_attendance = $attendance->save();
+
+        if($update_attendance){
+            return response()->json(['success'=>true,'response' => $attendance], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Attendance Not Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+//    public function attendanceDelete(Request $request){
+//        $check_exists_attendances = DB::table("attendances")->where('id',$request->attendance_id)->pluck('id')->first();
+//        if($check_exists_attendances == null){
+//            return response()->json(['success'=>false,'response'=>'No Attendance Found!'], $this->failStatus);
+//        }
+//
+//        $soft_delete_attendance = Attendance::find($request->attendance_id);
+//        $soft_delete_attendance->status=0;
+//        $affected_row = $soft_delete_attendance->update();
+//        if($affected_row)
+//        {
+//            return response()->json(['success'=>true,'response' => 'Attendance Successfully Soft Deleted!'], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Attendance Deleted!'], $this->failStatus);
+//        }
+//    }
+
+
+    // weekend
+    public function weekendList(){
+        $weekends = DB::table('weekends')->select('id','date','note','status')->orderBy('id','desc')->get();
+
+        if($weekends)
+        {
+            $success['weekends'] =  $weekends;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Weekends List Found!'], $this->failStatus);
+        }
+    }
+
+    public function weekendCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'date' => 'required|unique:weekends,date',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $weekend = new Weekend();
+        $weekend->date = $request->date;
+        $weekend->note = $request->note;
+        $weekend->status = $request->status;
+        $weekend->save();
+        $insert_id = $weekend->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $weekend], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'weekends Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function weekendEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'weekend_id'=> 'required',
+            'date' => 'required|unique:weekends,date,'.$request->weekend_id,
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_weekend = DB::table("weekends")->where('id',$request->weekend_id)->pluck('id')->first();
+        if($check_exists_weekend == null){
+            return response()->json(['success'=>false,'response'=>'No weekend Found!'], $this->failStatus);
+        }
+
+        $weekend = Weekend::find($request->weekend_id);
+        $weekend->date = $request->date;
+        $weekend->note = $request->note;
+        $weekend->status = $request->status;
+        $update_weekend = $weekend->save();
+
+        if($update_weekend){
+            return response()->json(['success'=>true,'response' => $weekend], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Weekend Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function weekendDelete(Request $request){
+        $check_exists_weekend = DB::table("weekends")->where('id',$request->weekend_id)->pluck('id')->first();
+        if($check_exists_weekend == null){
+            return response()->json(['success'=>false,'response'=>'No Weekend Found!'], $this->failStatus);
+        }
+
+        $soft_delete_weekend = Weekend::find($request->weekend_id);
+        $soft_delete_weekend->status=0;
+        $affected_row = $soft_delete_weekend->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Weekend Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Weekend Deleted!'], $this->failStatus);
+        }
+    }
 
 }

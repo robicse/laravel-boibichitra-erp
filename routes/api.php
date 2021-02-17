@@ -276,6 +276,12 @@ Route::middleware('auth:api')->post('/holiday_create', 'API\BackendController@ho
 Route::middleware('auth:api')->post('/holiday_edit', 'API\BackendController@holidayEdit');
 Route::middleware('auth:api')->post('/holiday_delete', 'API\BackendController@holidayDelete');
 
+// holiday
+Route::middleware('auth:api')->get('/weekend_list', 'API\BackendController@weekendList');
+Route::middleware('auth:api')->post('/weekend_create', 'API\BackendController@weekendCreate');
+Route::middleware('auth:api')->post('/weekend_edit', 'API\BackendController@weekendEdit');
+Route::middleware('auth:api')->post('/weekend_delete', 'API\BackendController@weekendDelete');
+
 // leave Category
 Route::middleware('auth:api')->get('/leave_category_list', 'API\BackendController@leaveCategoryList');
 Route::middleware('auth:api')->post('/leave_category_create', 'API\BackendController@leaveCategoryCreate');
@@ -306,3 +312,9 @@ Route::middleware('auth:api')->get('/leave_application_list', 'API\BackendContro
 Route::middleware('auth:api')->post('/leave_application_create', 'API\BackendController@leaveApplicationCreate');
 Route::middleware('auth:api')->post('/leave_application_edit', 'API\BackendController@leaveApplicationEdit');
 Route::middleware('auth:api')->post('/leave_application_delete', 'API\BackendController@leaveApplicationDelete');
+
+// Attendance Log
+Route::middleware('auth:api')->get('/attendance_list', 'API\BackendController@attendanceList');
+Route::middleware('auth:api')->post('/attendance_create', 'API\BackendController@attendanceCreate');
+Route::middleware('auth:api')->post('/attendance_edit', 'API\BackendController@attendanceEdit');
+//Route::middleware('auth:api')->post('/attendance_delete', 'API\BackendController@attendanceDelete');
