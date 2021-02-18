@@ -184,9 +184,16 @@ Route::middleware('auth:api')->post('/product_whole_purchase_create_with_low_pro
 //Route::middleware('auth:api')->post('/store_stock_list', 'API\BackendController@storeStockList');
 //Route::middleware('auth:api')->get('/store_stock_low_list', 'API\BackendController@storeStockLowList');
 
-// stock transfer
+// warehouse stock list
 Route::middleware('auth:api')->post('/warehouse_current_stock_list', 'API\BackendController@warehouseCurrentStockList');
 //Route::middleware('auth:api')->post('/check_warehouse_product_current_stock', 'API\BackendController@checkWarehouseProductCurrentStock');
+
+// stock transfer request
+Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_create', 'API\BackendController@storeToWarehouseStockRequestCreate');
+Route::middleware('auth:api')->get('/store_to_warehouse_stock_request_list', 'API\BackendController@storeToWarehouseStockRequestList');
+Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_details', 'API\BackendController@storeToWarehouseStockRequestDetails');
+
+// stock transfer
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\BackendController@warehouseToStoreStockCreate');
 Route::middleware('auth:api')->post('/store_current_stock_list', 'API\BackendController@storeCurrentStockList');
 Route::middleware('auth:api')->get('/stock_transfer_list', 'API\BackendController@stockTransferList');

@@ -31,6 +31,8 @@ use App\ProductVat;
 use App\Stock;
 use App\StockTransfer;
 use App\StockTransferDetail;
+use App\StockTransferRequest;
+use App\StockTransferRequestDetail;
 use App\Store;
 use App\Transaction;
 use App\User;
@@ -3053,6 +3055,108 @@ class BackendController extends Controller
 //        }
 //    }
 
+    public function storeToWarehouseStockRequestCreate(Request $request){
+        $this->validate($request, [
+            'request_from_store_id'=> 'required',
+            'request_to_warehouse_id'=> 'required',
+        ]);
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+        $request_to_warehouse_id = $request->request_to_warehouse_id;
+        $request_from_store_id = $request->request_from_store_id;
+
+
+        $get_invoice_no = StockTransferRequest::latest()->pluck('invoice_no')->first();
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("STRN-","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
+        }else{
+            $invoice_no = 1;
+        }
+
+        $final_invoice = 'STRN-'.$invoice_no;
+        $stock_transfer_request = new StockTransferRequest();
+        $stock_transfer_request->invoice_no=$final_invoice;
+        $stock_transfer_request->request_to_warehouse_id = $request_to_warehouse_id;
+        $stock_transfer_request->request_from_store_id = $request_from_store_id;
+        $stock_transfer_request->request_by_user_id=$user_id;
+        $stock_transfer_request->request_date=$date;
+        $stock_transfer_request->request_remarks=$request->request_remarks;
+        $stock_transfer_request->request_status='Pending';
+        //$stock_transfer_request->received_by_user_id=NULL;
+        //$stock_transfer_request->received_status='Pending';
+        $stock_transfer_request->save();
+        $stock_transfer_request_insert_id = $stock_transfer_request->id;
+
+
+        foreach ($request->products as $data) {
+
+            $product_id = $data['product_id'];
+            $product_info = Product::where('id',$product_id)->first();
+
+            $stock_transfer_request_detail = new StockTransferRequestDetail();
+            $stock_transfer_request_detail->stock_transfer_request_id = $stock_transfer_request_insert_id;
+            $stock_transfer_request_detail->product_unit_id = $data['product_unit_id'];
+            $stock_transfer_request_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $stock_transfer_request_detail->product_id = $product_id;
+            $stock_transfer_request_detail->barcode = $product_info->barcode;
+            $stock_transfer_request_detail->request_qty = $data['qty'];
+            $stock_transfer_request_detail->send_qty = '';
+            $stock_transfer_request_detail->received_qty = '';
+            $stock_transfer_request_detail->price = $product_info->purchase_price;
+            $stock_transfer_request_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
+            $stock_transfer_request_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
+            $stock_transfer_request_detail->received_date = $date;
+            $stock_transfer_request_detail->save();
+        }
+
+        if($stock_transfer_request_insert_id){
+            return response()->json(['success'=>true,'response' => 'Stock Transfer Request Successfully Inserted.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Stock Transfer Request Successfully Inserted.!'], $this->failStatus);
+        }
+    }
+
+    public function storeToWarehouseStockRequestList(){
+        $stock_transfer_request_lists = DB::table('stock_transfer_requests')
+            ->leftJoin('users','stock_transfer_requests.request_by_user_id','users.id')
+            ->leftJoin('warehouses','stock_transfer_requests.request_to_warehouse_id','warehouses.id')
+            ->leftJoin('stores','stock_transfer_requests.request_from_store_id','stores.id')
+            //->where('stock_transfers.sale_type','whole_sale')
+            ->select('stock_transfer_requests.id','stock_transfer_requests.invoice_no','stock_transfer_requests.request_date','stock_transfer_requests.request_remarks','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
+            ->get();
+
+        if($stock_transfer_request_lists)
+        {
+            $success['stock_transfer_request_list'] =  $stock_transfer_request_lists;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Stock Transfer Request List Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeToWarehouseStockRequestDetails(Request $request){
+        $stock_transfer_request_details = DB::table('stock_transfer_requests')
+            ->join('stock_transfer_request_details','stock_transfer_requests.id','stock_transfer_request_details.stock_transfer_request_id')
+            ->leftJoin('products','stock_transfer_request_details.product_id','products.id')
+            ->leftJoin('product_units','stock_transfer_request_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','stock_transfer_request_details.product_brand_id','product_brands.id')
+            ->where('stock_transfer_requests.id',$request->stock_transfer_request_id)
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','stock_transfer_request_details.request_qty as qty','stock_transfer_request_details.id as stock_transfer_request_detail_id','stock_transfer_request_details.price','stock_transfer_request_details.sub_total','stock_transfer_request_details.vat_amount')
+            ->get();
+
+        if($stock_transfer_request_details)
+        {
+            $success['stock_transfer_request_details'] =  $stock_transfer_request_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Stock Transfer Request Details Found!'], $this->failStatus);
+        }
+    }
+
 
     public function warehouseToStoreStockCreate(Request $request){
         $this->validate($request, [
@@ -5872,7 +5976,7 @@ class BackendController extends Controller
     public function attendanceList(){
         $attendances = DB::table('attendances')
             ->join('employees','attendances.employee_id','=','employees.id')
-            ->select('attendances.id','attendances.employee_card','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.work_in_time','attendances.work_out_time','attendances.in_time','attendances.out_time','attendances.late_status','attendances.present_status','attendances.note','attendances.id as employee_id','employees.name as employee_name')
+            ->select('attendances.id','attendances.employee_card_no','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.on_duty','attendances.off_duty','attendances.clock_in','attendances.clock_out','attendances.late','attendances.early','attendances.absent','attendances.work_time','attendances.att_time','attendances.note','attendances.id as employee_id','employees.name as employee_name')
             ->orderBy('id','desc')
             ->get();
 
@@ -5885,21 +5989,63 @@ class BackendController extends Controller
         }
     }
 
-    public function attendanceCreate(Request $request){
+//    public function attendanceCreate(Request $request){
+//
+//        $validator = Validator::make($request->all(), [
+//            'employee_id'=> 'required',
+//            'employee_card_no'=> 'required',
+//            'employee_name'=> 'required',
+//            'date'=> 'required',
+//            'year'=> 'required',
+//            'month'=> 'required',
+//            'on_duty'=> 'required',
+//            'off_duty'=> 'required',
+//            'clock_in'=> 'required',
+//            'clock_out'=> 'required',
+//            'late'=> 'required',
+//        ]);
+//
+//        if ($validator->fails()) {
+//            $response = [
+//                'success' => false,
+//                'data' => 'Validation Error.',
+//                'message' => $validator->errors()
+//            ];
+//
+//            return response()->json($response, $this-> validationStatus);
+//        }
+//
+//
+//        $attendance = new Attendance();
+//        $attendance->employee_id = $request->employee_id;
+//        $attendance->employee_card_no = $request->employee_card_no;
+//        $attendance->employee_name = $request->employee_name;
+//        $attendance->date = $request->date;
+//        $attendance->year = $request->year;
+//        $attendance->month = $request->month;
+//        $attendance->on_duty = $request->on_duty;
+//        $attendance->off_duty = $request->off_duty;
+//        $attendance->clock_in = $request->clock_in;
+//        $attendance->clock_out = $request->clock_out;
+//        $attendance->late = $request->late;
+//        $attendance->early = $request->early;
+//        $attendance->absent = $request->absent;
+//        $attendance->work_time = $request->work_time;
+//        $attendance->att_time = $request->att_time;
+//        $attendance->note = $request->note;
+//        $attendance->save();
+//        $insert_id = $attendance->id;
+//
+//        if($insert_id){
+//            return response()->json(['success'=>true,'response' => $attendance], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'Attendance Not Created Successfully!'], $this->failStatus);
+//        }
+//    }
 
+    public function attendanceCreate(Request $request){
         $validator = Validator::make($request->all(), [
-            'employee_id'=> 'required',
-            'employee_card'=> 'required',
-            'employee_name'=> 'required',
-            'date'=> 'required',
-            'year'=> 'required',
-            'month'=> 'required',
-            'work_in_time'=> 'required',
-            'work_out_time'=> 'required',
-            'in_time'=> 'required',
-            'out_time'=> 'required',
-            'late_status'=> 'required',
-            'present_status'=> 'required',
+            'attendance'=> 'required',
         ]);
 
         if ($validator->fails()) {
@@ -5912,86 +6058,111 @@ class BackendController extends Controller
             return response()->json($response, $this-> validationStatus);
         }
 
+        $success_insert_flag = true;
 
-        $attendance = new Attendance();
-        $attendance->employee_id = $request->employee_id;
-        $attendance->employee_card = $request->employee_card;
-        $attendance->employee_name = $request->employee_name;
-        $attendance->date = $request->date;
-        $attendance->year = $request->year;
-        $attendance->month = $request->month;
-        $attendance->work_in_time = $request->work_in_time;
-        $attendance->work_out_time = $request->work_out_time;
-        $attendance->in_time = $request->in_time;
-        $attendance->out_time = $request->out_time;
-        $attendance->late_status = $request->late_status;
-        $attendance->present_status = $request->present_status;
-        $attendance->note = $request->note;
-        $attendance->save();
-        $insert_id = $attendance->id;
 
-        if($insert_id){
-            return response()->json(['success'=>true,'response' => $attendance], $this->successStatus);
+        foreach ($request->attendance as $data) {
+            $insert_id = '';
+
+            $employee_id =  $data['employee_id'];
+            $date =  $data['date'];
+
+            $year = date('Y', strtotime($date));
+            $month = date('F', strtotime($date));
+
+            $employee_info = DB::table('employees')
+                ->join('employee_office_informations','employees.id','=','employee_office_informations.employee_id')
+                ->where('employees.id',$employee_id)
+                ->select('employees.name','employee_office_informations.card_no')
+                ->first();
+
+            $attendance = new Attendance();
+            $attendance->employee_id = $employee_id;
+            $attendance->employee_card_no = $request->employee_card_no;
+            $attendance->employee_name = $employee_info->name;
+            $attendance->date = $date;
+            $attendance->year = $year;
+            $attendance->month = $month;
+            $attendance->on_duty = $data['on_duty'];
+            $attendance->off_duty = $data['off_duty'];
+            $attendance->clock_in = $data['clock_in'];
+            $attendance->clock_out = $data['clock_out'];
+            $attendance->late = $data['late'];
+            $attendance->early = $data['early'];
+            $attendance->absent = $data['absent'];
+            $attendance->work_time = $data['work_time'];
+            $attendance->att_time = $data['att_time'];
+            $attendance->note = $data['note'];
+            $attendance->save();
+            $insert_id = $attendance->id;
+            if($insert_id == ''){
+                $success_insert_flag = false;
+            }
+        }
+        if($success_insert_flag == true){
+            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'Attendance Not Created Successfully!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
         }
     }
 
-    public function attendanceEdit(Request $request){
-
-        $validator = Validator::make($request->all(), [
-            'attendance_id'=> 'required',
-            'employee_id'=> 'required',
-            'employee_card'=> 'required',
-            'employee_name'=> 'required',
-            'date'=> 'required',
-            'year'=> 'required',
-            'month'=> 'required',
-            'work_in_time'=> 'required',
-            'work_out_time'=> 'required',
-            'in_time'=> 'required',
-            'out_time'=> 'required',
-            'late_status'=> 'required',
-            'present_status'=> 'required',
-        ]);
-
-        if ($validator->fails()) {
-            $response = [
-                'success' => false,
-                'data' => 'Validation Error.',
-                'message' => $validator->errors()
-            ];
-
-            return response()->json($response, $this->validationStatus);
-        }
-
-        $check_exists_attendances = DB::table("attendances")->where('id',$request->attendance_id)->pluck('id')->first();
-        if($check_exists_attendances == null){
-            return response()->json(['success'=>false,'response'=>'No Attendance Found!'], $this->failStatus);
-        }
-
-        $attendance = Attendance::find($request->attendance_id);
-        $attendance->employee_id = $request->employee_id;
-        $attendance->employee_card = $request->employee_card;
-        $attendance->employee_name = $request->employee_name;
-        $attendance->date = $request->date;
-        $attendance->year = $request->year;
-        $attendance->month = $request->month;
-        $attendance->work_in_time = $request->work_in_time;
-        $attendance->work_out_time = $request->work_out_time;
-        $attendance->in_time = $request->in_time;
-        $attendance->out_time = $request->out_time;
-        $attendance->late_status = $request->late_status;
-        $attendance->present_status = $request->present_status;
-        $attendance->note = $request->note;
-        $update_attendance = $attendance->save();
-
-        if($update_attendance){
-            return response()->json(['success'=>true,'response' => $attendance], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Attendance Not Updated Successfully!'], $this->failStatus);
-        }
-    }
+//    public function attendanceEdit(Request $request){
+//
+//        $validator = Validator::make($request->all(), [
+//            'attendance_id'=> 'required',
+//            'employee_id'=> 'required',
+//            'employee_card_no'=> 'required',
+//            'employee_name'=> 'required',
+//            'date'=> 'required',
+//            'year'=> 'required',
+//            'month'=> 'required',
+//            'on_duty'=> 'required',
+//            'off_duty'=> 'required',
+//            'clock_in'=> 'required',
+//            'clock_out'=> 'required',
+//            'late'=> 'required',
+//        ]);
+//
+//        if ($validator->fails()) {
+//            $response = [
+//                'success' => false,
+//                'data' => 'Validation Error.',
+//                'message' => $validator->errors()
+//            ];
+//
+//            return response()->json($response, $this->validationStatus);
+//        }
+//
+//        $check_exists_attendances = DB::table("attendances")->where('id',$request->attendance_id)->pluck('id')->first();
+//        if($check_exists_attendances == null){
+//            return response()->json(['success'=>false,'response'=>'No Attendance Found!'], $this->failStatus);
+//        }
+//
+//        $attendance = Attendance::find($request->attendance_id);
+//        $attendance->employee_id = $request->employee_id;
+//        $attendance->employee_card_no = $request->employee_card_no;
+//        $attendance->employee_name = $request->employee_name;
+//        $attendance->date = $request->date;
+//        $attendance->year = $request->year;
+//        $attendance->month = $request->month;
+//        $attendance->on_duty = $request->on_duty;
+//        $attendance->off_duty = $request->off_duty;
+//        $attendance->clock_in = $request->clock_in;
+//        $attendance->clock_out = $request->clock_out;
+//        $attendance->late = $request->late;
+//        $attendance->early = $request->early;
+//        $attendance->absent = $request->absent;
+//        $attendance->work_time = $request->work_time;
+//        $attendance->att_time = $request->att_time;
+//        $attendance->note = $request->note;
+//        $update_attendance = $attendance->save();
+//
+//        if($update_attendance){
+//            return response()->json(['success'=>true,'response' => $attendance], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'Attendance Not Updated Successfully!'], $this->failStatus);
+//        }
+//    }
 
 //    public function attendanceDelete(Request $request){
 //        $check_exists_attendances = DB::table("attendances")->where('id',$request->attendance_id)->pluck('id')->first();
