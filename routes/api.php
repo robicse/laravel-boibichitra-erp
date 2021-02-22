@@ -192,6 +192,7 @@ Route::middleware('auth:api')->post('/warehouse_current_stock_list', 'API\Backen
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_create', 'API\BackendController@storeToWarehouseStockRequestCreate');
 Route::middleware('auth:api')->get('/store_to_warehouse_stock_request_list', 'API\BackendController@storeToWarehouseStockRequestList');
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_details', 'API\BackendController@storeToWarehouseStockRequestDetails');
+//Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_stock_transfer_create', 'API\BackendController@storeToWarehouseStockRequestStockTransferCreate');
 
 // stock transfer
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\BackendController@warehouseToStoreStockCreate');

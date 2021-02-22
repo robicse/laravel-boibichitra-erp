@@ -24,8 +24,14 @@ class CreateStockTransferRequestsTable extends Migration
             $table->string('request_date');
             $table->text('request_remarks')->nullable();
             $table->enum('request_status',['Pending','On Review','Canceled','Approved'])->default('Pending')->nullable();
+            $table->bigInteger('send_by_user_id')->nullable();
+            $table->string('send_date');
+            $table->text('send_remarks')->nullable();
+            $table->enum('send_status',['Pending','On Review','On Processing','Canceled','Delivered','Completed'])->default('Pending')->nullable();
             $table->bigInteger('received_by_user_id')->nullable();
-            $table->enum('received_status',['Pending','Canceled','Received'])->default('Pending');
+            $table->string('received_date');
+            $table->text('received_remarks')->nullable();
+            $table->enum('received_status',['Pending','Canceled','Received'])->nullable();
             $table->timestamps();
             $table->foreign('request_from_warehouse_id')->references('id')->on('warehouses')->onDelete('cascade');
             $table->foreign('request_to_warehouse_id')->references('id')->on('warehouses')->onDelete('cascade');

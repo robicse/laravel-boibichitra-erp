@@ -666,6 +666,7 @@ class BackendController extends Controller
 
         $parties = new Party();
         $parties->type = $request->type;
+        $parties->customer_type = $request->customer_type;
         $parties->name = $request->name;
         $parties->slug = Str::slug($request->name);
         $parties->phone = $request->phone;
@@ -738,6 +739,7 @@ class BackendController extends Controller
 
         $parties = Party::find($request->party_id);
         $parties->type = $request->type;
+        $parties->customer_type = $request->customer_type;
         $parties->name = $request->name;
         $parties->slug = Str::slug($request->name);
         $parties->phone = $request->phone;
@@ -3154,6 +3156,187 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Stock Transfer Request Details Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeToWarehouseStockRequestStockTransferCreate(Request $request){
+        $this->validate($request, [
+            'stock_transfer_request_id'=> 'required',
+            'store_id'=> 'required',
+            'warehouse_id'=> 'required',
+        ]);
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+        $warehouse_id = $request->warehouse_id;
+        $store_id = $request->store_id;
+
+
+        $get_invoice_no = StockTransfer::latest()->pluck('invoice_no')->first();
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("Stock-transfer-","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
+        }else{
+            $invoice_no = 1;
+        }
+
+        $total_amount = 0;
+        $total_vat_amount = 0;
+        foreach ($request->products as $data) {
+            $product_id = $data['product_id'];
+            //$price = Product::where('id',$product_id)->pluck('purchase_price')->first();
+            $Product_info = Product::where('id',$product_id)->first();
+            $total_vat_amount += ($data['qty']*$Product_info->whole_sale_price);
+            //$total_amount += $Product_info->purchase_price;
+            $total_amount += ($data['qty']*$Product_info->whole_sale_price) + ($data['qty']*$Product_info->purchase_price);
+        }
+
+        // stock transfer request table update
+        $stock_transfer_request = StockTransferRequest::find($request->stock_transfer_request_id);
+        $stock_transfer_request->send_by_user_id=Auth::user()->id;
+        $stock_transfer_request->send_date=$date;
+        $stock_transfer_request->send_remarks=$request->send_remarks;
+        $stock_transfer_request->send_status='Delivered';
+        $stock_transfer_request->save();
+
+
+        // stock transfer
+        $final_invoice = 'Stock-transfer-'.$invoice_no;
+        $stock_transfer = new StockTransfer();
+        $stock_transfer->invoice_no=$final_invoice;
+        $stock_transfer->user_id=Auth::user()->id;
+        $stock_transfer->warehouse_id = $warehouse_id;
+        $stock_transfer->store_id = $store_id;
+        $stock_transfer->total_vat_amount = $total_vat_amount;
+        //$stock_transfer->total_amount = $total_amount;
+        $stock_transfer->paid_amount = 0;
+        $stock_transfer->due_amount = $total_amount;
+        $stock_transfer->issue_date = $date;
+        $stock_transfer->due_date = $date;
+        $stock_transfer->save();
+        $stock_transfer_insert_id = $stock_transfer->id;
+
+        $insert_id = false;
+
+        foreach ($request->products as $data) {
+
+            $product_id = $data['product_id'];
+            $product_info = Product::where('id',$product_id)->first();
+
+
+            // stock transfer request details
+            $stock_transfer_request_detail = StockTransferRequestDetail::find($request->stock_transfer_request_detail_id);
+            $stock_transfer_request_detail->send_qty = $data['send_qty'];
+            $stock_transfer_request_detail->save();
+
+
+            // stock transfer details
+            $stock_transfer_detail = new StockTransferDetail();
+            $stock_transfer_detail->stock_transfer_id = $stock_transfer_insert_id;
+            $stock_transfer_detail->product_unit_id = $data['product_unit_id'];
+            $stock_transfer_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $stock_transfer_detail->product_id = $product_id;
+            $stock_transfer_detail->barcode = $product_info->barcode;
+            $stock_transfer_detail->qty = $data['qty'];
+            $stock_transfer_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
+            $stock_transfer_detail->price = $product_info->purchase_price;
+            $stock_transfer_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
+            $stock_transfer_detail->issue_date = $date;
+            $stock_transfer_detail->save();
+
+
+            $check_previous_warehouse_current_stock = Stock::where('warehouse_id',$warehouse_id)
+                ->where('product_id',$product_id)
+                ->where('stock_where','warehouse')
+                ->latest('id','desc')
+                ->pluck('current_stock')
+                ->first();
+
+            if($check_previous_warehouse_current_stock){
+                $previous_warehouse_current_stock = $check_previous_warehouse_current_stock;
+            }else{
+                $previous_warehouse_current_stock = 0;
+            }
+
+            // stock out warehouse product
+            $stock = new Stock();
+            $stock->ref_id = $stock_transfer_insert_id;
+            $stock->user_id = $user_id;
+            $stock->warehouse_id = $warehouse_id;
+            $stock->store_id = NULL;
+            $stock->product_id = $product_id;
+            $stock->product_unit_id = $data['product_unit_id'];
+            $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $stock->stock_type = 'from_warehouse_to_store';
+            $stock->stock_where = 'warehouse';
+            $stock->stock_in_out = 'stock_out';
+            $stock->previous_stock = $previous_warehouse_current_stock;
+            $stock->stock_in = 0;
+            $stock->stock_out = $data['qty'];
+            $stock->current_stock = $previous_warehouse_current_stock - $data['qty'];
+            $stock->stock_date = $date;
+            $stock->stock_date_time = $date_time;
+            $stock->save();
+
+
+            $check_previous_store_current_stock = Stock::where('warehouse_id',$warehouse_id)
+                ->where('store_id',$store_id)
+                ->where('product_id',$product_id)
+                ->where('stock_where','store')
+                ->latest('id','desc')
+                ->pluck('current_stock')
+                ->first();
+
+            if($check_previous_store_current_stock){
+                $previous_store_current_stock = $check_previous_store_current_stock;
+            }else{
+                $previous_store_current_stock = 0;
+            }
+
+            // stock in store product
+            $stock = new Stock();
+            $stock->ref_id = $stock_transfer_insert_id;
+            $stock->user_id = $user_id;
+            $stock->warehouse_id = $warehouse_id;
+            $stock->store_id = $store_id;
+            $stock->product_id = $product_id;
+            $stock->product_unit_id = $data['product_unit_id'];
+            $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $stock->stock_type = 'from_warehouse_to_store';
+            $stock->stock_where = 'store';
+            $stock->stock_in_out = 'stock_in';
+            $stock->previous_stock = $previous_store_current_stock;
+            $stock->stock_in = $data['qty'];
+            $stock->stock_out = 0;
+            $stock->current_stock = $previous_store_current_stock + $data['qty'];
+            $stock->stock_date = $date;
+            $stock->stock_date_time = $date_time;
+            $stock->save();
+            $insert_id = $stock->id;
+        }
+
+        // transaction
+//        $transaction = new Transaction();
+//        $transaction->ref_id = $stock_transfer_insert_id;
+//        $transaction->invoice_no = $final_invoice;
+//        $transaction->user_id = $user_id;
+//        $transaction->warehouse_id = $request->warehouse_id;
+//        $transaction->party_id = $request->party_id;
+//        $transaction->transaction_type = '';
+//        $transaction->payment_type = 'Cash';
+//        $transaction->amount = $request->total_amount;
+//        $transaction->transaction_date = $date;
+//        $transaction->transaction_date_time = $date_time;
+//        $transaction->save();
+
+
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => 'Warehouse To Store Stock Successfully Inserted.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse To Store Stock Successfully Inserted.!'], $this->failStatus);
         }
     }
 
