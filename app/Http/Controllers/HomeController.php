@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\PaymentCollection;
 use App\ProductSale;
 use App\StockTransfer;
+use App\StockTransferDetail;
 use App\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,7 @@ class HomeController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth');
+        //$this->middleware('auth');
     }
 
 
@@ -71,7 +72,7 @@ class HomeController extends Controller
     {
 
         $product_pos_sales = DB::table('product_sales')
-            ->where('sale_type')
+            ->where('sale_type','pos_sale')
             ->get();
 
 
@@ -106,6 +107,79 @@ class HomeController extends Controller
                 }
             }
         }
+        die();
+    }
+
+    public function manually_stock_transfer_vat_update()
+    {
+
+
+
+
+
+        $stock_transfers = DB::table('stock_transfers')
+            ->where('total_vat_amount','>',0)
+            ->get();
+
+
+        if(count($stock_transfers) > 0){
+            foreach ($stock_transfers as $data){
+                //echo $data->invoice_no.'<br/>';
+                $stock_transfer_id = $data->id;
+                $total_vat_amount = $data->total_vat_amount;
+                $total_amount = $data->total_amount;
+                //$due_amount = $data->due_amount;
+                $current_total_amount = $total_amount - $total_vat_amount;
+                //echo 'stock_transfer_id'.$stock_transfer_id.'<br/>';
+
+                $stock_transfer_update = StockTransfer::find($stock_transfer_id);
+                $stock_transfer_update->total_vat_amount=0;
+                $stock_transfer_update->total_amount=$current_total_amount;
+                $stock_transfer_update->due_amount=$current_total_amount;
+                $affectedRow = $stock_transfer_update->save();
+                if($affectedRow){
+                    // transaction update
+                    $stock_transfer_details = StockTransferDetail::where('stock_transfer_id',$stock_transfer_id)
+                        //->where('transaction_type','pos_sale')
+                        ->get();
+                    if(count($stock_transfer_details) > 0){
+                        foreach ($stock_transfer_details as $sdata){
+                            $stock_transfer_detail_id = $sdata->id;
+                            $vat_amount = $sdata->vat_amount;
+                            $sub_total = $sdata->sub_total;
+                            $current_sub_total_amount = $sub_total - $vat_amount;
+
+                            $stock_transfer_detail_update = StockTransferDetail::find($stock_transfer_detail_id);
+                            $stock_transfer_detail_update->vat_amount=0;
+                            $stock_transfer_detail_update->sub_total=$current_sub_total_amount;
+                            $stock_transfer_detail_update->save();
+                        }
+                    }
+                }
+                echo 'successfully updated.'.'<br/>';
+            }
+        }
+
+
+
+//        $stock_transfer_details = StockTransferDetail::where('vat_amount','>',0)->get();
+//        if(count($stock_transfer_details) > 0){
+//            foreach ($stock_transfer_details as $sdata){
+//                $stock_transfer_detail_id = $sdata->id;
+//                //echo 'stock_transfer_detail_id'.$stock_transfer_detail_id.'<br/>';
+//                $vat_amount = $sdata->vat_amount;
+//                $sub_total = $sdata->sub_total;
+//                $current_sub_total_amount = $sub_total - $vat_amount;
+//
+//                $stock_transfer_detail_update = StockTransferDetail::find($stock_transfer_detail_id);
+//                $stock_transfer_detail_update->vat_amount=0;
+//                $stock_transfer_detail_update->sub_total=$current_sub_total_amount;
+//                $affectedRow = $stock_transfer_detail_update->save();
+//                if($affectedRow){
+//                    echo 'successfully updated.'.'<br/>';
+//                }
+//            }
+//        }
         die();
     }
 }
