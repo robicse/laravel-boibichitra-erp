@@ -633,7 +633,7 @@ class BackendController extends Controller
     }
 
     public function partyList(){
-        $parties = DB::table('parties')->select('id','type','name','phone','address','virtual_balance','status')->get();
+        $parties = DB::table('parties')->select('id','type','customer_type','name','phone','address','virtual_balance','status')->orderBy('id','desc')->get();
 
         if($parties)
         {
@@ -1549,6 +1549,7 @@ class BackendController extends Controller
             ->where('product_purchases.purchase_type','whole_purchase')
             //->select('product_purchases.id','product_purchases.invoice_no','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.name as supplier_name')
             ->select('product_purchases.id','product_purchases.invoice_no','product_purchases.discount_type','product_purchases.discount_amount','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.id as supplier_id','parties.name as supplier_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
+            ->orderBy('product_purchases.id','desc')
             ->get();
 
         if($product_whole_purchases)
@@ -1975,6 +1976,7 @@ class BackendController extends Controller
             ->leftJoin('product_brands','product_purchase_details.product_brand_id','product_brands.id')
             ->where('product_purchases.id',$request->product_purchase_id)
             ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_purchase_details.qty','product_purchase_details.id as product_purchase_detail_id','product_purchase_details.price','product_purchase_details.mrp_price')
+            ->orderBy('product_purchases.id','desc')
             ->get();
 
         if($product_pos_purchase_details)
@@ -2412,6 +2414,7 @@ class BackendController extends Controller
         $supplier_lists = DB::table('parties')
             ->where('type','supplier')
             ->select('id','name')
+            ->orderBy('id','desc')
             ->get();
 
         if(count($supplier_lists) > 0)
@@ -2427,6 +2430,7 @@ class BackendController extends Controller
         $customer_lists = DB::table('parties')
             ->where('type','customer')
             ->select('id','name')
+            ->orderBy('id','desc')
             ->get();
 
         if(count($customer_lists) > 0)
@@ -2445,6 +2449,7 @@ class BackendController extends Controller
             ->leftJoin('warehouses','product_purchases.warehouse_id','warehouses.id')
             ->where('product_purchases.due_amount','>',0)
             ->select('product_purchases.id','product_purchases.invoice_no','product_purchases.discount_type','product_purchases.discount_amount','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.id as supplier_id','parties.name as supplier_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
+            ->orderBy('product_purchases.id','desc')
             ->paginate(12);
 
         if($payment_paid_due_amount)
@@ -2645,6 +2650,7 @@ class BackendController extends Controller
             ->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.due_amount','>',0)
             ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->orderBy('product_sales.id','desc')
             ->paginate(12);
 
         if($payment_collection_due_list)
@@ -3344,10 +3350,10 @@ class BackendController extends Controller
 
         $get_invoice_no = StockTransfer::latest()->pluck('invoice_no')->first();
         if(!empty($get_invoice_no)){
-            $get_invoice = str_replace("Stock-transfer-","",$get_invoice_no);
+            $get_invoice = str_replace("STN-","",$get_invoice_no);
             $invoice_no = $get_invoice+1;
         }else{
-            $invoice_no = 1;
+            $invoice_no = 1000;
         }
 
         $total_amount = 0;
@@ -3362,7 +3368,7 @@ class BackendController extends Controller
             $total_amount += ($data['qty']*$Product_info->vat_amount) + ($data['qty']*$Product_info->purchase_price);
         }
 
-        $final_invoice = 'Stock-transfer-'.$invoice_no;
+        $final_invoice = 'STN-'.$invoice_no;
         $stock_transfer = new StockTransfer();
         $stock_transfer->invoice_no=$final_invoice;
         $stock_transfer->user_id=Auth::user()->id;
@@ -3500,6 +3506,7 @@ class BackendController extends Controller
             ->leftJoin('stores','stock_transfers.store_id','stores.id')
             //->where('stock_transfers.sale_type','whole_sale')
             ->select('stock_transfers.id','stock_transfers.invoice_no','stock_transfers.total_amount','stock_transfers.issue_date','stock_transfers.total_vat_amount','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
+            ->orderBy('stock_transfers.id','desc')
             ->get();
 
         if($stock_transfer_lists)
@@ -3768,6 +3775,7 @@ class BackendController extends Controller
             ->where('product_sales.sale_type','whole_sale')
             //->select('product_purchases.id','product_purchases.invoice_no','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.name as supplier_name')
             ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->orderBy('product_sales.id','desc')
             ->get();
 
         if($product_whole_sales)
@@ -3855,6 +3863,8 @@ class BackendController extends Controller
         $productSale->sale_type = 'whole_sale';
         $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
         $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+        $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
+        $productSale->miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
         $productSale->paid_amount = $request->paid_amount;
         $productSale->due_amount = $request->due_amount;
         $productSale->total_vat_amount = $request->total_vat_amount;
@@ -4022,16 +4032,18 @@ class BackendController extends Controller
 
         // product purchase
         $productSale = ProductSale::find($request->product_sale_id);
-        $productSale ->user_id = $user_id;
-        $productSale ->party_id = $request->party_id;
-        $productSale ->warehouse_id = $warehouse_id;
-        $productSale ->store_id = $store_id;
-        $productSale ->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productSale ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
-        $productSale ->paid_amount = $request->paid_amount;
-        $productSale ->due_amount = $request->due_amount;
-        $productSale ->total_vat_amount = $request->total_vat_amount;
-        $productSale ->total_amount = $request->total_amount;
+        $productSale->user_id = $user_id;
+        $productSale->party_id = $request->party_id;
+        $productSale->warehouse_id = $warehouse_id;
+        $productSale->store_id = $store_id;
+        $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+        $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
+        $productSale->miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
+        $productSale->paid_amount = $request->paid_amount;
+        $productSale->due_amount = $request->due_amount;
+        $productSale->total_vat_amount = $request->total_vat_amount;
+        $productSale->total_amount = $request->total_amount;
         $productSale->update();
         $affectedRows = $productSale->id;
         if($affectedRows)
@@ -4140,7 +4152,8 @@ class BackendController extends Controller
             ->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.sale_type','pos_sale')
             //->select('product_purchases.id','product_purchases.invoice_no','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.name as supplier_name')
-            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
+            ->orderBy('product_sales.id','desc')
             ->get();
 
         if($product_pos_sales)
@@ -4351,9 +4364,30 @@ class BackendController extends Controller
             $payment_collection->save();
 
             if($request->payment_type == 'SSL Commerz'){
-                return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => $request->payment_type], $this->successStatus);
+                $product_pos_sale = DB::table('product_sales')
+                    ->leftJoin('users','product_sales.user_id','users.id')
+                    ->leftJoin('parties','product_sales.party_id','parties.id')
+                    ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+                    ->leftJoin('stores','product_sales.store_id','stores.id')
+                    ->where('product_sales.sale_type','pos_sale')
+                    ->where('product_sales.id',$insert_id)
+                    ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
+                    ->first();
+
+                return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => $request->payment_type,'product_pos_sale' => $product_pos_sale], $this->successStatus);
             }else{
-                return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+
+                $product_pos_sale = DB::table('product_sales')
+                    ->leftJoin('users','product_sales.user_id','users.id')
+                    ->leftJoin('parties','product_sales.party_id','parties.id')
+                    ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+                    ->leftJoin('stores','product_sales.store_id','stores.id')
+                    ->where('product_sales.sale_type','pos_sale')
+                    ->where('product_sales.id',$insert_id)
+                    ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
+                    ->first();
+
+                return response()->json(['success'=>true,'product_pos_sale' => $product_pos_sale], $this->successStatus);
             }
         }else{
             return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);

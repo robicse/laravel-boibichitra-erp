@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\PaymentCollection;
+use App\ProductSale;
 use App\StockTransfer;
+use App\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -58,6 +61,48 @@ class HomeController extends Controller
                         echo 'successfully updated.'.'<br/>';
                     }
 
+                }
+            }
+        }
+        die();
+    }
+
+    public function manually_pos_sale_update()
+    {
+
+        $product_pos_sales = DB::table('product_sales')
+            ->where('sale_type')
+            ->get();
+
+
+        if(count($product_pos_sales) > 0){
+            foreach ($product_pos_sales as $data){
+                //echo $data->invoice_no.'<br/>';
+                $product_sale_id = $data->id;
+                $total_amount = $data->total_amount;
+
+                $product_pos_sale_update = ProductSale::find($product_sale_id);
+                $product_pos_sale_update->paid_amount=$total_amount;
+                $product_pos_sale_update->due_amount=0;
+                $affectedRow = $product_pos_sale_update->save();
+                if($affectedRow){
+                    // transaction update
+                    $transaction = Transaction::where('ref_id',$product_sale_id)
+                        ->where('transaction_type','pos_sale')
+                        ->first();
+                    $transaction->amount=$data->total_amount;
+                    $transaction->save();
+
+                    // payment collection update
+                    $payment_collection = PaymentCollection::where('product_sale_id',$product_sale_id)
+                        ->where('collection_type','Sale')
+                        ->first();
+                    $payment_collection->collection_amount=$data->total_amount;
+                    $payment_collection->due_amount=0;
+                    $payment_collection->current_collection_amount=$data->total_amount;
+                    $payment_collection->save();
+
+                    echo 'successfully updated.'.'<br/>';
                 }
             }
         }

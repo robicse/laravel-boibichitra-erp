@@ -45,6 +45,7 @@ Route::get('/stock_sync', 'StockSyncController@stock_sync')->name('stock_sync');
 
 // test
 Route::get('/test', 'HomeController@test')->name('test');
+Route::get('/manually_pos_sale_update', 'HomeController@manually_pos_sale_update')->name('manually_pos_sale_update');
 
 
 Route::get('/', function () {
