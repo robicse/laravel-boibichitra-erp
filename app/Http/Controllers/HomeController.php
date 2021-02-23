@@ -40,7 +40,6 @@ class HomeController extends Controller
             foreach ($stock_infos as $data){
                 //echo $data->invoice_no.'<br/>';
                 $stock_transfer_id = $data->id;
-                $stock_transfer_id = $data->id;
 
                 $sum_sub_total = DB::table('stock_transfer_details')
                     ->where('stock_transfer_id', $stock_transfer_id)

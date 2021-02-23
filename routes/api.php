@@ -301,6 +301,7 @@ Route::middleware('auth:api')->get('/employee_list', 'API\BackendController@empl
 Route::middleware('auth:api')->post('/employee_create', 'API\BackendController@employeeCreate');
 Route::middleware('auth:api')->post('/employee_edit', 'API\BackendController@employeeEdit');
 Route::middleware('auth:api')->post('/employee_delete', 'API\BackendController@employeeDelete');
+Route::middleware('auth:api')->post('/employee_image', 'API\BackendController@employeeImage');
 
 // Employee Office Information
 Route::middleware('auth:api')->get('/employee_office_information_list', 'API\BackendController@employeeOfficeInformationList');

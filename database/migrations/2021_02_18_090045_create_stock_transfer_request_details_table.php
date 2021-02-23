@@ -16,17 +16,17 @@ class CreateStockTransferRequestDetailsTable extends Migration
         Schema::create('stock_transfer_request_details', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('stock_transfer_request_id')->unsigned();
-            $table->bigInteger('product_unit_id')->unsigned();
+            $table->bigInteger('product_unit_id')->unsigned()->nullable();
             $table->bigInteger('product_brand_id')->unsigned()->nullable();
-            $table->bigInteger('product_id')->unsigned();
-            $table->string('barcode');
-            $table->integer('request_qty');
-            $table->integer('send_qty');
-            $table->integer('received_qty');
+            $table->bigInteger('product_id')->unsigned()->nullable();
+            $table->string('barcode')->nullable();
+            $table->integer('request_qty')->nullable();
+            $table->integer('send_qty')->nullable();
+            $table->integer('received_qty')->nullable();
             $table->float('price', 8,2);
             $table->float('vat_amount', 8,2);
             $table->float('sub_total', 8,2);
-            $table->string('received_date');
+            $table->string('received_date')->nullable();
             $table->timestamps();
             $table->foreign('stock_transfer_request_id')->references('id')->on('stock_transfer_requests')->onDelete('cascade');
             $table->foreign('product_unit_id')->references('id')->on('product_units')->onDelete('cascade');
