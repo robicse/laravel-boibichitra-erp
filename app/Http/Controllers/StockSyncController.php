@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Stock;
+use App\WarehouseCurrentStock;
+use App\WarehouseStoreCurrentStock;
 use Illuminate\Http\Request;
 
 class StockSyncController extends Controller
@@ -161,6 +163,116 @@ class StockSyncController extends Controller
             //Toastr::success('Stock Synchronize Successfully Updated!', 'Success');
         }
         //return redirect()->back();
+        die();
+    }
+
+    function warehouse_stock_sync(){
+        $stock_data = Stock::whereIn('id', function($query) {
+            $query->from('stocks')
+                ->groupBy('warehouse_id')
+                //->groupBy('store_id')
+                ->groupBy('product_id')
+                //->selectRaw('MIN(id)');
+                ->selectRaw('MAX(id)');
+        })->get();
+
+        $row_count = count($stock_data);
+        if($row_count > 0){
+            foreach ($stock_data as $key => $data){
+                $stock_id = $data->id;
+                $warehouse_id = $data->warehouse_id;
+                //$store_id = $data->store_id;
+                $product_id = $data->product_id;
+                $current_stock = $data->current_stock;
+
+//                echo 'stock_id => '.$stock_id.'<br/>';
+//                echo 'warehouse_id => '.$warehouse_id.'<br/>';
+//                echo 'product_id => '.$product_id.'<br/>';
+//                echo 'current_stock => '.$current_stock.'<br/>';
+//                echo '<br/>';
+
+                $check_exists_warehouse_current_stock = warehouseCurrentStock::where('warehouse_id',$warehouse_id)
+                    ->where('product_id',$product_id)
+                    ->first();
+                if($check_exists_warehouse_current_stock){
+                    $warehouse_current_stock_update = warehouseCurrentStock::find($check_exists_warehouse_current_stock->id);
+                    $warehouse_current_stock_update->current_stock=$current_stock;
+                    $warehouse_current_stock_update->save();
+
+                    echo 'this_row_current_stock => updated<br/>';
+                    echo '<br/>';
+                }else{
+                    $warehouse_current_stock = new warehouseCurrentStock();
+                    $warehouse_current_stock->warehouse_id=$warehouse_id;
+                    $warehouse_current_stock->product_id=$product_id;
+                    $warehouse_current_stock->current_stock=$current_stock;
+                    $warehouse_current_stock->save();
+
+                    echo 'this_row_current_stock => inserted<br/>';
+                    echo '<br/>';
+                }
+
+                //$this->product_store_stock_sync($warehouse_id,$store_id,$product_id);
+            }
+        }
+
+        die();
+    }
+
+    function warehouse_store_stock_sync(){
+        $stock_data = Stock::whereIn('id', function($query) {
+            $query->from('stocks')
+                ->where('store_id','!=',NULL)
+                ->groupBy('warehouse_id')
+                ->groupBy('store_id')
+                ->groupBy('product_id')
+                //->selectRaw('MIN(id)');
+                ->selectRaw('MAX(id)');
+        })->get();
+
+        $row_count = count($stock_data);
+        if($row_count > 0){
+            foreach ($stock_data as $key => $data){
+                $stock_id = $data->id;
+                $warehouse_id = $data->warehouse_id;
+                $store_id = $data->store_id;
+                $product_id = $data->product_id;
+                $current_stock = $data->current_stock;
+
+//                echo 'stock_id => '.$stock_id.'<br/>';
+//                echo 'warehouse_id => '.$warehouse_id.'<br/>';
+//                echo 'store_id => '.$store_id.'<br/>';
+//                echo 'product_id => '.$product_id.'<br/>';
+//                echo 'current_stock => '.$current_stock.'<br/>';
+//                echo '<br/>';
+
+                $check_exists_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                    ->where('store_id',$store_id)
+                    ->where('product_id',$product_id)
+                    ->first();
+                if($check_exists_warehouse_store_current_stock){
+                    $warehouse_store_current_stock_update = WarehouseStoreCurrentStock::find($check_exists_warehouse_store_current_stock->id);
+                    $warehouse_store_current_stock_update->current_stock=$current_stock;
+                    $warehouse_store_current_stock_update->save();
+
+                    echo 'this_row_current_stock => updated<br/>';
+                    echo '<br/>';
+                }else{
+                    $warehouse_store_current_stock = new WarehouseStoreCurrentStock();
+                    $warehouse_store_current_stock->warehouse_id=$warehouse_id;
+                    $warehouse_store_current_stock->store_id=$store_id;
+                    $warehouse_store_current_stock->product_id=$product_id;
+                    $warehouse_store_current_stock->current_stock=$current_stock;
+                    $warehouse_store_current_stock->save();
+
+                    echo 'this_row_current_stock => inserted<br/>';
+                    echo '<br/>';
+                }
+
+                //$this->product_store_stock_sync($warehouse_id,$store_id,$product_id);
+            }
+        }
+
         die();
     }
 }

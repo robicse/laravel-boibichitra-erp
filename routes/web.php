@@ -42,6 +42,8 @@ Route::get('/view-clear', function() {
 
 // stock_sync
 Route::get('/stock_sync', 'StockSyncController@stock_sync')->name('stock_sync');
+Route::get('/warehouse_stock_sync', 'StockSyncController@warehouse_stock_sync')->name('warehouse_stock_sync');
+Route::get('/warehouse_store_stock_sync', 'StockSyncController@warehouse_store_stock_sync')->name('warehouse_store_stock_sync');
 
 // test
 Route::get('/test', 'HomeController@test')->name('test');

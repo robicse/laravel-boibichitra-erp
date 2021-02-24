@@ -2442,6 +2442,40 @@ class BackendController extends Controller
         }
     }
 
+    public function wholeSaleCustomerList(){
+        $customer_lists = DB::table('parties')
+            ->where('type','customer')
+            ->where('customer_type','Whole Sale')
+            ->select('id','name')
+            ->orderBy('id','desc')
+            ->get();
+
+        if(count($customer_lists) > 0)
+        {
+            $success['customer_lists'] =  $customer_lists;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Customer List Found!'], $this->failStatus);
+        }
+    }
+
+    public function posSaleCustomerList(){
+        $customer_lists = DB::table('parties')
+            ->where('type','customer')
+            ->where('customer_type','POS Sale')
+            ->select('id','name')
+            ->orderBy('id','desc')
+            ->get();
+
+        if(count($customer_lists) > 0)
+        {
+            $success['customer_lists'] =  $customer_lists;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Customer List Found!'], $this->failStatus);
+        }
+    }
+
     public function paymentPaidDueList(){
         $payment_paid_due_amount = DB::table('product_purchases')
             ->leftJoin('users','product_purchases.user_id','users.id')
@@ -2802,7 +2836,114 @@ class BackendController extends Controller
                 ->where('stocks.product_id',$data->product_id)
                 ->where('stocks.warehouse_id',$request->warehouse_id)
                 ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
-                ->latest('id','desc')
+                ->orderBy('stocks.id','desc')
+                ->first();
+
+            if($stock_row){
+                $nested_data['stock_id'] = $stock_row->id;
+                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+                $nested_data['product_id'] = $stock_row->product_id;
+                $nested_data['product_name'] = $stock_row->product_name;
+                $nested_data['purchase_price'] = $stock_row->purchase_price;
+                $nested_data['selling_price'] = $stock_row->selling_price;
+                $nested_data['item_code'] = $stock_row->item_code;
+                $nested_data['barcode'] = $stock_row->barcode;
+                $nested_data['image'] = $stock_row->image;
+                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+                $nested_data['current_stock'] = $stock_row->current_stock;
+
+                array_push($warehouse_stock_product,$nested_data);
+            }
+        }
+
+        if($warehouse_stock_product)
+        {
+            $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
+//    public function warehouseCurrentStockListWithoutZero(Request $request){
+//        $warehouse_stock_product_list = Stock::where('warehouse_id',$request->warehouse_id)
+//            //->where('current_stock','>',0)
+//            ->select('product_id')
+//            ->groupBy('product_id')
+//            ->latest('id')
+//            ->get();
+//
+//        $warehouse_stock_product = [];
+//        foreach($warehouse_stock_product_list as $data){
+//
+//            $stock_row = DB::table('stocks')
+//                ->join('warehouses','stocks.warehouse_id','warehouses.id')
+//                ->leftJoin('products','stocks.product_id','products.id')
+//                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+//                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+//                ->where('stocks.stock_where','warehouse')
+//                ->where('stocks.product_id',$data->product_id)
+//                ->where('stocks.warehouse_id',$request->warehouse_id)
+//                ->where('stocks.current_stock','>',0)
+//                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+//                ->orderBy('stocks.id','desc')
+//                ->first();
+//
+//            if($stock_row){
+//                $nested_data['stock_id'] = $stock_row->id;
+//                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+//                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+//                $nested_data['product_id'] = $stock_row->product_id;
+//                $nested_data['product_name'] = $stock_row->product_name;
+//                $nested_data['purchase_price'] = $stock_row->purchase_price;
+//                $nested_data['selling_price'] = $stock_row->selling_price;
+//                $nested_data['item_code'] = $stock_row->item_code;
+//                $nested_data['barcode'] = $stock_row->barcode;
+//                $nested_data['image'] = $stock_row->image;
+//                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+//                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+//                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+//                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+//                $nested_data['current_stock'] = $stock_row->current_stock;
+//
+//                array_push($warehouse_stock_product,$nested_data);
+//            }
+//        }
+//
+//        if($warehouse_stock_product)
+//        {
+//            $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
+//            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+//        }
+//    }
+
+    public function warehouseCurrentStockListWithoutZero(Request $request){
+        $warehouse_stock_product_list = Stock::where('warehouse_id',$request->warehouse_id)
+            ->select('product_id')
+            ->groupBy('product_id')
+            ->latest('id')
+            ->get();
+
+        $warehouse_stock_product = [];
+        foreach($warehouse_stock_product_list as $data){
+
+            $stock_row = DB::table('stocks')
+                ->join('warehouses','stocks.warehouse_id','warehouses.id')
+                ->leftJoin('products','stocks.product_id','products.id')
+                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+                ->where('stocks.stock_where','warehouse')
+                ->where('stocks.product_id',$data->product_id)
+                ->where('stocks.warehouse_id',$request->warehouse_id)
+                ->where('stocks.current_stock','!= ',0)
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->orderBy('stocks.id','desc')
                 ->first();
 
             if($stock_row){
@@ -2842,7 +2983,7 @@ class BackendController extends Controller
                 ->leftJoin('products','stocks.product_id','products.id')
                 ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
                 ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
-                ->where('stocks.stock_where','warehouse')
+                //->where('stocks.stock_where','warehouse')
                 ->whereIn('stocks.id', function($query) {
                     $query->from('stocks')->groupBy('product_id')->selectRaw('MAX(id)');
                 })
@@ -3338,6 +3479,7 @@ class BackendController extends Controller
     public function warehouseToStoreStockCreate(Request $request){
         $this->validate($request, [
             'warehouse_id'=> 'required',
+            'store_id'=> 'required',
         ]);
 
         $date = date('Y-m-d');
@@ -3346,6 +3488,8 @@ class BackendController extends Controller
         $user_id = Auth::user()->id;
         $warehouse_id = $request->warehouse_id;
         $store_id = $request->store_id;
+        $miscellaneous_comment = $request->miscellaneous_comment;
+        $miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
 
 
         $get_invoice_no = StockTransfer::latest()->pluck('invoice_no')->first();
@@ -3357,7 +3501,7 @@ class BackendController extends Controller
         }
 
         $total_amount = 0;
-        $total_vat_amount = 0;
+        //$total_vat_amount = 0;
         foreach ($request->products as $data) {
             $product_id = $data['product_id'];
             //$price = Product::where('id',$product_id)->pluck('purchase_price')->first();
@@ -3367,6 +3511,8 @@ class BackendController extends Controller
             $total_amount += $data['qty']*$Product_info->purchase_price;
         }
 
+        $total_amount += $miscellaneous_charge;
+
         $final_invoice = 'STN-'.$invoice_no;
         $stock_transfer = new StockTransfer();
         $stock_transfer->invoice_no=$final_invoice;
@@ -3374,6 +3520,8 @@ class BackendController extends Controller
         $stock_transfer->warehouse_id = $warehouse_id;
         $stock_transfer->store_id = $store_id;
         $stock_transfer->total_vat_amount = 0;
+        $stock_transfer->miscellaneous_comment = $miscellaneous_comment;
+        $stock_transfer->miscellaneous_charge = $miscellaneous_charge;
         $stock_transfer->total_amount = $total_amount;
         $stock_transfer->paid_amount = 0;
         $stock_transfer->due_amount = $total_amount;
@@ -3505,7 +3653,7 @@ class BackendController extends Controller
             ->leftJoin('warehouses','stock_transfers.warehouse_id','warehouses.id')
             ->leftJoin('stores','stock_transfers.store_id','stores.id')
             //->where('stock_transfers.sale_type','whole_sale')
-            ->select('stock_transfers.id','stock_transfers.invoice_no','stock_transfers.total_amount','stock_transfers.issue_date','stock_transfers.total_vat_amount','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
+            ->select('stock_transfers.id','stock_transfers.invoice_no','stock_transfers.total_amount','stock_transfers.issue_date','stock_transfers.miscellaneous_comment','stock_transfers.miscellaneous_charge','stock_transfers.total_vat_amount','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
             ->orderBy('stock_transfers.id','desc')
             ->get();
 
@@ -3604,6 +3752,65 @@ class BackendController extends Controller
                 ->where('stocks.stock_where','store')
                 ->where('stocks.product_id',$data->product_id)
                 ->where('stocks.store_id',$request->store_id)
+                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
+                ->orderBy('stocks.id','desc')
+                ->first();
+
+            if($stock_row){
+                $nested_data['stock_id'] = $stock_row->id;
+                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+                $nested_data['product_id'] = $stock_row->product_id;
+                $nested_data['product_name'] = $stock_row->product_name;
+                $nested_data['purchase_price'] = $stock_row->purchase_price;
+                $nested_data['whole_sale_price'] = $stock_row->whole_sale_price;
+                $nested_data['selling_price'] = $stock_row->selling_price;
+                $nested_data['vat_status'] = $stock_row->vat_status;
+                $nested_data['vat_percentage'] = $stock_row->vat_percentage;
+                $nested_data['vat_amount'] = $stock_row->vat_amount;
+                $nested_data['vat_whole_amount'] = $stock_row->vat_whole_amount;
+                $nested_data['item_code'] = $stock_row->item_code;
+                $nested_data['barcode'] = $stock_row->barcode;
+                $nested_data['image'] = $stock_row->image;
+                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+                $nested_data['current_stock'] = $stock_row->current_stock;
+
+                array_push($store_stock_product,$nested_data);
+            }
+        }
+
+        if($store_stock_product)
+        {
+            $success['store_current_stock_list'] =  $store_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeCurrentStockListWithoutZero(Request $request){
+        $store_stock_product_list = Stock::where('store_id',$request->store_id)
+            ->where('current_stock','>',0)
+            ->select('product_id')
+            ->groupBy('product_id')
+            ->latest('id')
+            ->get();
+
+        $store_stock_product = [];
+        foreach($store_stock_product_list as $data){
+
+            $stock_row = DB::table('stocks')
+                ->join('warehouses','stocks.warehouse_id','warehouses.id')
+                ->leftJoin('products','stocks.product_id','products.id')
+                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+                ->where('stocks.stock_where','store')
+                ->where('stocks.product_id',$data->product_id)
+                ->where('stocks.store_id',$request->store_id)
+                ->where('stocks.current_stock','>',0)
                 ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
                 ->orderBy('stocks.id','desc')
                 ->first();
@@ -4819,6 +5026,61 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Transaction History Found!'], $this->failStatus);
+        }
+    }
+
+    // report
+    public function dateWiseSalesReport(Request $request){
+        $validator = Validator::make($request->all(), [
+            'from_date' => 'required',
+            'to_date'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $from_date = $request->from_date ? $request->from_date : '';
+        $to_date = $request->to_date ? $request->to_date : '';
+        $sale_type = $request->sale_type ? $request->sale_type : '';
+
+
+        if($sale_type != ''){
+            $product_sales = ProductSale::where('sale_date','>=',$from_date)
+                ->where('sale_date','<=',$to_date)
+                ->where('sale_type',$sale_type)
+                ->get();
+            $total_sale_history = DB::table('product_sales')
+                ->where('sale_date','>=',$from_date)
+                ->where('sale_date','<=',$to_date)
+                ->where('sale_type',$sale_type)
+                ->select(DB::raw('SUM(total_amount) as total_sale'))
+                ->first();
+            $grand_total_amount = $total_sale_history->total_sale;
+        }else{
+            $product_sales = ProductSale::where('sale_date','>=',$from_date)
+                ->where('sale_date','<=',$to_date)
+                ->get();
+
+            $total_sale_history = DB::table('product_sales')
+                ->where('sale_date','>=',$from_date)
+                ->where('sale_date','<=',$to_date)
+                ->select(DB::raw('SUM(total_amount) as total_sale'))
+                ->first();
+            $grand_total_amount = $total_sale_history->total_sale;
+        }
+
+        if($product_sales)
+        {
+            return response()->json(['success'=>true,'response' => $product_sales,'grand_total_amount'=>$grand_total_amount], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>null], $this->successStatus);
         }
     }
 

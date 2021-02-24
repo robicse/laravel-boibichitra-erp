@@ -177,6 +177,7 @@ Route::middleware('auth:api')->post('/product_purchase_return_create', 'API\Back
 
 // warehouse stock list
 Route::middleware('auth:api')->get('/warehouse_stock_list', 'API\BackendController@warehouseStockList');
+Route::middleware('auth:api')->post('/warehouse_current_stock_list_without_zero', 'API\BackendController@warehouseCurrentStockListWithoutZero');
 Route::middleware('auth:api')->get('/warehouse_stock_low_list', 'API\BackendController@warehouseStockLowList');
 Route::middleware('auth:api')->post('/product_whole_purchase_create_with_low_product', 'API\BackendController@productWholePurchaseCreateWithLowProduct');
 
@@ -197,6 +198,7 @@ Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_details',
 // stock transfer
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\BackendController@warehouseToStoreStockCreate');
 Route::middleware('auth:api')->post('/store_current_stock_list', 'API\BackendController@storeCurrentStockList');
+Route::middleware('auth:api')->post('/store_current_stock_list_without_zero', 'API\BackendController@storeCurrentStockListWithoutZero');
 Route::middleware('auth:api')->get('/stock_transfer_list', 'API\BackendController@stockTransferList');
 Route::middleware('auth:api')->post('/stock_transfer_details', 'API\BackendController@stockTransferDetails');
 
@@ -224,6 +226,8 @@ Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendC
 // payment
 Route::middleware('auth:api')->get('/supplier_list', 'API\BackendController@supplierList');
 Route::middleware('auth:api')->get('/customer_list', 'API\BackendController@customerList');
+Route::middleware('auth:api')->get('/whole_sale_customer_list', 'API\BackendController@wholeSaleCustomerList');
+Route::middleware('auth:api')->get('/pos_sale_customer_list', 'API\BackendController@posSaleCustomerList');
 Route::middleware('auth:api')->get('/payment_paid_due_list', 'API\BackendController@paymentPaidDueList');
 Route::middleware('auth:api')->post('/payment_paid_due_list_by_supplier', 'API\BackendController@paymentPaidDueListBySupplier');
 Route::middleware('auth:api')->post('/payment_paid_due_create', 'API\BackendController@paymentPaidDueCreate');
@@ -237,6 +241,9 @@ Route::middleware('auth:api')->post('/store_due_paid_list_by_store_date_differen
 // transaction history
 Route::middleware('auth:api')->get('/transaction_history', 'API\BackendController@transactionHistory');
 
+// report
+Route::middleware('auth:api')->post('/date_wise_sales_report', 'API\BackendController@dateWiseSalesReport');
+
 // dashboard history
 Route::middleware('auth:api')->get('/today_purchase', 'API\BackendController@todayPurchase');
 Route::middleware('auth:api')->get('/total_purchase', 'API\BackendController@totalPurchase');
@@ -248,6 +255,7 @@ Route::middleware('auth:api')->get('/today_sale_return', 'API\BackendController@
 Route::middleware('auth:api')->get('/total_sale_return', 'API\BackendController@totalSaleReturn');
 Route::middleware('auth:api')->get('/today_profit', 'API\BackendController@todayProfit');
 Route::middleware('auth:api')->get('/total_profit', 'API\BackendController@totalProfit');
+
 
 // stock_sync
 Route::middleware('auth:api')->get('/stock_sync', 'API\BackendController@stock_sync');
