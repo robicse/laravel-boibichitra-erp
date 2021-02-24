@@ -191,18 +191,18 @@ class StockSyncController extends Controller
 //                echo 'current_stock => '.$current_stock.'<br/>';
 //                echo '<br/>';
 
-                $check_exists_warehouse_current_stock = warehouseCurrentStock::where('warehouse_id',$warehouse_id)
+                $check_exists_warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)
                     ->where('product_id',$product_id)
                     ->first();
                 if($check_exists_warehouse_current_stock){
-                    $warehouse_current_stock_update = warehouseCurrentStock::find($check_exists_warehouse_current_stock->id);
+                    $warehouse_current_stock_update = WarehouseCurrentStock::find($check_exists_warehouse_current_stock->id);
                     $warehouse_current_stock_update->current_stock=$current_stock;
                     $warehouse_current_stock_update->save();
 
                     echo 'this_row_current_stock => updated<br/>';
                     echo '<br/>';
                 }else{
-                    $warehouse_current_stock = new warehouseCurrentStock();
+                    $warehouse_current_stock = new WarehouseCurrentStock();
                     $warehouse_current_stock->warehouse_id=$warehouse_id;
                     $warehouse_current_stock->product_id=$product_id;
                     $warehouse_current_stock->current_stock=$current_stock;
