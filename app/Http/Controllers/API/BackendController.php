@@ -1549,14 +1549,35 @@ class BackendController extends Controller
             ->leftJoin('parties','product_purchases.party_id','parties.id')
             ->leftJoin('warehouses','product_purchases.warehouse_id','warehouses.id')
             ->where('product_purchases.purchase_type','whole_purchase')
-            //->select('product_purchases.id','product_purchases.invoice_no','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.name as supplier_name')
             ->select('product_purchases.id','product_purchases.invoice_no','product_purchases.discount_type','product_purchases.discount_amount','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.id as supplier_id','parties.name as supplier_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
             ->orderBy('product_purchases.id','desc')
             ->get();
 
-        if($product_whole_purchases)
+        if(count($product_whole_purchases) > 0)
         {
-            $success['product_whole_purchases'] =  $product_whole_purchases;
+            $product_whole_purchase_arr = [];
+            foreach ($product_whole_purchases as $data){
+                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','whole_purchase')->pluck('payment_type')->first();
+
+                $nested_data['id']=$data->id;
+                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['discount_type']=$data->discount_type;
+                $nested_data['discount_amount']=$data->discount_amount;
+                //$nested_data['total_vat_amount']=$data->total_vat_amount;
+                $nested_data['total_amount']=$data->total_amount;
+                $nested_data['paid_amount']=$data->paid_amount;
+                $nested_data['due_amount']=$data->due_amount;
+                $nested_data['purchase_date_time']=$data->purchase_date_time;
+                $nested_data['user_name']=$data->user_name;
+                $nested_data['supplier_id']=$data->supplier_id;
+                $nested_data['supplier_name']=$data->supplier_name;
+                $nested_data['warehouse_id']=$data->warehouse_id;
+                $nested_data['warehouse_name']=$data->warehouse_name;
+                $nested_data['payment_type']=$payment_type;
+
+                array_push($product_whole_purchase_arr,$nested_data);
+            }
+            $success['product_whole_purchases'] =  $product_whole_purchase_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Whole Purchase List Found!'], $this->failStatus);
@@ -1992,11 +2013,34 @@ class BackendController extends Controller
             ->leftJoin('warehouses','product_purchases.warehouse_id','warehouses.id')
             ->where('product_purchases.purchase_type','pos_purchase')
             ->select('product_purchases.id','product_purchases.invoice_no','product_purchases.discount_type','product_purchases.discount_amount','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.id as supplier_id','parties.name as supplier_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
+            ->orderBy('product_purchases.id','desc')
             ->get();
 
         if($product_pos_purchases)
         {
-            $success['product_pos_purchases'] =  $product_pos_purchases;
+            $product_pos_purchases_arr = [];
+            foreach ($product_pos_purchases as $data){
+                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','pos_purchase')->pluck('payment_type')->first();
+
+                $nested_data['id']=$data->id;
+                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['discount_type']=$data->discount_type;
+                $nested_data['discount_amount']=$data->discount_amount;
+                $nested_data['total_amount']=$data->total_amount;
+                $nested_data['paid_amount']=$data->paid_amount;
+                $nested_data['due_amount']=$data->due_amount;
+                $nested_data['purchase_date_time']=$data->purchase_date_time;
+                $nested_data['user_name']=$data->user_name;
+                $nested_data['supplier_id']=$data->supplier_id;
+                $nested_data['supplier_name']=$data->supplier_name;
+                $nested_data['warehouse_id']=$data->warehouse_id;
+                $nested_data['warehouse_name']=$data->warehouse_name;
+                $nested_data['payment_type']=$payment_type;
+
+                array_push($product_pos_purchases_arr,$nested_data);
+            }
+
+            $success['product_pos_purchases'] =  $product_pos_purchases_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product POS Purchase List Found!'], $this->failStatus);
@@ -3043,47 +3087,37 @@ class BackendController extends Controller
 //    }
 
     public function warehouseCurrentStockListWithoutZero(Request $request){
-        $warehouse_stock_product_list = Stock::where('warehouse_id',$request->warehouse_id)
-            ->select('product_id')
-            ->groupBy('product_id')
-            ->latest('id')
+        $warehouse_stock_product_list = DB::table('warehouse_current_stocks')
+            ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+            ->leftJoin('products','warehouse_current_stocks.product_id','products.id')
+            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+            ->where('warehouse_current_stocks.warehouse_id',$request->warehouse_id)
+            ->where('warehouse_current_stocks.current_stock','!=',0)
+            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->get();
 
         $warehouse_stock_product = [];
-        foreach($warehouse_stock_product_list as $data){
+        foreach($warehouse_stock_product_list as $stock_row){
 
-            $stock_row = DB::table('stocks')
-                ->join('warehouses','stocks.warehouse_id','warehouses.id')
-                ->leftJoin('products','stocks.product_id','products.id')
-                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
-                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
-                ->where('stocks.stock_where','warehouse')
-                ->where('stocks.product_id',$data->product_id)
-                ->where('stocks.warehouse_id',$request->warehouse_id)
-                ->where('stocks.current_stock','!= ',0)
-                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
-                ->orderBy('stocks.id','desc')
-                ->first();
+            $nested_data['stock_id'] = $stock_row->id;
+            $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+            $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+            $nested_data['product_id'] = $stock_row->product_id;
+            $nested_data['product_name'] = $stock_row->product_name;
+            $nested_data['purchase_price'] = $stock_row->purchase_price;
+            $nested_data['selling_price'] = $stock_row->selling_price;
+            $nested_data['item_code'] = $stock_row->item_code;
+            $nested_data['barcode'] = $stock_row->barcode;
+            $nested_data['image'] = $stock_row->image;
+            $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+            $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+            $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+            $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+            $nested_data['current_stock'] = $stock_row->current_stock;
 
-            if($stock_row){
-                $nested_data['stock_id'] = $stock_row->id;
-                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
-                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
-                $nested_data['product_id'] = $stock_row->product_id;
-                $nested_data['product_name'] = $stock_row->product_name;
-                $nested_data['purchase_price'] = $stock_row->purchase_price;
-                $nested_data['selling_price'] = $stock_row->selling_price;
-                $nested_data['item_code'] = $stock_row->item_code;
-                $nested_data['barcode'] = $stock_row->barcode;
-                $nested_data['image'] = $stock_row->image;
-                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
-                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
-                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
-                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
-                $nested_data['current_stock'] = $stock_row->current_stock;
+            array_push($warehouse_stock_product,$nested_data);
 
-                array_push($warehouse_stock_product,$nested_data);
-            }
         }
 
         if($warehouse_stock_product)
@@ -4051,53 +4085,41 @@ class BackendController extends Controller
     }
 
     public function storeCurrentStockListWithoutZero(Request $request){
-        $store_stock_product_list = Stock::where('store_id',$request->store_id)
-            ->where('current_stock','>',0)
-            ->select('product_id')
-            ->groupBy('product_id')
-            ->latest('id')
+        $store_stock_product_list = DB::table('warehouse_store_current_stocks')
+            ->join('warehouses','warehouse_store_current_stocks.warehouse_id','warehouses.id')
+            ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
+            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+            ->where('warehouse_store_current_stocks.store_id',$request->store_id)
+            ->where('warehouse_store_current_stocks.current_stock','!=',0)
+            ->select('warehouse_store_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->get();
 
         $store_stock_product = [];
-        foreach($store_stock_product_list as $data){
+        foreach($store_stock_product_list as $stock_row){
+            $nested_data['stock_id'] = $stock_row->id;
+            $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+            $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+            $nested_data['product_id'] = $stock_row->product_id;
+            $nested_data['product_name'] = $stock_row->product_name;
+            $nested_data['purchase_price'] = $stock_row->purchase_price;
+            $nested_data['whole_sale_price'] = $stock_row->whole_sale_price;
+            $nested_data['selling_price'] = $stock_row->selling_price;
+            $nested_data['vat_status'] = $stock_row->vat_status;
+            $nested_data['vat_percentage'] = $stock_row->vat_percentage;
+            $nested_data['vat_amount'] = $stock_row->vat_amount;
+            $nested_data['vat_whole_amount'] = $stock_row->vat_whole_amount;
+            $nested_data['item_code'] = $stock_row->item_code;
+            $nested_data['barcode'] = $stock_row->barcode;
+            $nested_data['image'] = $stock_row->image;
+            $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+            $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+            $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+            $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+            $nested_data['current_stock'] = $stock_row->current_stock;
 
-            $stock_row = DB::table('stocks')
-                ->join('warehouses','stocks.warehouse_id','warehouses.id')
-                ->leftJoin('products','stocks.product_id','products.id')
-                ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
-                ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
-                ->where('stocks.stock_where','store')
-                ->where('stocks.product_id',$data->product_id)
-                ->where('stocks.store_id',$request->store_id)
-                ->where('stocks.current_stock','>',0)
-                ->select('stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.name as product_unit_name','product_brands.name as product_brand_name')
-                ->orderBy('stocks.id','desc')
-                ->first();
+            array_push($store_stock_product,$nested_data);
 
-            if($stock_row){
-                $nested_data['stock_id'] = $stock_row->id;
-                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
-                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
-                $nested_data['product_id'] = $stock_row->product_id;
-                $nested_data['product_name'] = $stock_row->product_name;
-                $nested_data['purchase_price'] = $stock_row->purchase_price;
-                $nested_data['whole_sale_price'] = $stock_row->whole_sale_price;
-                $nested_data['selling_price'] = $stock_row->selling_price;
-                $nested_data['vat_status'] = $stock_row->vat_status;
-                $nested_data['vat_percentage'] = $stock_row->vat_percentage;
-                $nested_data['vat_amount'] = $stock_row->vat_amount;
-                $nested_data['vat_whole_amount'] = $stock_row->vat_whole_amount;
-                $nested_data['item_code'] = $stock_row->item_code;
-                $nested_data['barcode'] = $stock_row->barcode;
-                $nested_data['image'] = $stock_row->image;
-                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
-                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
-                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
-                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
-                $nested_data['current_stock'] = $stock_row->current_stock;
-
-                array_push($store_stock_product,$nested_data);
-            }
         }
 
         if($store_stock_product)
@@ -4255,14 +4277,39 @@ class BackendController extends Controller
             ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
             ->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.sale_type','whole_sale')
-            //->select('product_purchases.id','product_purchases.invoice_no','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.name as supplier_name')
-            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
             ->orderBy('product_sales.id','desc')
             ->get();
 
-        if($product_whole_sales)
+        if(count($product_whole_sales) > 0)
         {
-            $success['product_whole_sales'] =  $product_whole_sales;
+            $product_whole_sale_arr = [];
+            foreach ($product_whole_sales as $data){
+                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','whole_sale')->pluck('payment_type')->first();
+
+                $nested_data['id']=$data->id;
+                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['discount_type']=$data->discount_type;
+                $nested_data['discount_amount']=$data->discount_amount;
+                $nested_data['total_vat_amount']=$data->total_vat_amount;
+                $nested_data['total_amount']=$data->total_amount;
+                $nested_data['paid_amount']=$data->paid_amount;
+                $nested_data['due_amount']=$data->due_amount;
+                $nested_data['sale_date_time']=$data->sale_date_time;
+                $nested_data['user_name']=$data->user_name;
+                $nested_data['customer_id']=$data->customer_id;
+                $nested_data['customer_name']=$data->customer_name;
+                $nested_data['warehouse_id']=$data->warehouse_id;
+                $nested_data['warehouse_name']=$data->warehouse_name;
+                $nested_data['store_id']=$data->store_id;
+                $nested_data['store_name']=$data->store_name;
+                $nested_data['store_address']=$data->store_address;
+                $nested_data['payment_type']=$payment_type;
+
+                array_push($product_whole_sale_arr,$nested_data);
+            }
+
+            $success['product_whole_sales'] =  $product_whole_sale_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);
@@ -4345,8 +4392,8 @@ class BackendController extends Controller
         $productSale->sale_type = 'whole_sale';
         $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
         $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
-        //$productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
-        //$productSale->miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
+        $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
+        $productSale->miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
         $productSale->paid_amount = $request->paid_amount;
         $productSale->due_amount = $request->due_amount;
         $productSale->total_vat_amount = $request->total_vat_amount;
@@ -4644,14 +4691,39 @@ class BackendController extends Controller
             ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
             ->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.sale_type','pos_sale')
-            //->select('product_purchases.id','product_purchases.invoice_no','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.name as supplier_name')
             ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
             ->orderBy('product_sales.id','desc')
             ->get();
 
-        if($product_pos_sales)
+        if(count($product_pos_sales) > 0)
         {
-            $success['product_pos_sales'] =  $product_pos_sales;
+            $product_pos_sale_arr = [];
+            foreach ($product_pos_sales as $data){
+                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','pos_sale')->pluck('payment_type')->first();
+
+                $nested_data['id']=$data->id;
+                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['discount_type']=$data->discount_type;
+                $nested_data['discount_amount']=$data->discount_amount;
+                $nested_data['total_vat_amount']=$data->total_vat_amount;
+                $nested_data['total_amount']=$data->total_amount;
+                $nested_data['paid_amount']=$data->paid_amount;
+                $nested_data['due_amount']=$data->due_amount;
+                $nested_data['sale_date_time']=$data->sale_date_time;
+                $nested_data['user_name']=$data->user_name;
+                $nested_data['customer_id']=$data->customer_id;
+                $nested_data['customer_name']=$data->customer_name;
+                $nested_data['warehouse_id']=$data->warehouse_id;
+                $nested_data['warehouse_name']=$data->warehouse_name;
+                $nested_data['store_id']=$data->store_id;
+                $nested_data['store_name']=$data->store_name;
+                $nested_data['store_address']=$data->store_address;
+                $nested_data['payment_type']=$payment_type;
+
+                array_push($product_pos_sale_arr,$nested_data);
+            }
+
+            $success['product_pos_sales'] =  $product_pos_sale_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);
@@ -5329,6 +5401,53 @@ class BackendController extends Controller
             return response()->json(['response'=>'failed'], $this-> failStatus);
         }
 
+    }
+
+    // warehouse product damage
+    public function warehouseProductDamageList(){
+        $product_whole_sales = DB::table('product_sales')
+            ->leftJoin('users','product_sales.user_id','users.id')
+            ->leftJoin('parties','product_sales.party_id','parties.id')
+            ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+            ->leftJoin('stores','product_sales.store_id','stores.id')
+            ->where('product_sales.sale_type','whole_sale')
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
+            ->orderBy('product_sales.id','desc')
+            ->get();
+
+        if(count($product_whole_sales) > 0)
+        {
+            $product_whole_sale_arr = [];
+            foreach ($product_whole_sales as $data){
+                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','whole_sale')->pluck('payment_type')->first();
+
+                $nested_data['id']=$data->id;
+                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['discount_type']=$data->discount_type;
+                $nested_data['discount_amount']=$data->discount_amount;
+                $nested_data['total_vat_amount']=$data->total_vat_amount;
+                $nested_data['total_amount']=$data->total_amount;
+                $nested_data['paid_amount']=$data->paid_amount;
+                $nested_data['due_amount']=$data->due_amount;
+                $nested_data['sale_date_time']=$data->sale_date_time;
+                $nested_data['user_name']=$data->user_name;
+                $nested_data['customer_id']=$data->customer_id;
+                $nested_data['customer_name']=$data->customer_name;
+                $nested_data['warehouse_id']=$data->warehouse_id;
+                $nested_data['warehouse_name']=$data->warehouse_name;
+                $nested_data['store_id']=$data->store_id;
+                $nested_data['store_name']=$data->store_name;
+                $nested_data['store_address']=$data->store_address;
+                $nested_data['payment_type']=$payment_type;
+
+                array_push($product_whole_sale_arr,$nested_data);
+            }
+
+            $success['product_whole_sales'] =  $product_whole_sale_arr;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);
+        }
     }
 
     public function transactionHistory(Request $request){
@@ -6333,8 +6452,10 @@ class BackendController extends Controller
             $user_data['email'] = $request->email;
             $user_data['phone'] = $request->phone;
             $user_data['password'] = Hash::make(123456);
-            $user_data['employee_id'] = $insert_id;
+            //$user_data['employee_id'] = $insert_id;
             $user = User::create($user_data);
+            $user->employee_id=$request->employee_id;
+            $user->save();
             // first create employee role, then bellow assignRole code enable
             $user->assignRole('employee');
 
@@ -6385,6 +6506,17 @@ class BackendController extends Controller
         $update_leave_employee = $employee->save();
 
         if($update_leave_employee){
+
+//            $user_data['name'] = $request->name;
+//            $user_data['email'] = $request->email;
+//            $user_data['phone'] = $request->phone;
+//            $user_data['password'] = Hash::make(123456);
+//            //$user_data['employee_id'] = $request->employee_id;
+//            $user = User::create($user_data);
+//            $user->employee_id=$request->employee_id;
+//            $user->save();
+//            // first create employee role, then bellow assignRole code enable
+//            $user->assignRole('employee');
 
             return response()->json(['success'=>true,'response' => $employee], $this->successStatus);
         }else{
@@ -7015,6 +7147,122 @@ class BackendController extends Controller
 //            return response()->json(['success'=>false,'response'=>'No Attendance Deleted!'], $this->failStatus);
 //        }
 //    }
+
+    public function attendanceReport(Request $request){
+        $validator = Validator::make($request->all(), [
+            'employee_id'=> 'required',
+            'year'=>'required',
+            'month'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $year = $request->year;
+        $month = $request->month;
+        $employee_id = $request->employee_id;
+
+        $day_count_of_month = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+
+        $attendance_data = [];
+        $day = 1;
+        $custom_today = '';
+        $absent = '';
+        for($i=0;$i<$day_count_of_month;$i++){
+
+            $get_employee = DB::table('employees')
+                ->leftJoin('employee_office_informations','employees.id','employee_office_informations.employee_id')
+                ->where('employees.id',$employee_id)
+                ->select('employees.name as employee_name','employee_office_informations.card_no')
+                ->first();
+
+
+            // check attendance
+            if($day == 1){
+                $custom_today = '01';
+            }elseif($day == 2){
+                $custom_today = '02';
+            }elseif($day == 3){
+                $custom_today = '03';
+            }elseif($day == 4){
+                $custom_today = '04';
+            }elseif($day == 5){
+                $custom_today = '05';
+            }elseif($day == 6){
+                $custom_today = '06';
+            }elseif($day == 7){
+                $custom_today = '07';
+            }elseif($day == 8){
+                $custom_today = '08';
+            }elseif($day == 9){
+                $custom_today = '09';
+            }else{
+                $custom_today = $day;
+            }
+
+            $current_date = $year.'-'.$month.'-'.$custom_today;
+            $check_attendance = DB::table('attendances')
+                ->where('employee_id',$employee_id)
+                ->where('date',$current_date)
+                ->first();
+
+            if($check_attendance == null){
+                // weekend
+                $check_weekend = DB::table('weekends')
+                    ->where('date',$current_date)
+                    ->first();
+
+                // holiday
+                $check_holiday = DB::table('holidays')
+                    ->where('date',$current_date)
+                    ->first();
+                if($check_weekend){
+                    $absent = 'Weekend';
+                }elseif($check_holiday){
+                    $absent = 'Holiday';
+                }else{
+                    $absent = 'Absent';
+                }
+            }else{
+                if($check_attendance->clock_in){
+                    $absent = 'Present';
+                }if($check_attendance->clock_in == ''){
+                    $absent = 'Absent';
+                }
+            }
+
+
+            $nested_data['day']= $day;
+            $nested_data['month']= $month;
+            $nested_data['year']= $year;
+            $nested_data['current_date']= $current_date;
+            $nested_data['card_no']= $get_employee ? $get_employee->card_no : '';
+            $nested_data['employee_name']= $get_employee ? $get_employee->employee_name : '';
+            $nested_data['clock_in']= $check_attendance ? $check_attendance->clock_in : '';
+            $nested_data['clock_out']= $check_attendance ? $check_attendance->clock_out : '';
+            $nested_data['late']= $check_attendance ? $check_attendance->late : '';
+            $nested_data['work_time']= $check_attendance ? $check_attendance->work_time : '';
+            $nested_data['early']= $check_attendance ? $check_attendance->early : '';
+            $nested_data['absent']= $absent;
+
+            $day++;
+
+            array_push($attendance_data,$nested_data);
+        }
+
+        if($attendance_data){
+            return response()->json(['success'=>true,'response' => $attendance_data], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
+        }
+    }
 
 
     // weekend

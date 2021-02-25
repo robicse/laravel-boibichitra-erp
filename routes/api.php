@@ -223,6 +223,13 @@ Route::middleware('auth:api')->get('/product_sale_invoice_list', 'API\BackendCon
 Route::middleware('auth:api')->post('/product_sale_return_details', 'API\BackendController@productSaleReturnDetails');
 Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendController@productSaleReturnCreate');
 
+// warehouse product damages
+Route::middleware('auth:api')->get('/warehouse_product_damage_list', 'API\BackendController@warehouseProductDamageList');
+//Route::middleware('auth:api')->post('/product_whole_sale_details', 'API\BackendController@productWholeSaleDetails');
+//Route::middleware('auth:api')->post('/product_whole_sale_create', 'API\BackendController@productWholeSaleCreate');
+//Route::middleware('auth:api')->post('/product_whole_sale_edit', 'API\BackendController@productWholeSaleEdit');
+//Route::middleware('auth:api')->post('/product_whole_sale_delete', 'API\BackendController@productWholeSaleDelete');
+
 // payment
 Route::middleware('auth:api')->get('/supplier_list', 'API\BackendController@supplierList');
 Route::middleware('auth:api')->get('/customer_list', 'API\BackendController@customerList');
@@ -335,3 +342,4 @@ Route::middleware('auth:api')->get('/attendance_list', 'API\BackendController@at
 Route::middleware('auth:api')->post('/attendance_create', 'API\BackendController@attendanceCreate');
 Route::middleware('auth:api')->post('/attendance_edit', 'API\BackendController@attendanceEdit');
 //Route::middleware('auth:api')->post('/attendance_delete', 'API\BackendController@attendanceDelete');
+Route::middleware('auth:api')->post('/attendance_report', 'API\BackendController@attendanceReport');
