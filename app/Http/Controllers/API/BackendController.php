@@ -6943,7 +6943,7 @@ class BackendController extends Controller
     public function attendanceList(){
         $attendances = DB::table('attendances')
             ->join('employees','attendances.employee_id','=','employees.id')
-            ->select('attendances.id','attendances.employee_card_no','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.on_duty','attendances.off_duty','attendances.clock_in','attendances.clock_out','attendances.late','attendances.early','attendances.absent','attendances.work_time','attendances.att_time','attendances.note','attendances.id as employee_id','employees.name as employee_name')
+            ->select('attendances.id','attendances.card_no','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.on_duty','attendances.off_duty','attendances.clock_in','attendances.clock_out','attendances.late','attendances.early','attendances.absent','attendances.work_time','attendances.att_time','attendances.note','attendances.id as employee_id','employees.name as employee_name')
             ->orderBy('id','desc')
             ->get();
 
@@ -6960,7 +6960,7 @@ class BackendController extends Controller
 //
 //        $validator = Validator::make($request->all(), [
 //            'employee_id'=> 'required',
-//            'employee_card_no'=> 'required',
+//            'card_no'=> 'required',
 //            'employee_name'=> 'required',
 //            'date'=> 'required',
 //            'year'=> 'required',
@@ -6985,7 +6985,7 @@ class BackendController extends Controller
 //
 //        $attendance = new Attendance();
 //        $attendance->employee_id = $request->employee_id;
-//        $attendance->employee_card_no = $request->employee_card_no;
+//        $attendance->card_no = $request->card_no;
 //        $attendance->employee_name = $request->employee_name;
 //        $attendance->date = $request->date;
 //        $attendance->year = $request->year;
@@ -7012,7 +7012,7 @@ class BackendController extends Controller
 
     public function attendanceCreate(Request $request){
         $validator = Validator::make($request->all(), [
-            'attendance'=> 'required',
+            'attendances'=> 'required',
         ]);
 
         if ($validator->fails()) {
@@ -7028,10 +7028,8 @@ class BackendController extends Controller
         $success_insert_flag = true;
 
 
-        foreach ($request->attendance as $data) {
-            $insert_id = '';
+        foreach ($request->attendances as $data) {
 
-            $employee_id =  $data['employee_id'];
             $date =  $data['date'];
 
             $year = date('Y', strtotime($date));
@@ -7039,27 +7037,27 @@ class BackendController extends Controller
 
             $employee_info = DB::table('employees')
                 ->join('employee_office_informations','employees.id','=','employee_office_informations.employee_id')
-                ->where('employees.id',$employee_id)
-                ->select('employees.name','employee_office_informations.card_no')
+                ->where('employee_office_informations.card_no',$data['card_no'])
+                ->select('employees.id','employees.name','employee_office_informations.card_no')
                 ->first();
 
             $attendance = new Attendance();
-            $attendance->employee_id = $employee_id;
-            $attendance->employee_card_no = $request->employee_card_no;
+            $attendance->employee_id = $employee_info->id;
+            $attendance->card_no = $data['card_no'];
             $attendance->employee_name = $employee_info->name;
             $attendance->date = $date;
             $attendance->year = $year;
             $attendance->month = $month;
-            $attendance->on_duty = $data['on_duty'];
-            $attendance->off_duty = $data['off_duty'];
-            $attendance->clock_in = $data['clock_in'];
-            $attendance->clock_out = $data['clock_out'];
-            $attendance->late = $data['late'];
-            $attendance->early = $data['early'];
-            $attendance->absent = $data['absent'];
-            $attendance->work_time = $data['work_time'];
-            $attendance->att_time = $data['att_time'];
-            $attendance->note = $data['note'];
+            $attendance->on_duty = isset($data['on_duty']) ? $data['on_duty'] : '';
+            $attendance->off_duty = isset($data['off_duty']) ? $data['off_duty'] : '';
+            $attendance->clock_in = isset($data['clock_in']) ? $data['clock_in'] : '';
+            $attendance->clock_out = isset($data['clock_out']) ? $data['clock_out'] : '';
+            $attendance->late = isset($data['late']) ? $data['late'] : '';
+            $attendance->early = isset($data['early']) ? $data['early'] : '';
+            $attendance->absent = isset($data['absent']) ? $data['absent'] : '';
+            $attendance->work_time = isset($data['work_time']) ? $data['work_time'] : '';
+            $attendance->att_time = isset($data['att_time']) ? $data['att_time'] : '';
+            $attendance->note = isset($data['note']) ? $data['note'] : '';
             $attendance->save();
             $insert_id = $attendance->id;
             if($insert_id == ''){
@@ -7078,7 +7076,7 @@ class BackendController extends Controller
 //        $validator = Validator::make($request->all(), [
 //            'attendance_id'=> 'required',
 //            'employee_id'=> 'required',
-//            'employee_card_no'=> 'required',
+//            'card_no'=> 'required',
 //            'employee_name'=> 'required',
 //            'date'=> 'required',
 //            'year'=> 'required',
@@ -7107,7 +7105,7 @@ class BackendController extends Controller
 //
 //        $attendance = Attendance::find($request->attendance_id);
 //        $attendance->employee_id = $request->employee_id;
-//        $attendance->employee_card_no = $request->employee_card_no;
+//        $attendance->card_no = $request->card_no;
 //        $attendance->employee_name = $request->employee_name;
 //        $attendance->date = $request->date;
 //        $attendance->year = $request->year;
@@ -7360,6 +7358,58 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Weekend Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Weekend Deleted!'], $this->failStatus);
+        }
+    }
+
+
+    public function employeeDetailsDepartmentWise(Request $request){
+        $validator = Validator::make($request->all(), [
+            'department_id'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $employee_details = DB::table('employees')
+            ->leftJoin('employee_office_informations','employees.id','=','employee_office_informations.employee_id')
+            ->leftJoin('employee_salary_informations','employees.id','=','employee_salary_informations.employee_id')
+            ->where('employee_office_informations.department_id', $request->department_id)
+            ->select(
+                'employees.id',
+                'employees.name as employee_name',
+                'employee_office_informations.department_id',
+                'employee_office_informations.designation_id',
+                'employee_office_informations.card_no'
+            )
+            ->get();
+
+
+
+        if(count($employee_details) > 0)
+        {
+            $employee_details_arr = [];
+            foreach ($employee_details as $employee_detail){
+                $nested_data['employee_id'] = $employee_detail->id;
+                $nested_data['department_id'] = $employee_detail->department_id;
+                $nested_data['designation_id'] = $employee_detail->designation_id;
+                $nested_data['designation_id'] = $employee_detail->designation_id;
+                $nested_data['card_no'] = $employee_detail->card_no;
+                $nested_data['employee_name'] = $employee_detail->employee_name;
+                $nested_data['joining_date'] = $employee_detail->joining_date;
+
+                array_push($employee_details_arr,$nested_data);
+            }
+
+            return response()->json(['success'=>true,'response' => $employee_details_arr], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Employee Details Found!'], $this->failStatus);
         }
     }
 

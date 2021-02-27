@@ -343,3 +343,6 @@ Route::middleware('auth:api')->post('/attendance_create', 'API\BackendController
 Route::middleware('auth:api')->post('/attendance_edit', 'API\BackendController@attendanceEdit');
 //Route::middleware('auth:api')->post('/attendance_delete', 'API\BackendController@attendanceDelete');
 Route::middleware('auth:api')->post('/attendance_report', 'API\BackendController@attendanceReport');
+
+// payroll/salary sheet
+Route::middleware('auth:api')->post('/employee_details_department_wise', 'API\BackendController@employeeDetailsDepartmentWise');
