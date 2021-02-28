@@ -17,6 +17,9 @@ class CreateWeekendsTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('department_id')->unsigned()->nullable();
             $table->string('date');
+            $table->string('year');
+            $table->string('month');
+            $table->string('day');
             $table->text('note')->nullable();
             $table->integer('status')->default(1);
             $table->timestamps();

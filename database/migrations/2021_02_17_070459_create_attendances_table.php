@@ -21,6 +21,7 @@ class CreateAttendancesTable extends Migration
             $table->string('date');
             $table->string('year');
             $table->string('month');
+            $table->string('day');
             $table->string('on_duty');
             $table->string('off_duty');
             $table->string('clock_in');
