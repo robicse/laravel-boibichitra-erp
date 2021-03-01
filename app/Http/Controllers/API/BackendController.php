@@ -17,6 +17,7 @@ use App\Party;
 use App\PaymentCollection;
 use App\PaymentPaid;
 use App\Payroll;
+use App\Payslip;
 use App\Product;
 use App\ProductBrand;
 use App\ProductPurchase;
@@ -37,6 +38,7 @@ use App\StockTransferRequestDetail;
 use App\Store;
 use App\Transaction;
 use App\User;
+use App\VoucherType;
 use App\Warehouse;
 use App\WarehouseCurrentStock;
 use App\WarehouseStoreCurrentStock;
@@ -7722,9 +7724,11 @@ class BackendController extends Controller
         }
     }
 
-    public function employeePayrollCreate(Request $request){
+    public function payrollCreate(Request $request){
         $validator = Validator::make($request->all(), [
             'employee_id'=> 'required',
+            'year'=> 'required',
+            'month'=> 'required',
         ]);
 
         if ($validator->fails()) {
@@ -7736,6 +7740,15 @@ class BackendController extends Controller
 
             return response()->json($response, $this->validationStatus);
         }
+
+        $check_payroll_exists = Payroll::where('year',$request->year)
+            ->where('month',$request->month)
+            ->where('employee_id',$request->employee_id)
+            ->first();
+        if($check_payroll_exists){
+            return response()->json(['success'=>true,'response' => 'You have already created payroll for this Employee'], $this->failStatus);
+        }
+
 
         $payroll = new Payroll();
         $payroll->year=$request->year;
@@ -7770,7 +7783,61 @@ class BackendController extends Controller
         {
             return response()->json(['success'=>true,'response' => $payroll], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'No Employee Details Found!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Payroll Successfully Inserted!'], $this->failStatus);
+        }
+    }
+
+    public function payrollEdit(Request $request){
+        $validator = Validator::make($request->all(), [
+            'payroll_id'=> 'required',
+            'employee_id'=> 'required',
+            'year'=> 'required',
+            'month'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->failStatus);
+        }
+
+        $payroll = Payroll::find($request->payroll_id);
+        $payroll->year=$request->year;
+        $payroll->month=$request->month;
+        $payroll->department_id=$request->department_id;
+        $payroll->designation_id=$request->designation_id;
+        $payroll->employee_id=$request->employee_id;
+        $payroll->card_no=$request->card_no;
+        $payroll->employee_name=$request->employee_name;
+        $payroll->joining_date=$request->joining_date;
+        $payroll->gross_salary=$request->gross_salary;
+        $payroll->basic=$request->basic;
+        $payroll->house_rent=$request->house_rent;
+        $payroll->medical=$request->medical;
+        $payroll->conveyance=$request->conveyance;
+        $payroll->special=$request->special;
+        $payroll->other_allowance=$request->other_allowance;
+        $payroll->payable_gross_salary=$request->payable_gross_salary;
+        $payroll->mobile_bill_deduction=$request->mobile_bill_deduction;
+        $payroll->other_deduction=$request->other_deduction;
+        $payroll->total_deduction_amount=$request->total_deduction_amount;
+        $payroll->total_working_day=$request->total_working_day;
+        $payroll->late=$request->late;
+        $payroll->absent=$request->absent;
+        $payroll->absent_deduction=$request->absent_deduction;
+        $payroll->net_salary=$request->net_salary;
+        $affectedRow = $payroll->save();
+
+
+        if($affectedRow)
+        {
+            return response()->json(['success'=>true,'response' => $payroll], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Payroll Successfully Updated!'], $this->failStatus);
         }
     }
 
@@ -7798,6 +7865,7 @@ class BackendController extends Controller
                 'payrolls.conveyance',
                 'payrolls.special',
                 'payrolls.other_allowance',
+                'payrolls.payable_gross_salary',
                 'payrolls.mobile_bill_deduction',
                 'payrolls.other_deduction',
                 'payrolls.total_deduction_amount',
@@ -7812,10 +7880,217 @@ class BackendController extends Controller
 
         if($payrolls)
         {
-            $success['$payroll'] =  $payrolls;
+            $success['payroll'] =  $payrolls;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Payrolls List Found!'], $this->failStatus);
+        }
+    }
+
+    public function payslipCreate(Request $request){
+        $validator = Validator::make($request->all(), [
+            'employee_id'=> 'required',
+            'year'=> 'required',
+            'month'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_payslip_exists = Payslip::where('year',$request->year)
+            ->where('month',$request->month)
+            ->where('employee_id',$request->employee_id)
+            ->first();
+        if($check_payslip_exists){
+            return response()->json(['success'=>true,'response' => 'You have already created payslip for this Employee'], $this->failStatus);
+        }
+
+        $employee_detail = DB::table('employees')
+            ->leftJoin('employee_office_informations','employees.id','=','employee_office_informations.employee_id')
+            ->leftJoin('employee_salary_informations','employees.id','=','employee_salary_informations.employee_id')
+            ->where('employees.id', $request->employee_id)
+            ->select(
+                'employees.id as employee_id',
+                'employees.name as employee_name',
+                'employee_office_informations.department_id',
+                'employee_office_informations.designation_id',
+                'employee_office_informations.card_no',
+                'employee_office_informations.joining_date',
+                'employee_salary_informations.gross_salary',
+                'employee_salary_informations.basic',
+                'employee_salary_informations.house_rent',
+                'employee_salary_informations.medical',
+                'employee_salary_informations.conveyance',
+                'employee_salary_informations.special'
+            )
+            ->first();
+
+
+        $payslip = new Payslip();
+        $payslip->year=$request->year;
+        $payslip->month=$request->month;
+        $payslip->department_id=$employee_detail->department_id;
+        $payslip->designation_id=$employee_detail->designation_id;
+        $payslip->employee_id=$request->employee_id;
+        $payslip->card_no=$employee_detail->card_no;
+        $payslip->employee_name=$employee_detail->employee_name;
+        $payslip->payment_by_user_id=$request->payment_by_user_id;
+        $payslip->payment_date=date('Y-m-d');
+        $payslip->payment_date_time=date('Y-m-d H:i:s');
+        $payslip->payment_type=$request->payment_type;
+        $payslip->account_no=isset($request->account_no) ? $request->account_no : '';
+        $payslip->payment_amount=$request->payment_amount;
+        $payslip->note=isset($request->note) ? $request->note : '';
+        $payslip->save();
+        $insert_id = $payslip->id;
+
+
+        if($insert_id)
+        {
+            return response()->json(['success'=>true,'response' => $payslip], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Payslip Successfully Inserted!'], $this->failStatus);
+        }
+    }
+
+    public function payslipList(){
+        $payrolls = DB::table('payslips')
+            ->join('employees','payslips.employee_id','=','employees.id')
+            ->join('departments','payslips.department_id','=','departments.id')
+            ->join('designations','payslips.designation_id','=','designations.id')
+            ->leftJoin('users','payslips.payment_by_user_id','=','users.id')
+            ->select(
+                'payslips.id',
+                'payslips.year',
+                'payslips.month',
+                'payslips.department_id',
+                'departments.name as department_name',
+                'payslips.designation_id',
+                'designations.name as designation_name',
+                'payslips.employee_id',
+                'payslips.card_no',
+                'payslips.employee_name',
+                'payslips.payment_date',
+                'payslips.payment_date_time',
+                'payslips.payment_type',
+                'users.name as payment_by_user_name',
+                'payslips.account_no',
+                'payslips.payment_amount',
+                'payslips.note'
+            )
+            ->orderBy('id','desc')
+            ->get();
+
+        if($payrolls)
+        {
+            $success['payroll'] =  $payrolls;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Payrolls List Found!'], $this->failStatus);
+        }
+    }
+
+    // voucher type
+    public function voucherTypeList(){
+        $voucher_types = DB::table('voucher_types')->select('id','name','status')->orderBy('id','desc')->get();
+
+        if($voucher_types)
+        {
+            $success['voucher_type'] =  $voucher_types;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Voucher Type List Found!'], $this->failStatus);
+        }
+    }
+
+    public function voucherTypeCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:voucher_types,name',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $voucherType = new VoucherType();
+        $voucherType->name = $request->name;
+        $voucherType->status = $request->status;
+        $voucherType->save();
+        $insert_id = $voucherType->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $voucherType], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Voucher Type Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function voucherTypeEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'voucher_type_id'=> 'required',
+            'name' => 'required|unique:voucher_types,name,'.$request->voucher_type_id,
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_voucher_type = DB::table("voucher_types")->where('id',$request->voucher_type_id)->pluck('id')->first();
+        if($check_exists_voucher_type == null){
+            return response()->json(['success'=>false,'response'=>'No Voucher Type Found!'], $this->failStatus);
+        }
+
+        $voucher_types = VoucherType::find($request->voucher_type_id);
+        $voucher_types->name = $request->name;
+        $voucher_types->status = $request->status;
+        $update_voucher_type = $voucher_types->save();
+
+        if($update_voucher_type){
+            return response()->json(['success'=>true,'response' => $voucher_types], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Voucher Type Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function voucherTypeDelete(Request $request){
+        $check_exists_voucher_type = DB::table("voucher_types")->where('id',$request->voucher_type_id)->pluck('id')->first();
+        if($check_exists_voucher_type == null){
+            return response()->json(['success'=>false,'response'=>'No Voucher Type Found!'], $this->failStatus);
+        }
+
+        //$delete_party = DB::table("voucher_types")->where('id',$request->voucher_type_id)->delete();
+        $soft_delete_voucher_type = VoucherType::find($request->voucher_type_id);
+        $soft_delete_voucher_type->status=0;
+        $affected_row = $soft_delete_voucher_type->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Voucher Type Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Voucher Type Deleted!'], $this->failStatus);
         }
     }
 

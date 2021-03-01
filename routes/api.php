@@ -350,5 +350,18 @@ Route::middleware('auth:api')->post('/total_late_by_employee', 'API\BackendContr
 Route::middleware('auth:api')->post('/total_working_day', 'API\BackendController@totalWorkingDay');
 //Route::middleware('auth:api')->post('/employee_details_department_wise', 'API\BackendController@employeeDetailsDepartmentWise');
 Route::middleware('auth:api')->post('/employee_details_employee_wise', 'API\BackendController@employeeDetailsEmployeeWise');
-Route::middleware('auth:api')->post('/employee_payroll_create', 'API\BackendController@employeePayrollCreate');
+Route::middleware('auth:api')->post('/payroll_create', 'API\BackendController@payrollCreate');
+Route::middleware('auth:api')->post('/payroll_edit', 'API\BackendController@payrollEdit');
 Route::middleware('auth:api')->get('/payroll_list', 'API\BackendController@payrollList');
+
+// payslip
+Route::middleware('auth:api')->post('/payslip_create', 'API\BackendController@payslipCreate');
+Route::middleware('auth:api')->get('/payslip_list', 'API\BackendController@payslipList');
+
+
+// accounts
+// voucher type
+Route::middleware('auth:api')->get('/voucher_type_list', 'API\BackendController@voucherTypeList');
+Route::middleware('auth:api')->post('/voucher_type_create', 'API\BackendController@voucherTypeCreate');
+Route::middleware('auth:api')->post('/voucher_type_edit', 'API\BackendController@voucherTypeEdit');
+Route::middleware('auth:api')->post('/voucher_type_delete', 'API\BackendController@voucherTypeDelete');
