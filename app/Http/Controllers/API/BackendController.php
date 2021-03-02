@@ -36,11 +36,13 @@ use App\StockTransferDetail;
 use App\StockTransferRequest;
 use App\StockTransferRequestDetail;
 use App\Store;
+use App\TangibleAssets;
 use App\Transaction;
 use App\User;
 use App\VoucherType;
 use App\Warehouse;
 use App\WarehouseCurrentStock;
+use App\WarehouseProductDamage;
 use App\WarehouseStoreCurrentStock;
 use App\Weekend;
 use Illuminate\Http\Request;
@@ -5408,48 +5410,131 @@ class BackendController extends Controller
 
     // warehouse product damage
     public function warehouseProductDamageList(){
-        $product_whole_sales = DB::table('product_sales')
-            ->leftJoin('users','product_sales.user_id','users.id')
-            ->leftJoin('parties','product_sales.party_id','parties.id')
-            ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
-            ->leftJoin('stores','product_sales.store_id','stores.id')
-            ->where('product_sales.sale_type','whole_sale')
-            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
-            ->orderBy('product_sales.id','desc')
+        $warehouse_product_damages = DB::table('warehouse_product_damages')
+            ->leftJoin('users','warehouse_product_damages.user_id','users.id')
+            ->leftJoin('warehouses','warehouse_product_damages.warehouse_id','warehouses.id')
+            ->leftJoin('products','warehouse_product_damages.product_id','products.id')
+            ->leftJoin('product_units','warehouse_product_damages.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','warehouse_product_damages.product_brand_id','product_brands.id')
+            ->select(
+                'warehouse_product_damages.id',
+                'warehouse_product_damages.invoice_no',
+                'warehouse_product_damages.product_id',
+                'products.name as product_name',
+                'warehouse_product_damages.barcode',
+                'warehouse_product_damages.qty',
+                'warehouse_product_damages.damage_date',
+                'warehouse_product_damages.damage_date_time',
+                'users.name as user_name',
+                'warehouses.id as warehouse_id',
+                'warehouses.name as warehouse_name',
+                'warehouse_product_damages.product_unit_id',
+                'product_units.name as product_unit_name',
+                'warehouse_product_damages.product_brand_id',
+                'product_brands.name as product_brand_name'
+            )
+            ->orderBy('warehouse_product_damages.id','desc')
             ->get();
 
-        if(count($product_whole_sales) > 0)
+        if(count($warehouse_product_damages) > 0)
         {
-            $product_whole_sale_arr = [];
-            foreach ($product_whole_sales as $data){
+            $warehouse_product_damage_arr = [];
+            foreach ($warehouse_product_damages as $data){
                 $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','whole_sale')->pluck('payment_type')->first();
 
                 $nested_data['id']=$data->id;
                 $nested_data['invoice_no']=$data->invoice_no;
-                $nested_data['discount_type']=$data->discount_type;
-                $nested_data['discount_amount']=$data->discount_amount;
-                $nested_data['total_vat_amount']=$data->total_vat_amount;
-                $nested_data['total_amount']=$data->total_amount;
-                $nested_data['paid_amount']=$data->paid_amount;
-                $nested_data['due_amount']=$data->due_amount;
-                $nested_data['sale_date_time']=$data->sale_date_time;
+                $nested_data['product_id']=$data->product_id;
+                $nested_data['product_name']=$data->product_name;
+                $nested_data['barcode']=$data->barcode;
+                $nested_data['qty']=$data->qty;
+                $nested_data['damage_date']=$data->damage_date;
+                $nested_data['damage_date_time']=$data->damage_date_time;
                 $nested_data['user_name']=$data->user_name;
-                $nested_data['customer_id']=$data->customer_id;
-                $nested_data['customer_name']=$data->customer_name;
                 $nested_data['warehouse_id']=$data->warehouse_id;
                 $nested_data['warehouse_name']=$data->warehouse_name;
-                $nested_data['store_id']=$data->store_id;
-                $nested_data['store_name']=$data->store_name;
-                $nested_data['store_address']=$data->store_address;
-                $nested_data['payment_type']=$payment_type;
+                $nested_data['product_unit_id']=$data->product_unit_id;
+                $nested_data['product_unit_id']=$data->product_unit_id;
+                $nested_data['unit_name']=$data->unit_name;
+                $nested_data['product_brand_id']=$data->product_brand_id;
+                $nested_data['product_brand_name']=$data->product_brand_name;
 
-                array_push($product_whole_sale_arr,$nested_data);
+                array_push($warehouse_product_damage_arr,$nested_data);
             }
 
-            $success['product_whole_sales'] =  $product_whole_sale_arr;
+            $success['warehouse_product_damages'] =  $warehouse_product_damage_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Warehouse Damage Product List Found!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseProductDamageCreate(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'warehouse_id'=> 'required',
+        ]);
+
+        $user_id = Auth::user()->id;
+        $warehouse_id = $request->warehouse_id;
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d H:i:s');
+
+
+        $flag = true;
+        foreach ($request->products as $data) {
+            $product_id = $data['product_id'];
+            $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+
+
+            // warehouse damage product
+            $warehouse_product_damage = new WarehouseProductDamage();
+            $warehouse_product_damage->invoice_no = '';
+            $warehouse_product_damage->user_id = $user_id;
+            $warehouse_product_damage->warehouse_id = $warehouse_id;
+            $warehouse_product_damage->product_unit_id = $data['product_unit_id'];
+            $warehouse_product_damage->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $warehouse_product_damage->product_id = $product_id;
+            $warehouse_product_damage->qty = $data['qty'];
+            $warehouse_product_damage->barcode = $barcode;
+            $warehouse_product_damage->damage_date = $date;
+            $warehouse_product_damage->damage_date_time = $date_time;
+            $warehouse_product_damage->save();
+            $insert_id=$warehouse_product_damage->id;
+
+
+            // product stock
+            $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest('id')->first();
+
+            $stock = new Stock();
+            $stock->ref_id=$insert_id;
+            $stock->user_id=$user_id;
+            $stock->product_unit_id= $data['product_unit_id'];
+            $stock->product_brand_id=$data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $stock->product_id=$product_id;
+            $stock->stock_type='warehouse_product_damage';
+            $stock->warehouse_id=$warehouse_id;
+            $stock->store_id=NULL;
+            $stock->stock_where='warehouse';
+            $stock->stock_in_out='stock_out';
+            $stock->previous_stock=$stock_row->current_stock;
+            $stock->stock_in=0;
+            $stock->stock_out=$data['qty'];
+            $stock->current_stock=$stock_row->current_stock - $data['qty'];
+            $stock->stock_date=$date;
+            $stock->stock_date_time=$date_time;
+            $stock->save();
+
+
+            $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->first();
+            $exists_current_stock = $warehouse_current_stock->current_stock;
+            $warehouse_current_stock->current_stock=$exists_current_stock - $data['qty'];
+            $warehouse_current_stock->update();
+        }
+        if($flag == true){
+            return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
         }
     }
 
@@ -8091,6 +8176,111 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Voucher Type Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Voucher Type Deleted!'], $this->failStatus);
+        }
+    }
+
+    // tangible asset
+    public function tangibleAssetList(){
+        $tangible_assets = DB::table('tangible_assets')->select('id','name','unique_id','location','date','description','status')->orderBy('id','desc')->get();
+
+        if($tangible_assets)
+        {
+            $success['tangible_asset'] =  $tangible_assets;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Tangible Asset List Found!'], $this->failStatus);
+        }
+    }
+
+    public function tangibleAssetCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:tangible_assets,name',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $tangibleAsset = new TangibleAssets();
+        $tangibleAsset->name = $request->name;
+        $tangibleAsset->unique_id = $request->unique_id;
+        $tangibleAsset->location = $request->location;
+        $tangibleAsset->date = $request->date;
+        $tangibleAsset->description = $request->description;
+        $tangibleAsset->status = $request->status;
+        $tangibleAsset->save();
+        $insert_id = $tangibleAsset->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $tangibleAsset], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Tangible Asset Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function tangibleAssetEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'tangible_asset_id'=> 'required',
+            'name' => 'required|unique:tangible_assets,name,'.$request->tangible_asset_id,
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_tangible_asset = DB::table("tangible_assets")->where('id',$request->tangible_asset_id)->pluck('id')->first();
+        if($check_exists_tangible_asset == null){
+            return response()->json(['success'=>false,'response'=>'No Tangible Asset Found!'], $this->failStatus);
+        }
+
+        $tangible_asset = TangibleAssets::find($request->tangible_asset_id);
+        $tangible_asset->name = $request->name;
+        $tangible_asset->unique_id = $request->unique_id;
+        $tangible_asset->location = $request->location;
+        $tangible_asset->date = $request->date;
+        $tangible_asset->description = $request->description;
+        $tangible_asset->status = $request->status;
+        $update_tangible_asset = $tangible_asset->save();
+
+        if($update_tangible_asset){
+            return response()->json(['success'=>true,'response' => $tangible_asset], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Tangible Asset Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function tangibleAssetDelete(Request $request){
+        $check_exists_tangible_asset = DB::table("tangible_assets")->where('id',$request->tangible_asset_id)->pluck('id')->first();
+        if($check_exists_tangible_asset == null){
+            return response()->json(['success'=>false,'response'=>'No tangible asset Found!'], $this->failStatus);
+        }
+
+        //$delete_party = DB::table("tangible_assets")->where('id',$request->tangible_asset_id)->delete();
+        $soft_delete_tangible_asset = TangibleAssets::find($request->tangible_asset_id);
+        $soft_delete_tangible_asset->status=0;
+        $affected_row = $soft_delete_tangible_asset->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Tangible Asset Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Tangible Asset Deleted!'], $this->failStatus);
         }
     }
 

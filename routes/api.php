@@ -225,8 +225,7 @@ Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendC
 
 // warehouse product damages
 Route::middleware('auth:api')->get('/warehouse_product_damage_list', 'API\BackendController@warehouseProductDamageList');
-//Route::middleware('auth:api')->post('/product_whole_sale_details', 'API\BackendController@productWholeSaleDetails');
-//Route::middleware('auth:api')->post('/product_whole_sale_create', 'API\BackendController@productWholeSaleCreate');
+Route::middleware('auth:api')->post('/warehouse_product_damage_create', 'API\BackendController@warehouseProductDamageCreate');
 //Route::middleware('auth:api')->post('/product_whole_sale_edit', 'API\BackendController@productWholeSaleEdit');
 //Route::middleware('auth:api')->post('/product_whole_sale_delete', 'API\BackendController@productWholeSaleDelete');
 
@@ -360,6 +359,12 @@ Route::middleware('auth:api')->get('/payslip_list', 'API\BackendController@paysl
 
 
 // accounts
+// voucher type
+Route::middleware('auth:api')->get('/tangible_asset_list', 'API\BackendController@tangibleAssetList');
+Route::middleware('auth:api')->post('/tangible_asset_create', 'API\BackendController@tangibleAssetCreate');
+Route::middleware('auth:api')->post('/tangible_asset_edit', 'API\BackendController@tangibleAssetEdit');
+Route::middleware('auth:api')->post('/tangible_asset_delete', 'API\BackendController@tangibleAssetDelete');
+
 // voucher type
 Route::middleware('auth:api')->get('/voucher_type_list', 'API\BackendController@voucherTypeList');
 Route::middleware('auth:api')->post('/voucher_type_create', 'API\BackendController@voucherTypeCreate');
