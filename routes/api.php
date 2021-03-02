@@ -359,6 +359,19 @@ Route::middleware('auth:api')->get('/payslip_list', 'API\BackendController@paysl
 
 
 // accounts
+
+// expense category
+Route::middleware('auth:api')->get('/expense_category_list', 'API\BackendController@expenseCategoryList');
+Route::middleware('auth:api')->post('/expense_category_create', 'API\BackendController@expenseCategoryCreate');
+Route::middleware('auth:api')->post('/expense_category_edit', 'API\BackendController@expenseCategoryEdit');
+Route::middleware('auth:api')->post('/expense_category_delete', 'API\BackendController@expenseCategoryDelete');
+
+// shop expense
+Route::middleware('auth:api')->get('/store_expense_list', 'API\BackendController@storeExpenseList');
+Route::middleware('auth:api')->post('/store_expense_create', 'API\BackendController@storeExpenseCreate');
+Route::middleware('auth:api')->post('/store_expense_edit', 'API\BackendController@storeExpenseEdit');
+Route::middleware('auth:api')->post('/store_expense_delete', 'API\BackendController@storeExpenseDelete');
+
 // voucher type
 Route::middleware('auth:api')->get('/tangible_asset_list', 'API\BackendController@tangibleAssetList');
 Route::middleware('auth:api')->post('/tangible_asset_create', 'API\BackendController@tangibleAssetCreate');

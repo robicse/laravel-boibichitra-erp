@@ -8,6 +8,7 @@ use App\Designation;
 use App\Employee;
 use App\EmployeeOfficeInformation;
 use App\EmployeeSalaryInformation;
+use App\ExpenseCategory;
 use App\Helpers\UserInfo;
 use App\Holiday;
 use App\Http\Controllers\Controller;
@@ -36,6 +37,7 @@ use App\StockTransferDetail;
 use App\StockTransferRequest;
 use App\StockTransferRequestDetail;
 use App\Store;
+use App\StoreExpense;
 use App\TangibleAssets;
 use App\Transaction;
 use App\User;
@@ -655,6 +657,7 @@ class BackendController extends Controller
 
         $validator = Validator::make($request->all(), [
             'type'=> 'required',
+            'email' => 'unique:parties',
             'name' => 'required',
             'phone'=> 'required',
             'status' => 'required',
@@ -668,6 +671,21 @@ class BackendController extends Controller
             ];
 
             return response()->json($response, $this-> validationStatus);
+        }
+
+        if($request->type == 'customer'){
+
+            $parties = Party::where('phone',$request->phone)->pluck('id','name')->first();
+
+            if($parties){
+                $response = [
+                    'success' => false,
+                    'data' => 'Validation Error.',
+                    'message' => ['Phone No Already Exist'],
+                    'exist'=>1
+                ];
+                return response()->json($response, $this-> failStatus);
+            }
         }
 
 
@@ -698,7 +716,7 @@ class BackendController extends Controller
                 UserInfo::smsAPI("88".$request->phone,$text);
             }
 
-            return response()->json(['success'=>true,'response' => $parties], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $parties,'exist'=>0], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'Party Not Created Successfully!'], $this->failStatus);
         }
@@ -1297,6 +1315,19 @@ class BackendController extends Controller
             return response()->json($response, $this-> validationStatus);
         }
 
+        $item_code = isset($request->item_code) ? $request->item_code : '';
+        if($item_code){
+            $check_exists = Product::where('item_code',$item_code)->pluck('id')->first();
+            if($check_exists){
+                $response = [
+                    'success' => false,
+                    'data' => 'Validation Error.',
+                    'message' => ['This Item Code Is Already exists!']
+                ];
+                return response()->json($response, $this-> validationStatus);
+            }
+        }
+
         $product_vat = ProductVat::latest()->first();
         $vat_percentage = 0;
         $vat_amount = 0;
@@ -1364,6 +1395,14 @@ class BackendController extends Controller
             ];
 
             return response()->json($response, $this->validationStatus);
+        }
+
+        $item_code = isset($request->item_code) ? $request->item_code : '';
+        if($item_code){
+            $check_exists = Product::where('item_code',$item_code)->where('id','!=',$request->product_id)->pluck('id')->first();
+            if($check_exists){
+                return response()->json(['success'=>false,'response'=>'Already exists, this item code!'], $this->failStatus);
+            }
         }
 
         $check_exists_product = DB::table("products")->where('id',$request->product_id)->pluck('id')->first();
@@ -8281,6 +8320,219 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Tangible Asset Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Tangible Asset Deleted!'], $this->failStatus);
+        }
+    }
+
+    // Expense Category
+    public function expenseCategoryList(){
+        $expense_categories = DB::table('expense_categories')->select('id','name','status')->orderBy('id','desc')->get();
+
+        if($expense_categories)
+        {
+            $success['expense_category'] =  $expense_categories;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Expense Category List Found!'], $this->failStatus);
+        }
+    }
+
+    public function expenseCategoryCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:expense_categories,name',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $expenseCategory = new ExpenseCategory();
+        $expenseCategory->name = $request->name;
+        $expenseCategory->status = $request->status;
+        $expenseCategory->save();
+        $insert_id = $expenseCategory->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $expenseCategory], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Expense Category Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function expenseCategoryEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'expense_category_id'=> 'required',
+            'name' => 'required|unique:expense_categories,name,'.$request->expense_category_id,
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_expense_category = DB::table("expense_categories")->where('id',$request->expense_category_id)->pluck('id')->first();
+        if($check_exists_expense_category == null){
+            return response()->json(['success'=>false,'response'=>'No Expense Category Found!'], $this->failStatus);
+        }
+
+        $expense_category = ExpenseCategory::find($request->expense_category_id);
+        $expense_category->name = $request->name;
+        $expense_category->status = $request->status;
+        $update_expense_category = $expense_category->save();
+
+        if($update_expense_category){
+            return response()->json(['success'=>true,'response' => $expense_category], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Expense Category Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function expenseCategoryDelete(Request $request){
+        $check_exists_expense_category = DB::table("expense_categories")->where('id',$request->expense_category_id)->pluck('id')->first();
+        if($check_exists_expense_category == null){
+            return response()->json(['success'=>false,'response'=>'No Expense Category Found!'], $this->failStatus);
+        }
+
+        //$delete_party = DB::table("expense_categories")->where('id',$request->expense_category_id)->delete();
+        $soft_delete_expense_category = ExpenseCategory::find($request->expense_category_id);
+        $soft_delete_expense_category->status=0;
+        $affected_row = $soft_delete_expense_category->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Expense Category Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Expense Category Deleted!'], $this->failStatus);
+        }
+    }
+
+    // Store Expense
+    public function storeExpenseList(){
+        $store_expenses = DB::table('store_expenses')
+            ->leftJoin('expense_categories','store_expenses.expense_category_id','=','expense_categories.id')
+            ->leftJoin('stores','store_expenses.store_id','=','stores.id')
+            ->select(
+                'store_expenses.id',
+                'store_expenses.expense_category_id',
+                'expense_categories.name as expense_category_name',
+                'store_expenses.store_id',
+                'stores.name as store_name',
+                'store_expenses.amount',
+                'store_expenses.status'
+            )
+            ->orderBy('id','desc')->get();
+
+        if($store_expenses)
+        {
+            $success['store_expense'] =  $store_expenses;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Expense List Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeExpenseCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'expense_category_id' => 'required',
+            'store_id' => 'required',
+            'amount' => 'required',
+            'status'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $storeExpense = new StoreExpense();
+        $storeExpense->expense_category_id = $request->expense_category_id;
+        $storeExpense->store_id = $request->store_id;
+        $storeExpense->amount = $request->amount;
+        $storeExpense->status = $request->status;
+        $storeExpense->save();
+        $insert_id = $storeExpense->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $storeExpense], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Store Expense Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function storeExpenseEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'store_expense_id'=> 'required',
+            'expense_category_id' => 'required',
+            'store_id' => 'required',
+            'amount' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_expense_category = DB::table("store_expenses")->where('id',$request->expense_category_id)->pluck('id')->first();
+        if($check_exists_expense_category == null){
+            return response()->json(['success'=>false,'response'=>'No Store Expense Found!'], $this->failStatus);
+        }
+
+        $storeExpense = StoreExpense::find($request->store_expense_id);
+        $storeExpense->expense_category_id = $request->expense_category_id;
+        $storeExpense->store_id = $request->store_id;
+        $storeExpense->amount = $request->amount;
+        $storeExpense->status = $request->status;
+        $update_store_expense = $storeExpense->save();
+
+        if($update_store_expense){
+            return response()->json(['success'=>true,'response' => $storeExpense], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Store Expense Not Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function storeExpenseDelete(Request $request){
+        $check_exists_store_expense = DB::table("store_expenses")->where('id',$request->store_expense_id)->pluck('id')->first();
+        if($check_exists_store_expense == null){
+            return response()->json(['success'=>false,'response'=>'No Store Expense Found!'], $this->failStatus);
+        }
+
+        //$delete_party = DB::table("store_expenses")->where('id',$request->expense_category_id)->delete();
+        $soft_delete_store_expense = StoreExpense::find($request->store_expense_id);
+        $soft_delete_store_expense->status=0;
+        $affected_row = $soft_delete_store_expense->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Store Expense Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Expense Deleted!'], $this->failStatus);
         }
     }
 
