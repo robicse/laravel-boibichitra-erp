@@ -25,11 +25,11 @@ class CreateStockTransferRequestsTable extends Migration
             $table->text('request_remarks')->nullable();
             $table->enum('request_status',['Pending','On Review','Canceled','Approved'])->default('Pending')->nullable();
             $table->bigInteger('send_by_user_id')->nullable();
-            $table->string('send_date');
+            $table->string('send_date')->nullable();
             $table->text('send_remarks')->nullable();
             $table->enum('send_status',['Pending','On Review','On Processing','Canceled','Delivered','Completed'])->default('Pending')->nullable();
             $table->bigInteger('received_by_user_id')->nullable();
-            $table->string('received_date');
+            $table->string('received_date')->nullable();
             $table->text('received_remarks')->nullable();
             $table->enum('received_status',['Pending','Canceled','Received'])->nullable();
             $table->timestamps();

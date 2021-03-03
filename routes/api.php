@@ -191,16 +191,23 @@ Route::middleware('auth:api')->post('/warehouse_current_stock_list', 'API\Backen
 
 // stock transfer request
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_create', 'API\BackendController@storeToWarehouseStockRequestCreate');
+Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_edit', 'API\BackendController@storeToWarehouseStockRequestEdit');
 Route::middleware('auth:api')->get('/store_to_warehouse_stock_request_list', 'API\BackendController@storeToWarehouseStockRequestList');
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_details', 'API\BackendController@storeToWarehouseStockRequestDetails');
-//Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_stock_transfer_create', 'API\BackendController@storeToWarehouseStockRequestStockTransferCreate');
 
 // stock transfer
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\BackendController@warehouseToStoreStockCreate');
+Route::middleware('auth:api')->post('/warehouse_to_store_stock_edit', 'API\BackendController@warehouseToStoreStockEdit');
 Route::middleware('auth:api')->post('/store_current_stock_list', 'API\BackendController@storeCurrentStockList');
 Route::middleware('auth:api')->post('/store_current_stock_list_without_zero', 'API\BackendController@storeCurrentStockListWithoutZero');
 Route::middleware('auth:api')->get('/stock_transfer_list', 'API\BackendController@stockTransferList');
 Route::middleware('auth:api')->post('/stock_transfer_details', 'API\BackendController@stockTransferDetails');
+
+// stock to warehouse stock return
+Route::middleware('auth:api')->post('/store_to_warehouse_stock_return_create', 'API\BackendController@storeToWarehouseStockReturnCreate');
+Route::middleware('auth:api')->post('/store_to_warehouse_stock_return_edit', 'API\BackendController@storeToWarehouseStockReturnEdit');
+Route::middleware('auth:api')->get('/store_to_warehouse_stock_return_list', 'API\BackendController@storeToWarehouseStockReturnList');
+Route::middleware('auth:api')->post('/store_to_warehouse_stock_return_details', 'API\BackendController@storeToWarehouseStockReturnDetails');
 
 
 // product sale whole
@@ -226,8 +233,8 @@ Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendC
 // warehouse product damages
 Route::middleware('auth:api')->get('/warehouse_product_damage_list', 'API\BackendController@warehouseProductDamageList');
 Route::middleware('auth:api')->post('/warehouse_product_damage_create', 'API\BackendController@warehouseProductDamageCreate');
-//Route::middleware('auth:api')->post('/product_whole_sale_edit', 'API\BackendController@productWholeSaleEdit');
-//Route::middleware('auth:api')->post('/product_whole_sale_delete', 'API\BackendController@productWholeSaleDelete');
+Route::middleware('auth:api')->post('/warehouse_product_damage_edit', 'API\BackendController@warehouseProductDamageEdit');
+Route::middleware('auth:api')->post('/warehouse_product_damage_delete', 'API\BackendController@warehouseProductDamageDelete');
 
 // payment
 Route::middleware('auth:api')->get('/supplier_list', 'API\BackendController@supplierList');

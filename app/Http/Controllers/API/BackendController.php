@@ -38,6 +38,8 @@ use App\StockTransferRequest;
 use App\StockTransferRequestDetail;
 use App\Store;
 use App\StoreExpense;
+use App\StoreStockReturn;
+use App\StoreStockReturnDetail;
 use App\TangibleAssets;
 use App\Transaction;
 use App\User;
@@ -45,6 +47,7 @@ use App\VoucherType;
 use App\Warehouse;
 use App\WarehouseCurrentStock;
 use App\WarehouseProductDamage;
+use App\WarehouseProductDamageDetail;
 use App\WarehouseStoreCurrentStock;
 use App\Weekend;
 use Illuminate\Http\Request;
@@ -1931,6 +1934,8 @@ class BackendController extends Controller
 //        }
 
         $user_id = Auth::user()->id;
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d H:i:s');
 
         // product purchase
         $productPurchase = ProductPurchase::find($request->product_purchase_id);
@@ -1965,8 +1970,8 @@ class BackendController extends Controller
 
 
                 // product stock
-                $stock_row = Stock::where('ref_id',$request->product_purchase_id)->where('stock_type','whole_purchase')->where('product_id',$product_id)->first();
-
+                $stock_row = Stock::where('warehouse_id',$request->warehouse_id)->where('product_id',$product_id)->latest()->first();
+                $current_stock = $stock_row->current_stock;
 
                 // warehouse current stock
                 $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
@@ -1977,29 +1982,54 @@ class BackendController extends Controller
                 if($stock_row->stock_in != $data['qty']){
 
                     if($data['qty'] > $stock_row->stock_in){
-                        $add_or_minus_stock_in = $data['qty'] - $stock_row->stock_in;
-                        $update_stock_in = $stock_row->stock_in + $add_or_minus_stock_in;
-                        $update_current_stock = $stock_row->current_stock + $add_or_minus_stock_in;
+
+                        $stock = new Stock();
+                        $stock->ref_id=$request->product_purchase_id;
+                        $stock->user_id=$user_id;
+                        $stock->product_unit_id= $data['product_unit_id'];
+                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->product_id= $product_id;
+                        $stock->stock_type='whole_purchase_increase';
+                        $stock->warehouse_id= $productPurchase->warehouse_id;
+                        $stock->store_id=NULL;
+                        $stock->stock_where='warehouse';
+                        $stock->stock_in_out='stock_in';
+                        $stock->previous_stock=$current_stock;
+                        $stock->stock_in=$data['qty'];
+                        $stock->stock_out=0;
+                        $stock->current_stock=$current_stock + $data['qty'];
+                        $stock->stock_date=$date;
+                        $stock->stock_date_time=$date_time;
+                        $stock->save();
 
                         // warehouse current stock
-                        $update_warehouse_current_stock = $exists_current_stock + $add_or_minus_stock_in;
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock + $data['qty'];
+                        $warehouse_current_stock_update->save();
                     }else{
-                        $add_or_minus_stock_in =  $stock_row->stock_in - $data['qty'];
-                        $update_stock_in = $stock_row->stock_in - $add_or_minus_stock_in;
-                        $update_current_stock = $stock_row->current_stock - $add_or_minus_stock_in;
+
+                        $stock = new Stock();
+                        $stock->ref_id=$request->product_purchase_id;
+                        $stock->user_id=$user_id;
+                        $stock->product_unit_id= $data['product_unit_id'];
+                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->product_id= $product_id;
+                        $stock->stock_type='whole_purchase_decrease';
+                        $stock->warehouse_id= $productPurchase->warehouse_id;
+                        $stock->store_id=NULL;
+                        $stock->stock_where='warehouse';
+                        $stock->stock_in_out='stock_in';
+                        $stock->previous_stock=$current_stock;
+                        $stock->stock_in=$data['qty'];
+                        $stock->stock_out=0;
+                        $stock->current_stock=$current_stock - $data['qty'];
+                        $stock->stock_date=$date;
+                        $stock->stock_date_time=$date_time;
+                        $stock->save();
 
                         // warehouse current stock
-                        $update_warehouse_current_stock = $exists_current_stock - $add_or_minus_stock_in;
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock - $data['qty'];
+                        $warehouse_current_stock_update->save();
                     }
-
-                    $stock_row->user_id = $user_id;
-                    $stock_row->stock_in = $update_stock_in;
-                    $stock_row->current_stock = $update_current_stock;
-                    $stock_row->update();
-
-                    // warehouse current stock
-                    $warehouse_current_stock_update->current_stock=$update_warehouse_current_stock;
-                    $warehouse_current_stock_update->save();
                 }
             }
 
@@ -2035,10 +2065,50 @@ class BackendController extends Controller
         }
 
         $productPurchase = ProductPurchase::find($request->product_purchase_id);
+        if($productPurchase){
+            $user_id = Auth::user()->id;
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d H:i:s');
+
+            $product_purchase_details = DB::table('product_purchase_details')->where('product_purchase_id',$request->product_purchase_id)->get();
+
+            if(count($product_purchase_details) > 0){
+                foreach ($product_purchase_details as $product_purchase_detail){
+                    // current stock
+                    $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$productPurchase->warehouse_id)->where('product_id',$product_purchase_detail->product_id)->latest('id')->first();
+                    $current_stock = $stock_row->current_stock;
+
+                    $stock = new Stock();
+                    $stock->ref_id=$productPurchase->id;
+                    $stock->user_id=$user_id;
+                    $stock->product_unit_id= $product_purchase_detail->product_unit_id;
+                    $stock->product_brand_id= $product_purchase_detail->product_brand_id;
+                    $stock->product_id= $product_purchase_detail->product_id;
+                    $stock->stock_type='whole_purchase_delete';
+                    $stock->warehouse_id= $productPurchase->warehouse_id;
+                    $stock->store_id=NULL;
+                    $stock->stock_where='warehouse';
+                    $stock->stock_in_out='stock_out';
+                    $stock->previous_stock=$current_stock;
+                    $stock->stock_in=0;
+                    $stock->stock_out=$product_purchase_detail->qty;
+                    $stock->current_stock=$current_stock + $product_purchase_detail->qty;
+                    $stock->stock_date=$date;
+                    $stock->stock_date_time=$date_time;
+                    $stock->save();
+
+
+                    $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$productPurchase->warehouse_id)->where('product_id',$product_purchase_detail->product_id)->first();
+                    $exists_current_stock = $warehouse_current_stock->current_stock;
+                    $warehouse_current_stock->current_stock=$exists_current_stock - $product_purchase_detail->qty;
+                    $warehouse_current_stock->update();
+                }
+            }
+        }
         $delete_purchase = $productPurchase->delete();
 
         DB::table('product_purchase_details')->where('product_purchase_id',$request->product_purchase_id)->delete();
-        DB::table('stocks')->where('ref_id',$request->product_purchase_id)->delete();
+        //DB::table('stocks')->where('ref_id',$request->product_purchase_id)->delete();
         DB::table('transactions')->where('ref_id',$request->product_purchase_id)->delete();
         DB::table('payment_paids')->where('product_purchase_id',$request->product_purchase_id)->delete();
 
@@ -2269,6 +2339,8 @@ class BackendController extends Controller
         ]);
 
         $user_id = Auth::user()->id;
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d H:i:s');
 
         // product purchase
         $productPurchase = ProductPurchase::find($request->product_purchase_id);
@@ -2303,7 +2375,8 @@ class BackendController extends Controller
 
 
                 // product stock
-                $stock_row = Stock::where('ref_id',$request->product_purchase_id)->where('stock_type','pos_purchase')->where('product_id',$product_id)->first();
+                $stock_row = Stock::where('warehouse_id',$request->warehouse_id)->where('product_id',$product_id)->latest()->first();
+                $current_stock = $stock_row->current_stock;
 
                 // warehouse current stock
                 $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
@@ -2314,29 +2387,54 @@ class BackendController extends Controller
                 if($stock_row->stock_in != $data['qty']){
 
                     if($data['qty'] > $stock_row->stock_in){
-                        $add_or_minus_stock_in = $data['qty'] - $stock_row->stock_in;
-                        $update_stock_in = $stock_row->stock_in + $add_or_minus_stock_in;
-                        $update_current_stock = $stock_row->current_stock + $add_or_minus_stock_in;
+
+                        $stock = new Stock();
+                        $stock->ref_id=$request->product_purchase_id;
+                        $stock->user_id=$user_id;
+                        $stock->product_unit_id= $data['product_unit_id'];
+                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->product_id= $product_id;
+                        $stock->stock_type='pos_purchase_increase';
+                        $stock->warehouse_id= $productPurchase->warehouse_id;
+                        $stock->store_id=NULL;
+                        $stock->stock_where='warehouse';
+                        $stock->stock_in_out='stock_in';
+                        $stock->previous_stock=$current_stock;
+                        $stock->stock_in=$data['qty'];
+                        $stock->stock_out=0;
+                        $stock->current_stock=$current_stock + $data['qty'];
+                        $stock->stock_date=$date;
+                        $stock->stock_date_time=$date_time;
+                        $stock->save();
 
                         // warehouse current stock
-                        $update_warehouse_current_stock = $exists_current_stock + $add_or_minus_stock_in;
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock + $data['qty'];
+                        $warehouse_current_stock_update->save();
                     }else{
-                        $add_or_minus_stock_in =  $stock_row->stock_in - $data['qty'];
-                        $update_stock_in = $stock_row->stock_in - $add_or_minus_stock_in;
-                        $update_current_stock = $stock_row->current_stock - $add_or_minus_stock_in;
+
+                        $stock = new Stock();
+                        $stock->ref_id=$request->product_purchase_id;
+                        $stock->user_id=$user_id;
+                        $stock->product_unit_id= $data['product_unit_id'];
+                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->product_id= $product_id;
+                        $stock->stock_type='pos_purchase_decrease';
+                        $stock->warehouse_id= $productPurchase->warehouse_id;
+                        $stock->store_id=NULL;
+                        $stock->stock_where='warehouse';
+                        $stock->stock_in_out='stock_in';
+                        $stock->previous_stock=$current_stock;
+                        $stock->stock_in=$data['qty'];
+                        $stock->stock_out=0;
+                        $stock->current_stock=$current_stock - $data['qty'];
+                        $stock->stock_date=$date;
+                        $stock->stock_date_time=$date_time;
+                        $stock->save();
 
                         // warehouse current stock
-                        $update_warehouse_current_stock = $exists_current_stock - $add_or_minus_stock_in;
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock - $data['qty'];
+                        $warehouse_current_stock_update->save();
                     }
-
-                    $stock_row->user_id = $user_id;
-                    $stock_row->stock_in = $update_stock_in;
-                    $stock_row->current_stock = $update_current_stock;
-                    $stock_row->update();
-
-                    // warehouse current stock
-                    $warehouse_current_stock_update->current_stock=$update_warehouse_current_stock;
-                    $warehouse_current_stock_update->save();
                 }
             }
 
@@ -2372,10 +2470,50 @@ class BackendController extends Controller
         }
 
         $productPurchase = ProductPurchase::find($request->product_purchase_id);
+        if($productPurchase){
+            $user_id = Auth::user()->id;
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d H:i:s');
+
+            $product_purchase_details = DB::table('product_purchase_details')->where('product_purchase_id',$request->product_purchase_id)->get();
+
+            if(count($product_purchase_details) > 0){
+                foreach ($product_purchase_details as $product_purchase_detail){
+                    // current stock
+                    $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$productPurchase->warehouse_id)->where('product_id',$product_purchase_detail->product_id)->latest('id')->first();
+                    $current_stock = $stock_row->current_stock;
+
+                    $stock = new Stock();
+                    $stock->ref_id=$productPurchase->id;
+                    $stock->user_id=$user_id;
+                    $stock->product_unit_id= $product_purchase_detail->product_unit_id;
+                    $stock->product_brand_id= $product_purchase_detail->product_brand_id;
+                    $stock->product_id= $product_purchase_detail->product_id;
+                    $stock->stock_type='pos_purchase_delete';
+                    $stock->warehouse_id= $productPurchase->warehouse_id;
+                    $stock->store_id=NULL;
+                    $stock->stock_where='warehouse';
+                    $stock->stock_in_out='stock_out';
+                    $stock->previous_stock=$current_stock;
+                    $stock->stock_in=0;
+                    $stock->stock_out=$product_purchase_detail->qty;
+                    $stock->current_stock=$current_stock + $product_purchase_detail->qty;
+                    $stock->stock_date=$date;
+                    $stock->stock_date_time=$date_time;
+                    $stock->save();
+
+
+                    $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$productPurchase->warehouse_id)->where('product_id',$product_purchase_detail->product_id)->first();
+                    $exists_current_stock = $warehouse_current_stock->current_stock;
+                    $warehouse_current_stock->current_stock=$exists_current_stock - $product_purchase_detail->qty;
+                    $warehouse_current_stock->update();
+                }
+            }
+        }
         $delete_purchase = $productPurchase->delete();
 
         DB::table('product_purchase_details')->where('product_purchase_id',$request->product_purchase_id)->delete();
-        DB::table('stocks')->where('ref_id',$request->product_purchase_id)->delete();
+        //DB::table('stocks')->where('ref_id',$request->product_purchase_id)->delete();
         DB::table('transactions')->where('ref_id',$request->product_purchase_id)->delete();
         DB::table('payment_paids')->where('product_purchase_id',$request->product_purchase_id)->delete();
 
@@ -3484,7 +3622,7 @@ class BackendController extends Controller
             $get_invoice = str_replace("STRN-","",$get_invoice_no);
             $invoice_no = $get_invoice+1;
         }else{
-            $invoice_no = 1;
+            $invoice_no = 2000;
         }
 
         $final_invoice = 'STRN-'.$invoice_no;
@@ -3514,8 +3652,8 @@ class BackendController extends Controller
             $stock_transfer_request_detail->product_id = $product_id;
             $stock_transfer_request_detail->barcode = $product_info->barcode;
             $stock_transfer_request_detail->request_qty = $data['qty'];
-            $stock_transfer_request_detail->send_qty = '';
-            $stock_transfer_request_detail->received_qty = '';
+            $stock_transfer_request_detail->send_qty = 0;
+            $stock_transfer_request_detail->received_qty = 0;
             $stock_transfer_request_detail->price = $product_info->purchase_price;
             $stock_transfer_request_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
             $stock_transfer_request_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
@@ -3527,6 +3665,50 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Stock Transfer Request Successfully Inserted.'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Stock Transfer Request Successfully Inserted.!'], $this->failStatus);
+        }
+    }
+
+    public function storeToWarehouseStockRequestEdit(Request $request){
+        $this->validate($request, [
+            'stock_transfer_request_id'=> 'required',
+            'request_from_store_id'=> 'required',
+            'request_to_warehouse_id'=> 'required',
+        ]);
+
+        $user_id = Auth::user()->id;
+        $request_to_warehouse_id = $request->request_to_warehouse_id;
+        $request_from_store_id = $request->request_from_store_id;
+
+        $stock_transfer_request = StockTransferRequest::find($request->stock_transfer_request_id);
+        $stock_transfer_request->request_to_warehouse_id = $request_to_warehouse_id;
+        $stock_transfer_request->request_from_store_id = $request_from_store_id;
+        $stock_transfer_request->request_by_user_id=$user_id;
+        $stock_transfer_request->request_remarks=$request->request_remarks;
+        $affectedRow = $stock_transfer_request->save();
+
+
+        foreach ($request->products as $data) {
+
+            $product_id = $data['product_id'];
+            $product_info = Product::where('id',$product_id)->first();
+
+            $stock_transfer_request_detail_id = $data['stock_transfer_request_detail_id'];
+            $stock_transfer_request_detail = StockTransferRequestDetail::find($stock_transfer_request_detail_id);
+            $stock_transfer_request_detail->product_unit_id = $data['product_unit_id'];
+            $stock_transfer_request_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $stock_transfer_request_detail->product_id = $product_id;
+            $stock_transfer_request_detail->barcode = $product_info->barcode;
+            $stock_transfer_request_detail->request_qty = $data['qty'];
+            $stock_transfer_request_detail->price = $product_info->purchase_price;
+            $stock_transfer_request_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
+            $stock_transfer_request_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
+            $stock_transfer_request_detail->save();
+        }
+
+        if($affectedRow){
+            return response()->json(['success'=>true,'response' => 'Stock Transfer Request Successfully Updated.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Stock Transfer Request Successfully Updated.!'], $this->failStatus);
         }
     }
 
@@ -3564,6 +3746,173 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Stock Transfer Request Details Found!'], $this->failStatus);
+        }
+    }
+
+    // store stock return create
+    public function storeToWarehouseStockReturnCreate(Request $request){
+        $this->validate($request, [
+            'return_from_store_id'=> 'required',
+            'return_to_warehouse_id'=> 'required',
+        ]);
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+        $return_to_warehouse_id = $request->return_to_warehouse_id;
+        $return_from_store_id = $request->return_from_store_id;
+
+
+        $get_invoice_no = StoreStockReturn::latest()->pluck('invoice_no')->first();
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("SSRN-","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
+        }else{
+            $invoice_no = 4000;
+        }
+
+        $final_invoice = 'SSRN-'.$invoice_no;
+        $store_stock_return = new StoreStockReturn();
+        $store_stock_return->invoice_no=$final_invoice;
+        $store_stock_return->return_from_store_id = $return_from_store_id;
+        $store_stock_return->return_to_warehouse_id = $return_to_warehouse_id;
+        $store_stock_return->return_by_user_id=$user_id;
+        $store_stock_return->return_date=$date;
+        $store_stock_return->return_date_time=$date_time;
+        $store_stock_return->return_remarks=$request->return_remarks;
+        $store_stock_return->return_status='Pending';
+        $store_stock_return->save();
+        $store_stock_return_insert_id = $store_stock_return->id;
+
+
+        foreach ($request->products as $data) {
+
+            $product_id = $data['product_id'];
+            $product_info = Product::where('id',$product_id)->first();
+
+            $store_stock_return_detail = new StoreStockReturnDetail();
+            $store_stock_return_detail->stock_transfer_request_id = $store_stock_return_insert_id;
+            $store_stock_return_detail->product_unit_id = $data['product_unit_id'];
+            $store_stock_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $store_stock_return_detail->product_id = $product_id;
+            $store_stock_return_detail->barcode = $product_info->barcode;
+            $store_stock_return_detail->qty = $data['qty'];
+            $store_stock_return_detail->price = $product_info->purchase_price;
+            $store_stock_return_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
+            $store_stock_return_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
+            $store_stock_return_detail->save();
+        }
+
+        if($store_stock_return_insert_id){
+            return response()->json(['success'=>true,'response' => 'Store Stock Return Successfully Inserted.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Stock Return Successfully Inserted.!'], $this->failStatus);
+        }
+    }
+
+    public function storeToWarehouseStockReturnEdit(Request $request){
+        $this->validate($request, [
+            'store_stock_return_id'=> 'required',
+            'return_from_store_id'=> 'required',
+            'return_to_warehouse_id'=> 'required',
+        ]);
+
+        $user_id = Auth::user()->id;
+        $return_from_store_id = $request->return_from_store_id;
+        $return_to_warehouse_id = $request->return_to_warehouse_id;
+
+        $store_stock_return = StoreStockReturn::find($request->store_stock_return_id);
+        $store_stock_return->return_from_store_id = $return_from_store_id;
+        $store_stock_return->return_to_warehouse_id = $return_to_warehouse_id;
+        $store_stock_return->return_by_user_id=$user_id;
+        $store_stock_return->return_remarks=$request->return_remarks;
+        $affectedRow = $store_stock_return->save();
+
+
+        foreach ($request->products as $data) {
+
+            $product_id = $data['product_id'];
+            $product_info = Product::where('id',$product_id)->first();
+
+            $store_stock_return_detail_id = $data['store_stock_return_detail_id'];
+            $store_stock_return_detail = StoreStockReturnDetail::find($store_stock_return_detail_id);
+            $store_stock_return_detail->product_unit_id = $data['product_unit_id'];
+            $store_stock_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $store_stock_return_detail->product_id = $product_id;
+            $store_stock_return_detail->barcode = $product_info->barcode;
+            $store_stock_return_detail->qty = $data['qty'];
+            $store_stock_return_detail->price = $product_info->purchase_price;
+            $store_stock_return_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
+            $store_stock_return_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
+            $store_stock_return_detail->save();
+        }
+
+        if($affectedRow){
+            return response()->json(['success'=>true,'response' => 'Stock Transfer Request Successfully Updated.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Stock Transfer Request Successfully Updated.!'], $this->failStatus);
+        }
+    }
+
+    public function storeToWarehouseStockReturnList(){
+        $stock_transfer_return_lists = DB::table('store_stock_returns')
+            ->leftJoin('users','store_stock_returns.return_by_user_id','users.id')
+            ->leftJoin('warehouses','store_stock_returns.return_to_warehouse_id','warehouses.id')
+            ->leftJoin('stores','store_stock_returns.return_from_store_id','stores.id')
+            ->select(
+                'store_stock_returns.id',
+                'store_stock_returns.invoice_no',
+                'store_stock_returns.return_date',
+                'store_stock_returns.return_remarks',
+                'users.name as user_name',
+                'warehouses.id as warehouse_id',
+                'warehouses.name as warehouse_name',
+                'stores.id as store_id',
+                'stores.name as store_name',
+                'stores.phone as store_phone',
+                'stores.email as store_email',
+                'stores.address as store_address'
+            )
+            ->get();
+
+        if($stock_transfer_return_lists)
+        {
+            $success['stock_transfer_return_lists'] =  $stock_transfer_return_lists;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Stock Return List Found!'], $this->failStatus);
+        }
+    }
+
+    public function storeToWarehouseStockReturnDetails(Request $request){
+        $stock_transfer_request_details = DB::table('store_stock_returns')
+            ->join('store_stock_return_details','store_stock_returns.id','store_stock_return_details.stock_transfer_return_id')
+            ->leftJoin('products','store_stock_return_details.product_id','products.id')
+            ->leftJoin('product_units','store_stock_return_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','store_stock_return_details.product_brand_id','product_brands.id')
+            ->where('store_stock_returns.id',$request->store_stock_return_id)
+            ->select(
+                'products.id as product_id',
+                'products.name as product_name',
+                'product_units.id as product_unit_id',
+                'product_units.name as product_unit_name',
+                'product_brands.id as product_brand_id',
+                'product_brands.name as product_brand_name',
+                'store_stock_return_details.return_qty as qty',
+                'store_stock_return_details.id as stock_transfer_return_detail_id',
+                'store_stock_return_details.price',
+                'store_stock_return_details.sub_total',
+                'store_stock_return_details.vat_amount'
+            )
+            ->get();
+
+        if($stock_transfer_request_details)
+        {
+            $success['stock_transfer_return_details'] =  $stock_transfer_return_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Store Stock Return Details Found!'], $this->failStatus);
         }
     }
 
@@ -3934,6 +4283,198 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Warehouse To Store Stock Successfully Inserted.'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Warehouse To Store Stock Successfully Inserted.!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseToStoreStockEdit(Request $request){
+        $this->validate($request, [
+            'stock_transfer_id'=> 'required',
+            'warehouse_id'=> 'required',
+            'store_id'=> 'required',
+        ]);
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+        $warehouse_id = $request->warehouse_id;
+        $store_id = $request->store_id;
+        $miscellaneous_comment = $request->miscellaneous_comment;
+        $miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
+
+
+
+
+        $total_amount = 0;
+
+        foreach ($request->products as $data) {
+            $product_id = $data['product_id'];
+            $Product_info = Product::where('id',$product_id)->first();
+            $total_amount += $data['qty']*$Product_info->purchase_price;
+        }
+
+        $total_amount += $miscellaneous_charge;
+
+
+        $stock_transfer = StockTransfer::find($request->stock_transfer_id);
+        $stock_transfer->user_id=Auth::user()->id;
+        $stock_transfer->warehouse_id = $warehouse_id;
+        $stock_transfer->store_id = $store_id;
+        $stock_transfer->total_vat_amount = 0;
+        $stock_transfer->miscellaneous_comment = $miscellaneous_comment;
+        $stock_transfer->miscellaneous_charge = $miscellaneous_charge;
+        $stock_transfer->total_amount = $total_amount;
+        $stock_transfer->paid_amount = 0;
+        $stock_transfer->due_amount = $total_amount;
+        $stock_transfer->issue_date = $date;
+        $stock_transfer->due_date = $date;
+        $affectedRow = $stock_transfer->save();
+
+        if($affectedRow){
+           foreach ($request->products as $data) {
+
+               $product_id = $data['product_id'];
+               $product_info = Product::where('id',$product_id)->first();
+
+
+               $stock_transfer_detail = StockTransferDetail::where('id','stock_transfer_detail_id')->first();
+               $stock_transfer_detail->product_unit_id = $data['product_unit_id'];
+               $stock_transfer_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+               $stock_transfer_detail->product_id = $product_id;
+               $stock_transfer_detail->barcode = $product_info->barcode;
+               $stock_transfer_detail->qty = $data['qty'];
+               $stock_transfer_detail->vat_amount = 0;
+               $stock_transfer_detail->price = $product_info->purchase_price;
+               $stock_transfer_detail->sub_total = $data['qty']*$product_info->purchase_price;
+               $stock_transfer_detail->issue_date = $date;
+               $stock_transfer_detail->save();
+
+               // product stock
+               $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
+               $current_stock = $stock_row->current_stock;
+
+               // warehouse current stock
+               $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
+                   ->where('product_id',$product_id)
+                   ->first();
+               $exists_current_stock = $warehouse_current_stock_update->current_stock;
+
+
+               // warehouse store current stock
+               $warehouse_store_current_stock_update = WarehouseStoreCurrentStock::where('warehouse_id',$request->warehouse_id)
+                   ->where('store_id',$store_id)
+                   ->where('product_id',$product_id)
+                   ->first();
+               $exists_warehouse_store_current_stock = $warehouse_store_current_stock_update->current_stock;
+               if($data['qty'] > $stock_row->stock_in){
+
+
+                   // stock out warehouse product
+                   $stock = new Stock();
+                   $stock->ref_id = $request->stock_transfer_id;
+                   $stock->user_id = $user_id;
+                   $stock->warehouse_id = $warehouse_id;
+                   $stock->store_id = NULL;
+                   $stock->product_id = $product_id;
+                   $stock->product_unit_id = $data['product_unit_id'];
+                   $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                   $stock->stock_type = 'from_warehouse_to_store';
+                   $stock->stock_where = 'warehouse';
+                   $stock->stock_in_out = 'stock_out';
+                   $stock->previous_stock = $current_stock;
+                   $stock->stock_in = 0;
+                   $stock->stock_out = $data['qty'];
+                   $stock->current_stock = $current_stock - $data['qty'];
+                   $stock->stock_date = $date;
+                   $stock->stock_date_time = $date_time;
+                   $stock->save();
+
+                   // warehouse current stock
+                   $warehouse_current_stock_update->current_stock=$exists_current_stock - $data['qty'];
+                   $warehouse_current_stock_update->save();
+
+
+                   // stock in store product
+                   $stock = new Stock();
+                   $stock->ref_id = $request->stock_transfer_id;
+                   $stock->user_id = $user_id;
+                   $stock->warehouse_id = $warehouse_id;
+                   $stock->store_id = $store_id;
+                   $stock->product_id = $product_id;
+                   $stock->product_unit_id = $data['product_unit_id'];
+                   $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                   $stock->stock_type = 'from_warehouse_to_store';
+                   $stock->stock_where = 'store';
+                   $stock->stock_in_out = 'stock_in';
+                   $stock->previous_stock = $exists_warehouse_store_current_stock;
+                   $stock->stock_in = $data['qty'];
+                   $stock->stock_out = 0;
+                   $stock->current_stock = $exists_warehouse_store_current_stock + $data['qty'];
+                   $stock->stock_date = $date;
+                   $stock->stock_date_time = $date_time;
+                   $stock->save();
+
+                   // warehouse store current stock
+                   $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock + $data['qty'];
+                   $warehouse_store_current_stock_update->save();
+
+               }else{
+                   // stock out warehouse product
+                   $stock = new Stock();
+                   $stock->ref_id = $request->stock_transfer_id;
+                   $stock->user_id = $user_id;
+                   $stock->warehouse_id = $warehouse_id;
+                   $stock->store_id = NULL;
+                   $stock->product_id = $product_id;
+                   $stock->product_unit_id = $data['product_unit_id'];
+                   $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                   $stock->stock_type = 'from_warehouse_to_store';
+                   $stock->stock_where = 'warehouse';
+                   $stock->stock_in_out = 'stock_out';
+                   $stock->previous_stock = $current_stock;
+                   $stock->stock_in = $data['qty'];
+                   $stock->stock_out = 0;
+                   $stock->current_stock = $current_stock + $data['qty'];
+                   $stock->stock_date = $date;
+                   $stock->stock_date_time = $date_time;
+                   $stock->save();
+
+                   // warehouse current stock
+                   $warehouse_current_stock_update->current_stock=$exists_current_stock + $data['qty'];
+                   $warehouse_current_stock_update->save();
+
+
+                   // stock in store product
+                   $stock = new Stock();
+                   $stock->ref_id = $request->stock_transfer_id;
+                   $stock->user_id = $user_id;
+                   $stock->warehouse_id = $warehouse_id;
+                   $stock->store_id = $store_id;
+                   $stock->product_id = $product_id;
+                   $stock->product_unit_id = $data['product_unit_id'];
+                   $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                   $stock->stock_type = 'from_warehouse_to_store';
+                   $stock->stock_where = 'store';
+                   $stock->stock_in_out = 'stock_in';
+                   $stock->previous_stock = $exists_warehouse_store_current_stock;
+                   $stock->stock_in = 0;
+                   $stock->stock_out = $data['qty'];
+                   $stock->current_stock = $exists_warehouse_store_current_stock - $data['qty'];
+                   $stock->stock_date = $date;
+                   $stock->stock_date_time = $date_time;
+                   $stock->save();
+
+                   // warehouse store current stock
+                   $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock - $data['qty'];
+                   $warehouse_store_current_stock_update->save();
+               }
+           }
+       }
+
+        if($affectedRow){
+            return response()->json(['success'=>true,'response' => 'Warehouse To Store Stock Updated Successfully Inserted.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse To Store Stock Updated Successfully Inserted.!'], $this->failStatus);
         }
     }
 
@@ -4610,6 +5151,8 @@ class BackendController extends Controller
         ]);
 
         $user_id = Auth::user()->id;
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d H:i:s');
         $store_id = $request->store_id;
         $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
 
@@ -4651,24 +5194,68 @@ class BackendController extends Controller
 
 
                 // product stock
-                $stock_row = Stock::where('ref_id',$request->product_sale_id)->where('stock_type','whole_sale')->where('product_id',$product_id)->first();
+                // product stock
+                $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest()->first();
+                $current_stock = $stock_row->current_stock;
+
+                // warehouse store current stock
+                $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                    ->where('store_id',$store_id)
+                    ->where('product_id',$product_id)
+                    ->first();
+                $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
 
                 if($stock_row->stock_out != $data['qty']){
 
-                    if($data['qty'] > $stock_row->stock_out){
-                        $add_or_minus_stock_out = $data['qty'] + $stock_row->stock_out;
-                        $update_stock_out = $stock_row->stock_out - $add_or_minus_stock_out;
-                        $update_current_stock = $stock_row->current_stock - $add_or_minus_stock_out;
-                    }else{
-                        $add_or_minus_stock_out =  $stock_row->stock_out + $data['qty'];
-                        $update_stock_out = $stock_row->stock_out + $add_or_minus_stock_out;
-                        $update_current_stock = $stock_row->current_stock + $add_or_minus_stock_out;
-                    }
+                    if($data['qty'] > $stock_row->stock_in){
 
-                    $stock_row->user_id = $user_id;
-                    $stock_row->stock_out = $update_stock_out;
-                    $stock_row->current_stock = $update_current_stock;
-                    $stock_row->update();
+                        $stock = new Stock();
+                        $stock->ref_id=$request->product_sale_id;
+                        $stock->user_id=$user_id;
+                        $stock->product_unit_id= $data['product_unit_id'];
+                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->product_id= $product_id;
+                        $stock->stock_type='whole_sale_increase';
+                        $stock->warehouse_id= $warehouse_id;
+                        $stock->store_id=$store_id;
+                        $stock->stock_where='store';
+                        $stock->stock_in_out='stock_out';
+                        $stock->previous_stock=$current_stock;
+                        $stock->stock_in=0;
+                        $stock->stock_out=$data['qty'];
+                        $stock->current_stock=$current_stock - $data['qty'];
+                        $stock->stock_date=$date;
+                        $stock->stock_date_time=$date_time;
+                        $stock->save();
+
+                        // warehouse current stock
+                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock - $data['qty'];
+                        $update_warehouse_store_current_stock->save();
+                    }else{
+
+                        $stock = new Stock();
+                        $stock->ref_id=$request->product_sale_id;
+                        $stock->user_id=$user_id;
+                        $stock->product_unit_id= $data['product_unit_id'];
+                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->product_id= $product_id;
+                        $stock->stock_type='whole_sale_decrease';
+                        $stock->warehouse_id= $warehouse_id;
+                        $stock->store_id=$store_id;
+                        $stock->stock_where='store';
+                        $stock->stock_in_out='stock_in';
+                        $stock->previous_stock=$current_stock;
+                        $stock->stock_in=$data['qty'];
+                        $stock->stock_out=0;
+                        $stock->current_stock=$current_stock + $data['qty'];
+                        $stock->stock_date=$date;
+                        $stock->stock_date_time=$date_time;
+                        $stock->save();
+
+                        // warehouse current stock
+                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $data['qty'];
+                        $update_warehouse_store_current_stock->save();
+                    }
                 }
             }
 
@@ -4707,12 +5294,53 @@ class BackendController extends Controller
         }
 
         $productSale = ProductSale::find($request->product_sale_id);
+        if($productSale){
+            $user_id = Auth::user()->id;
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d H:i:s');
+
+            $product_sale_details = DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->get();
+
+            if(count($product_sale_details) > 0){
+                foreach ($product_sale_details as $product_sale_detail){
+                    // current stock
+                    $stock_row = Stock::where('stock_type','store')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
+                    $current_stock = $stock_row->current_stock;
+
+                    $stock = new Stock();
+                    $stock->ref_id=$productSale->id;
+                    $stock->user_id=$user_id;
+                    $stock->product_unit_id= $product_sale_detail->product_unit_id;
+                    $stock->product_brand_id= $product_sale_detail->product_brand_id;
+                    $stock->product_id= $product_sale_detail->product_id;
+                    $stock->stock_type='whole_sale_delete';
+                    $stock->warehouse_id= $productSale->warehouse_id;
+                    $stock->store_id=$productSale->store_id;
+                    $stock->stock_where='store';
+                    $stock->stock_in_out='stock_in';
+                    $stock->previous_stock=$current_stock;
+                    $stock->stock_in=$product_sale_detail->qty;
+                    $stock->stock_out=0;
+                    $stock->current_stock=$current_stock + $product_sale_detail->qty;
+                    $stock->stock_date=$date;
+                    $stock->stock_date_time=$date_time;
+                    $stock->save();
+
+
+                    $warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$productSale->warehouse_id)->where('store_id',$productSale->store_id)->where('product_id',$product_sale_detail->product_id)->first();
+                    $exists_current_stock = $warehouse_store_current_stock->current_stock;
+                    $warehouse_store_current_stock->current_stock=$exists_current_stock + $product_sale_detail->qty;
+                    $warehouse_store_current_stock->update();
+                }
+            }
+        }
         $delete_sale = $productSale->delete();
 
+        //DB::table('stocks')->where('ref_id',$request->product_sale_id)->delete();
         DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->delete();
-        DB::table('stocks')->where('ref_id',$request->product_sale_id)->delete();
         DB::table('transactions')->where('ref_id',$request->product_sale_id)->delete();
         DB::table('payment_collections')->where('product_sale_id',$request->product_sale_id)->delete();
+
 
         if($delete_sale)
         {
@@ -5027,6 +5655,8 @@ class BackendController extends Controller
         ]);
 
         $user_id = Auth::user()->id;
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d H:i:s');
         $store_id = $request->store_id;
         $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
 
@@ -5066,7 +5696,8 @@ class BackendController extends Controller
 
 
                 // product stock
-                $stock_row = Stock::where('ref_id',$request->product_sale_id)->where('stock_type','pos_sale')->where('product_id',$product_id)->first();
+                $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest()->first();
+                $current_stock = $stock_row->current_stock;
 
                 // warehouse store current stock
                 $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
@@ -5077,28 +5708,55 @@ class BackendController extends Controller
 
                 if($stock_row->stock_out != $data['qty']){
 
-                    if($data['qty'] > $stock_row->stock_out){
-                        $add_or_minus_stock_out = $data['qty'] + $stock_row->stock_out;
-                        $update_stock_out = $stock_row->stock_out - $add_or_minus_stock_out;
-                        $update_current_stock = $stock_row->current_stock - $add_or_minus_stock_out;
+                    if($data['qty'] > $stock_row->stock_in){
 
-                        $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
+                        $stock = new Stock();
+                        $stock->ref_id=$request->product_sale_id;
+                        $stock->user_id=$user_id;
+                        $stock->product_unit_id= $data['product_unit_id'];
+                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->product_id= $product_id;
+                        $stock->stock_type='pos_sale_increase';
+                        $stock->warehouse_id= $warehouse_id;
+                        $stock->store_id=$store_id;
+                        $stock->stock_where='store';
+                        $stock->stock_in_out='stock_out';
+                        $stock->previous_stock=$current_stock;
+                        $stock->stock_in=0;
+                        $stock->stock_out=$data['qty'];
+                        $stock->current_stock=$current_stock - $data['qty'];
+                        $stock->stock_date=$date;
+                        $stock->stock_date_time=$date_time;
+                        $stock->save();
+
+                        // warehouse current stock
+                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock - $data['qty'];
+                        $update_warehouse_store_current_stock->save();
                     }else{
-                        $add_or_minus_stock_out =  $stock_row->stock_out + $data['qty'];
-                        $update_stock_out = $stock_row->stock_out + $add_or_minus_stock_out;
-                        $update_current_stock = $stock_row->current_stock + $add_or_minus_stock_out;
 
-                        $final_warehouse_current_stock = $exists_current_stock + $data['qty'];
+                        $stock = new Stock();
+                        $stock->ref_id=$request->product_sale_id;
+                        $stock->user_id=$user_id;
+                        $stock->product_unit_id= $data['product_unit_id'];
+                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->product_id= $product_id;
+                        $stock->stock_type='pos_sale_decrease';
+                        $stock->warehouse_id= $warehouse_id;
+                        $stock->store_id=$store_id;
+                        $stock->stock_where='store';
+                        $stock->stock_in_out='stock_in';
+                        $stock->previous_stock=$current_stock;
+                        $stock->stock_in=$data['qty'];
+                        $stock->stock_out=0;
+                        $stock->current_stock=$current_stock + $data['qty'];
+                        $stock->stock_date=$date;
+                        $stock->stock_date_time=$date_time;
+                        $stock->save();
+
+                        // warehouse current stock
+                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $data['qty'];
+                        $update_warehouse_store_current_stock->save();
                     }
-
-                    $stock_row->user_id = $user_id;
-                    $stock_row->stock_out = $update_stock_out;
-                    $stock_row->current_stock = $update_current_stock;
-                    $stock_row->update();
-
-                    //warehouse store current stock
-                    $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
-                    $update_warehouse_store_current_stock->save();
                 }
             }
 
@@ -5137,10 +5795,50 @@ class BackendController extends Controller
         }
 
         $productSale = ProductSale::find($request->product_sale_id);
+        if($productSale){
+            $user_id = Auth::user()->id;
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d H:i:s');
+
+            $product_sale_details = DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->get();
+
+            if(count($product_sale_details) > 0){
+                foreach ($product_sale_details as $product_sale_detail){
+                    // current stock
+                    $stock_row = Stock::where('stock_type','store')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
+                    $current_stock = $stock_row->current_stock;
+
+                    $stock = new Stock();
+                    $stock->ref_id=$productSale->id;
+                    $stock->user_id=$user_id;
+                    $stock->product_unit_id= $product_sale_detail->product_unit_id;
+                    $stock->product_brand_id= $product_sale_detail->product_brand_id;
+                    $stock->product_id= $product_sale_detail->product_id;
+                    $stock->stock_type='pos_sale_delete';
+                    $stock->warehouse_id= $productSale->warehouse_id;
+                    $stock->store_id=$productSale->store_id;
+                    $stock->stock_where='store';
+                    $stock->stock_in_out='stock_in';
+                    $stock->previous_stock=$current_stock;
+                    $stock->stock_in=$product_sale_detail->qty;
+                    $stock->stock_out=0;
+                    $stock->current_stock=$current_stock + $product_sale_detail->qty;
+                    $stock->stock_date=$date;
+                    $stock->stock_date_time=$date_time;
+                    $stock->save();
+
+
+                    $warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$productSale->warehouse_id)->where('store_id',$productSale->store_id)->where('product_id',$product_sale_detail->product_id)->first();
+                    $exists_current_stock = $warehouse_store_current_stock->current_stock;
+                    $warehouse_store_current_stock->current_stock=$exists_current_stock + $product_sale_detail->qty;
+                    $warehouse_store_current_stock->update();
+                }
+            }
+        }
         $delete_sale = $productSale->delete();
 
         DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->delete();
-        DB::table('stocks')->where('ref_id',$request->product_sale_id)->delete();
+        //DB::table('stocks')->where('ref_id',$request->product_sale_id)->delete();
         DB::table('transactions')->where('ref_id',$request->product_sale_id)->delete();
         DB::table('payment_collections')->where('product_sale_id',$request->product_sale_id)->delete();
 
@@ -5448,63 +6146,117 @@ class BackendController extends Controller
     }
 
     // warehouse product damage
+//    public function warehouseProductDamageList(){
+//        $warehouse_product_damages = DB::table('warehouse_product_damages')
+//            ->leftJoin('warehouse_product_damage_details','warehouse_product_damages.id','warehouse_product_damage_details.warehouse_product_damage_id')
+//            ->leftJoin('users','warehouse_product_damages.user_id','users.id')
+//            ->leftJoin('warehouses','warehouse_product_damages.warehouse_id','warehouses.id')
+//            ->leftJoin('products','warehouse_product_damage_details.product_id','products.id')
+//            ->leftJoin('product_units','warehouse_product_damage_details.product_unit_id','product_units.id')
+//            ->leftJoin('product_brands','warehouse_product_damage_details.product_brand_id','product_brands.id')
+//            ->select(
+//                'warehouse_product_damages.id',
+//                'warehouse_product_damages.invoice_no',
+//                'warehouse_product_damages.product_id',
+//                'products.name as product_name',
+//                'warehouse_product_damages.barcode',
+//                'warehouse_product_damages.qty',
+//                'warehouse_product_damages.damage_date',
+//                'warehouse_product_damages.damage_date_time',
+//                'users.name as user_name',
+//                'warehouses.id as warehouse_id',
+//                'warehouses.name as warehouse_name',
+//                'warehouse_product_damages.product_unit_id',
+//                'product_units.name as product_unit_name',
+//                'warehouse_product_damages.product_brand_id',
+//                'product_brands.name as product_brand_name'
+//            )
+//            ->orderBy('warehouse_product_damages.id','desc')
+//            ->get();
+//
+//        if(count($warehouse_product_damages) > 0)
+//        {
+//            $warehouse_product_damage_arr = [];
+//            foreach ($warehouse_product_damages as $data){
+//                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','whole_sale')->pluck('payment_type')->first();
+//
+//                $nested_data['id']=$data->id;
+//                $nested_data['invoice_no']=$data->invoice_no;
+//                $nested_data['product_id']=$data->product_id;
+//                $nested_data['product_name']=$data->product_name;
+//                $nested_data['barcode']=$data->barcode;
+//                $nested_data['qty']=$data->qty;
+//                $nested_data['damage_date']=$data->damage_date;
+//                $nested_data['damage_date_time']=$data->damage_date_time;
+//                $nested_data['user_name']=$data->user_name;
+//                $nested_data['warehouse_id']=$data->warehouse_id;
+//                $nested_data['warehouse_name']=$data->warehouse_name;
+//                $nested_data['product_unit_id']=$data->product_unit_id;
+//                $nested_data['product_unit_id']=$data->product_unit_id;
+//                $nested_data['unit_name']=$data->unit_name;
+//                $nested_data['product_brand_id']=$data->product_brand_id;
+//                $nested_data['product_brand_name']=$data->product_brand_name;
+//
+//                array_push($warehouse_product_damage_arr,$nested_data);
+//            }
+//
+//            $success['warehouse_product_damages'] =  $warehouse_product_damage_arr;
+//            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Warehouse Damage Product List Found!'], $this->failStatus);
+//        }
+//    }
+
     public function warehouseProductDamageList(){
-        $warehouse_product_damages = DB::table('warehouse_product_damages')
+        $warehouse_product_damage_lists = DB::table('warehouse_product_damages')
             ->leftJoin('users','warehouse_product_damages.user_id','users.id')
-            ->leftJoin('warehouses','warehouse_product_damages.warehouse_id','warehouses.id')
-            ->leftJoin('products','warehouse_product_damages.product_id','products.id')
-            ->leftJoin('product_units','warehouse_product_damages.product_unit_id','product_units.id')
-            ->leftJoin('product_brands','warehouse_product_damages.product_brand_id','product_brands.id')
+            ->leftJoin('warehouses','warehouse_product_damages.return_to_warehouse_id','warehouses.id')
             ->select(
                 'warehouse_product_damages.id',
                 'warehouse_product_damages.invoice_no',
-                'warehouse_product_damages.product_id',
-                'products.name as product_name',
-                'warehouse_product_damages.barcode',
-                'warehouse_product_damages.qty',
-                'warehouse_product_damages.damage_date',
-                'warehouse_product_damages.damage_date_time',
                 'users.name as user_name',
                 'warehouses.id as warehouse_id',
-                'warehouses.name as warehouse_name',
-                'warehouse_product_damages.product_unit_id',
-                'product_units.name as product_unit_name',
-                'warehouse_product_damages.product_brand_id',
-                'product_brands.name as product_brand_name'
+                'warehouses.name as warehouse_name'
             )
-            ->orderBy('warehouse_product_damages.id','desc')
             ->get();
 
-        if(count($warehouse_product_damages) > 0)
+        if($warehouse_product_damage_lists)
         {
-            $warehouse_product_damage_arr = [];
-            foreach ($warehouse_product_damages as $data){
-                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','whole_sale')->pluck('payment_type')->first();
-
-                $nested_data['id']=$data->id;
-                $nested_data['invoice_no']=$data->invoice_no;
-                $nested_data['product_id']=$data->product_id;
-                $nested_data['product_name']=$data->product_name;
-                $nested_data['barcode']=$data->barcode;
-                $nested_data['qty']=$data->qty;
-                $nested_data['damage_date']=$data->damage_date;
-                $nested_data['damage_date_time']=$data->damage_date_time;
-                $nested_data['user_name']=$data->user_name;
-                $nested_data['warehouse_id']=$data->warehouse_id;
-                $nested_data['warehouse_name']=$data->warehouse_name;
-                $nested_data['product_unit_id']=$data->product_unit_id;
-                $nested_data['product_unit_id']=$data->product_unit_id;
-                $nested_data['unit_name']=$data->unit_name;
-                $nested_data['product_brand_id']=$data->product_brand_id;
-                $nested_data['product_brand_name']=$data->product_brand_name;
-
-                array_push($warehouse_product_damage_arr,$nested_data);
-            }
-
-            $success['warehouse_product_damages'] =  $warehouse_product_damage_arr;
+            $success['warehouse_product_damage_lists'] =  $warehouse_product_damage_lists;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'No Warehouse Damage Product List Found!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Warehouse Product Damage Lists Found!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseProductDamageDetails(Request $request){
+        $warehouse_product_damage_details = DB::table('warehouse_product_damages')
+            ->join('warehouse_product_damage_details','warehouse_product_damages.id','warehouse_product_damage_details.warehouse_product_damage_id')
+            ->leftJoin('products','warehouse_product_damage_details.product_id','products.id')
+            ->leftJoin('product_units','warehouse_product_damage_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','warehouse_product_damage_details.product_brand_id','product_brands.id')
+            ->where('warehouse_product_damages.id',$request->warehouse_product_damage_id)
+            ->select(
+                'products.id as product_id',
+                'products.name as product_name',
+                'product_units.id as product_unit_id',
+                'product_units.name as product_unit_name',
+                'product_brands.id as product_brand_id',
+                'product_brands.name as product_brand_name',
+                'warehouse_product_damage_details.qty',
+                'warehouse_product_damage_details.id as warehouse_product_damage_detail_id',
+                'warehouse_product_damage_details.price',
+                'warehouse_product_damage_details.sub_total',
+                'warehouse_product_damage_details.vat_amount'
+            )
+            ->get();
+
+        if($warehouse_product_damage_details)
+        {
+            $success['warehouse_product_damage_details'] =  $warehouse_product_damage_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Product Damage Details Found!'], $this->failStatus);
         }
     }
 
@@ -5519,61 +6271,197 @@ class BackendController extends Controller
         $date = date('Y-m-d');
         $date_time = date('Y-m-d H:i:s');
 
-
-        $flag = true;
-        foreach ($request->products as $data) {
-            $product_id = $data['product_id'];
-            $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
-
-
-            // warehouse damage product
-            $warehouse_product_damage = new WarehouseProductDamage();
-            $warehouse_product_damage->invoice_no = '';
-            $warehouse_product_damage->user_id = $user_id;
-            $warehouse_product_damage->warehouse_id = $warehouse_id;
-            $warehouse_product_damage->product_unit_id = $data['product_unit_id'];
-            $warehouse_product_damage->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-            $warehouse_product_damage->product_id = $product_id;
-            $warehouse_product_damage->qty = $data['qty'];
-            $warehouse_product_damage->barcode = $barcode;
-            $warehouse_product_damage->damage_date = $date;
-            $warehouse_product_damage->damage_date_time = $date_time;
-            $warehouse_product_damage->save();
-            $insert_id=$warehouse_product_damage->id;
+        $warehouse_product_damage = new WarehouseProductDamage();
+        $warehouse_product_damage->invoice_no = '';
+        $warehouse_product_damage->user_id = $user_id;
+        $warehouse_product_damage->warehouse_id = $warehouse_id;
+        $warehouse_product_damage->damage_date = $date;
+        $warehouse_product_damage->damage_date_time = $date_time;
+        $insert_id = $warehouse_product_damage->save();
 
 
-            // product stock
-            $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest('id')->first();
-
-            $stock = new Stock();
-            $stock->ref_id=$insert_id;
-            $stock->user_id=$user_id;
-            $stock->product_unit_id= $data['product_unit_id'];
-            $stock->product_brand_id=$data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-            $stock->product_id=$product_id;
-            $stock->stock_type='warehouse_product_damage';
-            $stock->warehouse_id=$warehouse_id;
-            $stock->store_id=NULL;
-            $stock->stock_where='warehouse';
-            $stock->stock_in_out='stock_out';
-            $stock->previous_stock=$stock_row->current_stock;
-            $stock->stock_in=0;
-            $stock->stock_out=$data['qty'];
-            $stock->current_stock=$stock_row->current_stock - $data['qty'];
-            $stock->stock_date=$date;
-            $stock->stock_date_time=$date_time;
-            $stock->save();
+        if($insert_id){
+            foreach ($request->products as $data) {
+                $product_id = $data['product_id'];
+                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
 
 
-            $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->first();
-            $exists_current_stock = $warehouse_current_stock->current_stock;
-            $warehouse_current_stock->current_stock=$exists_current_stock - $data['qty'];
-            $warehouse_current_stock->update();
+                // warehouse damage product
+                $warehouse_product_damage_detail = new WarehouseProductDamageDetail();
+                $warehouse_product_damage_detail->product_unit_id = $data['product_unit_id'];
+                $warehouse_product_damage_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $warehouse_product_damage_detail->product_id = $product_id;
+                $warehouse_product_damage_detail->qty = $data['qty'];
+                $warehouse_product_damage_detail->barcode = $barcode;
+                $warehouse_product_damage_detail->save();
+                $insert_id=$warehouse_product_damage_detail->id;
+
+
+                // product stock
+                $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest('id')->first();
+
+                $stock = new Stock();
+                $stock->ref_id=$insert_id;
+                $stock->user_id=$user_id;
+                $stock->product_unit_id= $data['product_unit_id'];
+                $stock->product_brand_id=$data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $stock->product_id=$product_id;
+                $stock->stock_type='warehouse_product_damage';
+                $stock->warehouse_id=$warehouse_id;
+                $stock->store_id=NULL;
+                $stock->stock_where='warehouse';
+                $stock->stock_in_out='stock_out';
+                $stock->previous_stock=$stock_row->current_stock;
+                $stock->stock_in=0;
+                $stock->stock_out=$data['qty'];
+                $stock->current_stock=$stock_row->current_stock - $data['qty'];
+                $stock->stock_date=$date;
+                $stock->stock_date_time=$date_time;
+                $stock->save();
+
+
+                $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->first();
+                $exists_current_stock = $warehouse_current_stock->current_stock;
+                $warehouse_current_stock->current_stock=$exists_current_stock - $data['qty'];
+                $warehouse_current_stock->update();
+            }
         }
-        if($flag == true){
+
+        if($insert_id){
             return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseProductDamageEdit(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'warehouse_product_damage_id'=> 'required',
+            'warehouse_id'=> 'required',
+        ]);
+
+        $user_id = Auth::user()->id;
+        $warehouse_id = $request->warehouse_id;
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d H:i:s');
+
+        $warehouse_product_damage = WarehouseProductDamage::find($request->warehouse_product_damage_id);
+        $warehouse_product_damage->user_id = $user_id;
+        $warehouse_product_damage->warehouse_id = $warehouse_id;
+        $affectedRow = $warehouse_product_damage->save();
+
+
+        if($affectedRow){
+            foreach ($request->products as $data) {
+                $product_id = $data['product_id'];
+                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+
+                $warehouse_product_damage_detail_id = $data['warehouse_product_damage_detail_id'];
+                // warehouse damage product
+                $warehouse_product_damage = WarehouseProductDamageDetail::find($warehouse_product_damage_detail_id);
+                $warehouse_product_damage->product_unit_id = $data['product_unit_id'];
+                $warehouse_product_damage->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $warehouse_product_damage->product_id = $product_id;
+                $warehouse_product_damage->qty = $data['qty'];
+                $warehouse_product_damage->barcode = $barcode;
+                $affectedRow = $warehouse_product_damage->update();
+
+                if($affectedRow){
+                    // product stock
+                    $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest('id')->first();
+                    $current_stock = $stock_row->current_stock;
+
+                    $stock = Stock::where('ref_id',$warehouse_product_damage->id)->get();
+                    $stock->product_unit_id= $data['product_unit_id'];
+                    $stock->product_brand_id=$data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                    $stock->product_id=$product_id;
+                    $stock->previous_stock=$current_stock;
+                    $stock->stock_in=0;
+                    $stock->stock_out=$data['qty'];
+                    $stock->current_stock=$current_stock - $data['qty'];
+                    $stock->stock_date=$date;
+                    $stock->stock_date_time=$date_time;
+                    $stock->update();
+
+
+                    $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->first();
+                    $exists_current_stock = $warehouse_current_stock->current_stock;
+                    $warehouse_current_stock->current_stock=$exists_current_stock - $data['qty'];
+                    $warehouse_current_stock->update();
+                }
+            }
+        }
+
+        if($affectedRow){
+            return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseProductDamageDelete(Request $request){
+        $check_exists_warehouse_product_damage = DB::table("warehouse_product_damages")->where('id',$request->warehouse_product_damage_id)->pluck('id')->first();
+        if($check_exists_warehouse_product_damage == null){
+            return response()->json(['success'=>false,'response'=>'No Warehouse Product Damage List Found!'], $this->failStatus);
+        }
+
+        $warehouseProductDamage = WarehouseProductDamage::find($request->warehouse_product_damage_id);
+
+        $warehouseProductDamageDetails = WarehouseProductDamageDetail::where('warehouse_product_damage_id',$request->warehouse_product_damage_id)->get();
+        if(count($warehouseProductDamageDetails) > 0){
+            foreach ($warehouseProductDamageDetails as $warehouseProductDamageDetail){
+                $user_id = Auth::user()->id;
+                $date = date('Y-m-d');
+                $date_time = date('Y-m-d H:i:s');
+
+                // damage stock
+                $warehouse_product_damage_id = $check_exists_warehouse_product_damage->id;
+                $qty = $warehouseProductDamageDetail->qty;
+                $warehouse_id = $check_exists_warehouse_product_damage->warehouse_id;
+                $product_unit_id = $warehouseProductDamageDetail->product_unit_id;
+                $product_brand_id = $warehouseProductDamageDetail->product_brand_id;
+                $product_id = $warehouseProductDamageDetail->product_id;
+
+                // current stock
+                $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest('id')->first();
+                $current_stock = $stock_row->current_stock;
+
+                $stock = new Stock();
+                $stock->ref_id=$warehouse_product_damage_id;
+                $stock->user_id=$user_id;
+                $stock->product_unit_id= $product_unit_id;
+                $stock->product_brand_id= $product_brand_id;
+                $stock->product_id= $product_id;
+                $stock->stock_type='warehouse_product_damage_delete';
+                $stock->warehouse_id= $warehouse_id;
+                $stock->store_id=NULL;
+                $stock->stock_where='warehouse';
+                $stock->stock_in_out='stock_in';
+                $stock->previous_stock=$current_stock;
+                $stock->stock_in=$qty;
+                $stock->stock_out=0;
+                $stock->current_stock=$current_stock + $qty;
+                $stock->stock_date=$date;
+                $stock->stock_date_time=$date_time;
+                $stock->save();
+
+
+                $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->first();
+                $exists_current_stock = $warehouse_current_stock->current_stock;
+                $warehouse_current_stock->current_stock=$exists_current_stock - $qty;
+                $warehouse_current_stock->update();
+            }
+        }
+
+
+        $delete_warehouse_product_damage = $warehouseProductDamage->delete();
+
+        if($delete_warehouse_product_damage)
+        {
+            return response()->json(['success'=>true,'response' =>'Sale Successfully Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Sale Not Deleted!'], $this->failStatus);
         }
     }
 
