@@ -168,6 +168,7 @@ Route::middleware('auth:api')->post('/product_pos_purchase_details', 'API\Backen
 Route::middleware('auth:api')->post('/product_pos_purchase_create', 'API\BackendController@productPOSPurchaseCreate');
 Route::middleware('auth:api')->post('/product_pos_purchase_edit', 'API\BackendController@productPOSPurchaseEdit');
 Route::middleware('auth:api')->post('/product_pos_purchase_delete', 'API\BackendController@productPOSPurchaseDelete');
+Route::middleware('auth:api')->post('/product_pos_purchase_remove', 'API\BackendController@productPOSPurchaseRemove');
 
 // product purchase return
 Route::middleware('auth:api')->get('/product_purchase_invoice_list', 'API\BackendController@productPurchaseInvoiceList');
@@ -198,6 +199,7 @@ Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_details',
 // stock transfer
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\BackendController@warehouseToStoreStockCreate');
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_edit', 'API\BackendController@warehouseToStoreStockEdit');
+Route::middleware('auth:api')->post('/warehouse_to_store_stock_remove', 'API\BackendController@warehouseToStoreStockRemove');
 Route::middleware('auth:api')->post('/store_current_stock_list', 'API\BackendController@storeCurrentStockList');
 Route::middleware('auth:api')->post('/store_current_stock_list_without_zero', 'API\BackendController@storeCurrentStockListWithoutZero');
 Route::middleware('auth:api')->get('/stock_transfer_list', 'API\BackendController@stockTransferList');
@@ -232,6 +234,7 @@ Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendC
 
 // warehouse product damages
 Route::middleware('auth:api')->get('/warehouse_product_damage_list', 'API\BackendController@warehouseProductDamageList');
+Route::middleware('auth:api')->post('/warehouse_product_damage_details', 'API\BackendController@warehouseProductDamageDetails');
 Route::middleware('auth:api')->post('/warehouse_product_damage_create', 'API\BackendController@warehouseProductDamageCreate');
 Route::middleware('auth:api')->post('/warehouse_product_damage_edit', 'API\BackendController@warehouseProductDamageEdit');
 Route::middleware('auth:api')->post('/warehouse_product_damage_delete', 'API\BackendController@warehouseProductDamageDelete');
@@ -390,3 +393,8 @@ Route::middleware('auth:api')->get('/voucher_type_list', 'API\BackendController@
 Route::middleware('auth:api')->post('/voucher_type_create', 'API\BackendController@voucherTypeCreate');
 Route::middleware('auth:api')->post('/voucher_type_edit', 'API\BackendController@voucherTypeEdit');
 Route::middleware('auth:api')->post('/voucher_type_delete', 'API\BackendController@voucherTypeDelete');
+
+
+// database backup
+//Route::get('/backup_database', 'HomeController@backup_database')->name('backup_database');
+Route::middleware('auth:api')->get('/backup_database', 'API\BackendController@backupDatabase');

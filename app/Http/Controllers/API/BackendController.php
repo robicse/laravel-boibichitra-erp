@@ -2075,7 +2075,7 @@ class BackendController extends Controller
             if(count($product_purchase_details) > 0){
                 foreach ($product_purchase_details as $product_purchase_detail){
                     // current stock
-                    $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$productPurchase->warehouse_id)->where('product_id',$product_purchase_detail->product_id)->latest('id')->first();
+                    $stock_row = Stock::where('stock_where','warehouse')->where('warehouse_id',$productPurchase->warehouse_id)->where('product_id',$product_purchase_detail->product_id)->latest('id')->first();
                     $current_stock = $stock_row->current_stock;
 
                     $stock = new Stock();
@@ -2117,6 +2117,121 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Purchase Successfully Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Purchase Deleted!'], $this->failStatus);
+        }
+    }
+
+    public function productWholePurchaseRemove(Request $request){
+
+        $this->validate($request, [
+            'product_purchase_id'=> 'required',
+            'party_id'=> 'required',
+            'warehouse_id'=> 'required',
+            'paid_amount'=> 'required',
+            'due_amount'=> 'required',
+            'total_amount'=> 'required',
+            'payment_type'=> 'required',
+        ]);
+
+
+
+        $user_id = Auth::user()->id;
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        // product purchase
+        $productPurchase = ProductPurchase::find($request->product_purchase_id);
+        $productPurchase->user_id = $user_id;
+        $productPurchase->total_amount = $request->total_amount - $request->sub_total;
+        $affectedRows = $productPurchase->update();
+
+        if($affectedRows)
+        {
+
+            $product_id = $request->product_id;
+            $product_info = Product::where('id',$product_id)->first();
+
+            $product_purchase_detail_id = $request->product_purchase_detail_id;
+
+
+            // product stock
+            $stock_row = Stock::where('warehouse_id',$request->warehouse_id)->where('product_id',$product_id)->latest()->first();
+            $current_stock = $stock_row->current_stock;
+
+            // warehouse current stock
+            $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
+                ->where('product_id',$product_id)
+                ->first();
+            $exists_current_stock = $warehouse_current_stock_update->current_stock;
+
+
+            $stock = new Stock();
+            $stock->ref_id=$request->product_purchase_id;
+            $stock->user_id=$user_id;
+            $stock->product_unit_id= $product_info->product_unit_id;
+            $stock->product_brand_id= $product_info->product_brand_id ? $product_info->product_brand_id : NULL;
+            $stock->product_id= $product_id;
+            $stock->stock_type='whole_purchase_delete';
+            $stock->warehouse_id= $request->warehouse_id;
+            $stock->store_id=NULL;
+            $stock->stock_where='warehouse';
+            $stock->stock_in_out='stock_out';
+            $stock->previous_stock=$current_stock;
+            $stock->stock_in=0;
+            $stock->stock_out=$request->qty;
+            $stock->current_stock=$current_stock - $request->qty;
+            $stock->stock_date=$date;
+            $stock->stock_date_time=$date_time;
+            $stock->save();
+
+            // warehouse current stock
+            $warehouse_current_stock_update->current_stock=$exists_current_stock - $request->qty;
+            $warehouse_current_stock_update->save();
+
+            //work on
+            // transaction
+            $transaction = new Transaction();
+            $transaction->ref_id = $request->product_purchase_id;
+            $transaction->invoice_no = $productPurchase->invoice_no;
+            $transaction->user_id = $user_id;
+            $transaction->warehouse_id = $request->warehouse_id;
+            $transaction->party_id = $request->party_id;
+            $transaction->transaction_type = 'whole_purchase_delete';
+            $transaction->payment_type = 'Cash';
+            $transaction->amount = $request->sub_total;
+            $transaction->transaction_date = $date;
+            $transaction->transaction_date_time = $date_time;
+            $transaction->save();
+
+            // payment paid
+//            $payment_paid = new PaymentPaid();
+//            $payment_paid->invoice_no = $productPurchase->invoice_no;
+//            $payment_paid->product_purchase_id = $request->product_purchase_id;
+//            $payment_paid->user_id = $user_id;
+//            $payment_paid->party_id = $request->party_id;
+//            $payment_paid->paid_type = 'Purchase';
+//            $payment_paid->paid_amount = $request->sub_total;
+//            $payment_paid->due_amount = $request->due_amount;
+//            $payment_paid->current_paid_amount = $request->sub_total;
+//            $payment_paid->paid_date = $date;
+//            $payment_paid->paid_date_time = $date_time;
+//            $payment_paid->save();
+
+            $payment_paid = PaymentPaid::where('invoice_no',$productPurchase->invoice_no)->where('paid_type','Purchase')->first();
+            $previous_paid_amount = $payment_paid->paid_amount;
+
+            $payment_paid->paid_amount = $previous_paid_amount - $request->sub_total;
+            $payment_paid->due_amount = $previous_paid_amount - $request->due_amount;
+            $payment_paid->current_paid_amount = $previous_paid_amount - $request->sub_total;
+            $payment_paid->save();
+
+
+            // product purchase detail delete
+            ProductPurchaseDetail::where('id',$product_purchase_detail_id)->delete();
+
+
+            return response()->json(['success'=>true,'response' => 'Removed Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Removed Successfully!'], $this->failStatus);
         }
     }
 
@@ -2480,7 +2595,7 @@ class BackendController extends Controller
             if(count($product_purchase_details) > 0){
                 foreach ($product_purchase_details as $product_purchase_detail){
                     // current stock
-                    $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$productPurchase->warehouse_id)->where('product_id',$product_purchase_detail->product_id)->latest('id')->first();
+                    $stock_row = Stock::where('stock_where','warehouse')->where('warehouse_id',$productPurchase->warehouse_id)->where('product_id',$product_purchase_detail->product_id)->latest('id')->first();
                     $current_stock = $stock_row->current_stock;
 
                     $stock = new Stock();
@@ -3775,12 +3890,12 @@ class BackendController extends Controller
         $final_invoice = 'SSRN-'.$invoice_no;
         $store_stock_return = new StoreStockReturn();
         $store_stock_return->invoice_no=$final_invoice;
+        $store_stock_return->return_by_user_id=$user_id;
         $store_stock_return->return_from_store_id = $return_from_store_id;
         $store_stock_return->return_to_warehouse_id = $return_to_warehouse_id;
-        $store_stock_return->return_by_user_id=$user_id;
+        $store_stock_return->return_remarks=$request->return_remarks;
         $store_stock_return->return_date=$date;
         $store_stock_return->return_date_time=$date_time;
-        $store_stock_return->return_remarks=$request->return_remarks;
         $store_stock_return->return_status='Pending';
         $store_stock_return->save();
         $store_stock_return_insert_id = $store_stock_return->id;
@@ -3792,7 +3907,7 @@ class BackendController extends Controller
             $product_info = Product::where('id',$product_id)->first();
 
             $store_stock_return_detail = new StoreStockReturnDetail();
-            $store_stock_return_detail->stock_transfer_request_id = $store_stock_return_insert_id;
+            $store_stock_return_detail->store_stock_return_id = $store_stock_return_insert_id;
             $store_stock_return_detail->product_unit_id = $data['product_unit_id'];
             $store_stock_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
             $store_stock_return_detail->product_id = $product_id;
@@ -3886,8 +4001,8 @@ class BackendController extends Controller
     }
 
     public function storeToWarehouseStockReturnDetails(Request $request){
-        $stock_transfer_request_details = DB::table('store_stock_returns')
-            ->join('store_stock_return_details','store_stock_returns.id','store_stock_return_details.stock_transfer_return_id')
+        $store_stock_return_details = DB::table('store_stock_returns')
+            ->join('store_stock_return_details','store_stock_returns.id','store_stock_return_details.store_stock_return_id')
             ->leftJoin('products','store_stock_return_details.product_id','products.id')
             ->leftJoin('product_units','store_stock_return_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','store_stock_return_details.product_brand_id','product_brands.id')
@@ -3899,7 +4014,7 @@ class BackendController extends Controller
                 'product_units.name as product_unit_name',
                 'product_brands.id as product_brand_id',
                 'product_brands.name as product_brand_name',
-                'store_stock_return_details.return_qty as qty',
+                'store_stock_return_details.qty',
                 'store_stock_return_details.id as stock_transfer_return_detail_id',
                 'store_stock_return_details.price',
                 'store_stock_return_details.sub_total',
@@ -3907,9 +4022,9 @@ class BackendController extends Controller
             )
             ->get();
 
-        if($stock_transfer_request_details)
+        if($store_stock_return_details)
         {
-            $success['stock_transfer_return_details'] =  $stock_transfer_return_details;
+            $success['store_stock_return_details'] =  $store_stock_return_details;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Store Stock Return Details Found!'], $this->failStatus);
@@ -4337,7 +4452,7 @@ class BackendController extends Controller
                $product_info = Product::where('id',$product_id)->first();
 
 
-               $stock_transfer_detail = StockTransferDetail::where('id','stock_transfer_detail_id')->first();
+               $stock_transfer_detail = StockTransferDetail::where('id',$data['stock_transfer_detail_id'])->first();
                $stock_transfer_detail->product_unit_id = $data['product_unit_id'];
                $stock_transfer_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                $stock_transfer_detail->product_id = $product_id;
@@ -4469,12 +4584,122 @@ class BackendController extends Controller
                    $warehouse_store_current_stock_update->save();
                }
            }
-       }
+        }
 
         if($affectedRow){
             return response()->json(['success'=>true,'response' => 'Warehouse To Store Stock Updated Successfully Inserted.'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Warehouse To Store Stock Updated Successfully Inserted.!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseToStoreStockRemove(Request $request){
+        $this->validate($request, [
+            'stock_transfer_id'=> 'required',
+            'warehouse_id'=> 'required',
+            'store_id'=> 'required',
+            'total_amount'=> 'required',
+            'stock_transfer_detail_id'=> 'required',
+            'product_id'=> 'required',
+            'sub_total'=> 'required',
+        ]);
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+        $warehouse_id = $request->warehouse_id;
+        $store_id = $request->store_id;
+
+        $stock_transfer = StockTransfer::find($request->stock_transfer_id);
+        $stock_transfer->user_id=Auth::user()->id;
+        $stock_transfer->warehouse_id = $warehouse_id;
+        $stock_transfer->store_id = $store_id;
+
+        $stock_transfer->total_amount = $request->total_amount - $request->sub_total;
+        $affectedRow = $stock_transfer->save();
+
+        if($affectedRow){
+
+            $product_id = $request->product_id;
+            $product_info = Product::where('id',$product_id)->first();
+
+            // product stock
+            $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
+            $current_stock = $stock_row->current_stock;
+
+            // warehouse current stock
+            $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
+                ->where('product_id',$product_id)
+                ->first();
+            $exists_current_stock = $warehouse_current_stock_update->current_stock;
+
+
+            // warehouse store current stock
+            $warehouse_store_current_stock_update = WarehouseStoreCurrentStock::where('warehouse_id',$request->warehouse_id)
+                ->where('store_id',$store_id)
+                ->where('product_id',$product_id)
+                ->first();
+            $exists_warehouse_store_current_stock = $warehouse_store_current_stock_update->current_stock;
+
+            // stock out warehouse product
+            $stock = new Stock();
+            $stock->ref_id = $request->stock_transfer_id;
+            $stock->user_id = $user_id;
+            $stock->warehouse_id = $warehouse_id;
+            $stock->store_id = $store_id;
+            $stock->product_id = $product_id;
+            $stock->product_unit_id = $product_info->product_unit_id;
+            $stock->product_brand_id = $product_info->product_brand_id ? $product_info->product_brand_id : NULL;
+            $stock->stock_type = 'warehouse_to_store_stock_delete';
+            $stock->stock_where = 'warehouse';
+            $stock->stock_in_out = 'stock_in';
+            $stock->previous_stock = $current_stock;
+            $stock->stock_in = $request->qty;
+            $stock->stock_out = 0;
+            $stock->current_stock = $current_stock + $request->qty;
+            $stock->stock_date = $date;
+            $stock->stock_date_time = $date_time;
+            $stock->save();
+
+            // warehouse current stock
+            $warehouse_current_stock_update->current_stock=$exists_current_stock + $request->qty;
+            $warehouse_current_stock_update->save();
+
+
+            // stock in store product
+            $stock = new Stock();
+            $stock->ref_id = $request->stock_transfer_id;
+            $stock->user_id = $user_id;
+            $stock->warehouse_id = $warehouse_id;
+            $stock->store_id = $store_id;
+            $stock->product_id = $product_id;
+            $stock->product_unit_id = $product_info->product_unit_id;
+            $stock->product_brand_id = $product_info->product_brand_id ? $product_info->product_brand_id : NULL;
+            $stock->stock_type = 'warehouse_to_store_stock_delete';
+            $stock->stock_where = 'store';
+            $stock->stock_in_out = 'stock_out';
+            $stock->previous_stock = $exists_warehouse_store_current_stock;
+            $stock->stock_in = 0;
+            $stock->stock_out = $request->qty;
+            $stock->current_stock = $exists_warehouse_store_current_stock - $request->qty;
+            $stock->stock_date = $date;
+            $stock->stock_date_time = $date_time;
+            $stock->save();
+
+            // warehouse store current stock
+            $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock - $request->qty;
+            $warehouse_store_current_stock_update->save();
+
+            // delete stock transfer detail
+            StockTransferDetail::where('id','stock_transfer_detail_id')->delete();
+
+        }
+
+        if($affectedRow){
+            return response()->json(['success'=>true,'response' => 'Warehouse To Store Stock Removed Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse To Store Stock Removed Successfully!'], $this->failStatus);
         }
     }
 
@@ -5304,7 +5529,7 @@ class BackendController extends Controller
             if(count($product_sale_details) > 0){
                 foreach ($product_sale_details as $product_sale_detail){
                     // current stock
-                    $stock_row = Stock::where('stock_type','store')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
+                    $stock_row = Stock::where('stock_where','store')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
                     $current_stock = $stock_row->current_stock;
 
                     $stock = new Stock();
@@ -5805,7 +6030,7 @@ class BackendController extends Controller
             if(count($product_sale_details) > 0){
                 foreach ($product_sale_details as $product_sale_detail){
                     // current stock
-                    $stock_row = Stock::where('stock_type','store')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
+                    $stock_row = Stock::where('stock_where','store')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
                     $current_stock = $stock_row->current_stock;
 
                     $stock = new Stock();
@@ -6210,7 +6435,7 @@ class BackendController extends Controller
     public function warehouseProductDamageList(){
         $warehouse_product_damage_lists = DB::table('warehouse_product_damages')
             ->leftJoin('users','warehouse_product_damages.user_id','users.id')
-            ->leftJoin('warehouses','warehouse_product_damages.return_to_warehouse_id','warehouses.id')
+            ->leftJoin('warehouses','warehouse_product_damages.warehouse_id','warehouses.id')
             ->select(
                 'warehouse_product_damages.id',
                 'warehouse_product_damages.invoice_no',
@@ -6271,8 +6496,18 @@ class BackendController extends Controller
         $date = date('Y-m-d');
         $date_time = date('Y-m-d H:i:s');
 
+        $get_invoice_no = WarehouseProductDamage::latest()->pluck('invoice_no')->first();
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("WPDN-","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
+        }else{
+            $invoice_no = 6000;
+        }
+
+        $final_invoice = 'WPDN-'.$invoice_no;
+
         $warehouse_product_damage = new WarehouseProductDamage();
-        $warehouse_product_damage->invoice_no = '';
+        $warehouse_product_damage->invoice_no = $final_invoice;
         $warehouse_product_damage->user_id = $user_id;
         $warehouse_product_damage->warehouse_id = $warehouse_id;
         $warehouse_product_damage->damage_date = $date;
@@ -6285,20 +6520,22 @@ class BackendController extends Controller
                 $product_id = $data['product_id'];
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
 
-
                 // warehouse damage product
                 $warehouse_product_damage_detail = new WarehouseProductDamageDetail();
+                $warehouse_product_damage_detail->warehouse_product_damage_id  = $insert_id;
                 $warehouse_product_damage_detail->product_unit_id = $data['product_unit_id'];
                 $warehouse_product_damage_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $warehouse_product_damage_detail->product_id = $product_id;
-                $warehouse_product_damage_detail->qty = $data['qty'];
                 $warehouse_product_damage_detail->barcode = $barcode;
+                $warehouse_product_damage_detail->qty = $data['qty'];
+                $warehouse_product_damage_detail->price = $data['price'];
+                $warehouse_product_damage_detail->vat_amount = 0;
+                $warehouse_product_damage_detail->sub_total = $data['qty']*$data['price'];
                 $warehouse_product_damage_detail->save();
-                $insert_id=$warehouse_product_damage_detail->id;
 
 
                 // product stock
-                $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest('id')->first();
+                $stock_row = Stock::where('stock_where','warehouse')->where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest('id')->first();
 
                 $stock = new Stock();
                 $stock->ref_id=$insert_id;
@@ -6363,32 +6600,75 @@ class BackendController extends Controller
                 $warehouse_product_damage->product_unit_id = $data['product_unit_id'];
                 $warehouse_product_damage->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $warehouse_product_damage->product_id = $product_id;
-                $warehouse_product_damage->qty = $data['qty'];
                 $warehouse_product_damage->barcode = $barcode;
+                $warehouse_product_damage->qty = $data['qty'];
+                $warehouse_product_damage->price = $data['price'];
+                $warehouse_product_damage->vat_amount = 0;
+                $warehouse_product_damage->sub_total = $data['qty']*$data['price'];
                 $affectedRow = $warehouse_product_damage->update();
 
                 if($affectedRow){
                     // product stock
-                    $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest('id')->first();
+                    $stock_row = Stock::where('stock_where','warehouse')->where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest('id')->first();
                     $current_stock = $stock_row->current_stock;
-
-                    $stock = Stock::where('ref_id',$warehouse_product_damage->id)->get();
-                    $stock->product_unit_id= $data['product_unit_id'];
-                    $stock->product_brand_id=$data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                    $stock->product_id=$product_id;
-                    $stock->previous_stock=$current_stock;
-                    $stock->stock_in=0;
-                    $stock->stock_out=$data['qty'];
-                    $stock->current_stock=$current_stock - $data['qty'];
-                    $stock->stock_date=$date;
-                    $stock->stock_date_time=$date_time;
-                    $stock->update();
-
 
                     $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->first();
                     $exists_current_stock = $warehouse_current_stock->current_stock;
-                    $warehouse_current_stock->current_stock=$exists_current_stock - $data['qty'];
-                    $warehouse_current_stock->update();
+
+                    if($stock_row->stock_in != $data['qty']){
+
+                        if($data['qty'] > $stock_row->stock_in){
+
+                            $stock = new Stock();
+                            $stock->ref_id=$request->warehouse_product_damage_id;
+                            $stock->user_id=$user_id;
+                            $stock->product_unit_id= $data['product_unit_id'];
+                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                            $stock->product_id= $product_id;
+                            $stock->stock_type='warehouse_product_damage_increase';
+                            $stock->warehouse_id= $warehouse_id;
+                            $stock->store_id=NULL;
+                            $stock->stock_where='warehouse';
+                            $stock->stock_in_out='stock_out';
+                            $stock->previous_stock=$current_stock;
+                            $stock->stock_in=0;
+                            $stock->stock_out=$data['qty'];
+                            $stock->current_stock=$current_stock - $data['qty'];
+                            $stock->stock_date=$date;
+                            $stock->stock_date_time=$date_time;
+                            $stock->save();
+
+                            // warehouse current stock
+                            $warehouse_current_stock->current_stock=$exists_current_stock - $data['qty'];
+                            $warehouse_current_stock->save();
+                        }else{
+
+                            $stock = new Stock();
+                            $stock->ref_id=$request->warehouse_product_damage_id;
+                            $stock->user_id=$user_id;
+                            $stock->product_unit_id= $data['product_unit_id'];
+                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                            $stock->product_id= $product_id;
+                            $stock->stock_type='warehouse_product_damage_decrease';
+                            $stock->warehouse_id= $warehouse_id;
+                            $stock->store_id=NULL;
+                            $stock->stock_where='warehouse';
+                            $stock->stock_in_out='stock_out';
+                            $stock->previous_stock=$current_stock;
+                            $stock->stock_in=$data['qty'];
+                            $stock->stock_out=0;
+                            $stock->current_stock=$current_stock - $data['qty'];
+                            $stock->stock_date=$date;
+                            $stock->stock_date_time=$date_time;
+                            $stock->save();
+
+                            // warehouse current stock
+                            $warehouse_current_stock->current_stock=$exists_current_stock + $data['qty'];
+                            $warehouse_current_stock->save();
+                        }
+                    }
+
+
                 }
             }
         }
@@ -6424,7 +6704,7 @@ class BackendController extends Controller
                 $product_id = $warehouseProductDamageDetail->product_id;
 
                 // current stock
-                $stock_row = Stock::where('stock_type','warehouse')->where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest('id')->first();
+                $stock_row = Stock::where('stock_where','warehouse')->where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest('id')->first();
                 $current_stock = $stock_row->current_stock;
 
                 $stock = new Stock();
@@ -9412,7 +9692,7 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Store Expense Found!'], $this->failStatus);
         }
 
-        //$delete_party = DB::table("store_expenses")->where('id',$request->expense_category_id)->delete();
+        //$delete_expense = DB::table("store_expenses")->where('id',$request->expense_category_id)->delete();
         $soft_delete_store_expense = StoreExpense::find($request->store_expense_id);
         $soft_delete_store_expense->status=0;
         $affected_row = $soft_delete_store_expense->update();
@@ -9421,6 +9701,102 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => 'Store Expense Successfully Soft Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Store Expense Deleted!'], $this->failStatus);
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+    // backup database
+    public function backupDatabase(Request $request){
+        // Database configuration
+        $host = "127.0.0.1";
+        $username = "erp_boibichitra_user";
+        $password = "mGubJAw6e+m834Bs";
+        $database_name = "erp_boibichitra_db";
+
+        // Get connection object and set the charset
+        $conn = mysqli_connect($host, $username, $password, $database_name);
+        $conn->set_charset("utf8");
+
+
+        // Get All Table Names From the Database
+        $tables = array();
+        $sql = "SHOW TABLES";
+        $result = mysqli_query($conn, $sql);
+
+        while ($row = mysqli_fetch_row($result)) {
+            $tables[] = $row[0];
+        }
+
+        $sqlScript = "";
+        foreach ($tables as $table) {
+
+            // Prepare SQLscript for creating table structure
+            $query = "SHOW CREATE TABLE $table";
+            $result = mysqli_query($conn, $query);
+            $row = mysqli_fetch_row($result);
+
+            $sqlScript .= "\n\n" . $row[1] . ";\n\n";
+
+
+            $query = "SELECT * FROM $table";
+            $result = mysqli_query($conn, $query);
+
+            $columnCount = mysqli_num_fields($result);
+
+            // Prepare SQLscript for dumping data for each table
+            for ($i = 0; $i < $columnCount; $i ++) {
+                while ($row = mysqli_fetch_row($result)) {
+                    $sqlScript .= "INSERT INTO $table VALUES(";
+                    for ($j = 0; $j < $columnCount; $j ++) {
+                        $row[$j] = $row[$j];
+
+                        if (isset($row[$j])) {
+                            $sqlScript .= '"' . $row[$j] . '"';
+                        } else {
+                            $sqlScript .= '""';
+                        }
+                        if ($j < ($columnCount - 1)) {
+                            $sqlScript .= ',';
+                        }
+                    }
+                    $sqlScript .= ");\n";
+                }
+            }
+
+            $sqlScript .= "\n";
+        }
+
+        if(!empty($sqlScript))
+        {
+            // Save the SQL script to a backup file
+            $backup_file_name = $database_name . '_backup_' . time() . '.sql';
+            $fileHandler = fopen($backup_file_name, 'w+');
+            $number_of_lines = fwrite($fileHandler, $sqlScript);
+            fclose($fileHandler);
+
+            // Download the SQL backup file to the browser
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename=' . basename($backup_file_name));
+            header('Content-Transfer-Encoding: binary');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate');
+            header('Pragma: public');
+            header('Content-Length: ' . filesize($backup_file_name));
+            ob_clean();
+            flush();
+            readfile($backup_file_name);
+            exec('rm ' . $backup_file_name);
         }
     }
 

@@ -49,6 +49,7 @@ Route::get('/warehouse_store_stock_sync', 'StockSyncController@warehouse_store_s
 Route::get('/test', 'HomeController@test')->name('test');
 Route::get('/manually_pos_sale_update', 'HomeController@manually_pos_sale_update')->name('manually_pos_sale_update');
 Route::get('/manually_stock_transfer_vat_update', 'HomeController@manually_stock_transfer_vat_update')->name('manually_stock_transfer_vat_update');
+Route::get('/backup_database', 'HomeController@backup_database')->name('backup_database');
 
 
 Route::get('/', function () {
