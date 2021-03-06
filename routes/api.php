@@ -394,6 +394,24 @@ Route::middleware('auth:api')->post('/voucher_type_create', 'API\BackendControll
 Route::middleware('auth:api')->post('/voucher_type_edit', 'API\BackendController@voucherTypeEdit');
 Route::middleware('auth:api')->post('/voucher_type_delete', 'API\BackendController@voucherTypeDelete');
 
+// chart of account
+Route::middleware('auth:api')->get('/chart_of_account_list', 'API\BackendController@chartOfAccountList');
+Route::middleware('auth:api')->get('/chart_of_account_active_list', 'API\BackendController@chartOfAccountActiveList');
+Route::middleware('auth:api')->post('/chart_of_account_parent_head_details', 'API\BackendController@chartOfAccountParentHeadDetails');
+Route::middleware('auth:api')->post('/chart_of_account_create', 'API\BackendController@chartOfAccountCreate');
+Route::middleware('auth:api')->post('/chart_of_account_edit', 'API\BackendController@chartOfAccountEdit');
+Route::middleware('auth:api')->post('/chart_of_account_delete', 'API\BackendController@chartOfAccountDelete');
+
+// chart of account transaction
+Route::middleware('auth:api')->get('/chart_of_account_transaction_list', 'API\BackendController@chartOfAccountTransactionList');
+Route::middleware('auth:api')->post('/chart_of_account_transaction_details', 'API\BackendController@chartOfAccountTransactionDetails');
+Route::middleware('auth:api')->post('/chart_of_account_transaction_create', 'API\BackendController@chartOfAccountTransactionCreate');
+Route::middleware('auth:api')->post('/chart_of_account_transaction_edit', 'API\BackendController@chartOfAccountTransactionEdit');
+Route::middleware('auth:api')->post('/chart_of_account_transaction_delete', 'API\BackendController@chartOfAccountTransactionDelete');
+
+// ledger
+Route::middleware('auth:api')->post('/ledger', 'API\BackendController@ledger');
+Route::middleware('auth:api')->post('/balance_sheet', 'API\BackendController@balanceSheet');
 
 // database backup
 //Route::get('/backup_database', 'HomeController@backup_database')->name('backup_database');

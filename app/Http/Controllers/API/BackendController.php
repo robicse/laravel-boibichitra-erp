@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\API;
 
 use App\Attendance;
+use App\ChartOfAccount;
+use App\ChartOfAccountTransaction;
+use App\ChartOfAccountTransactionDetail;
 use App\Department;
 use App\Designation;
 use App\Employee;
@@ -9703,6 +9706,486 @@ class BackendController extends Controller
             return response()->json(['success'=>false,'response'=>'No Store Expense Deleted!'], $this->failStatus);
         }
     }
+
+    public function chartOfAccountList(){
+        $chart_of_accounts = DB::table('chart_of_accounts')
+            ->select('id','head_code','head_name','parent_head_name','user_bank_account_no','head_level','is_active','is_transaction','is_general_ledger','head_type')
+            ->orderBy('id','desc')
+            ->get();
+
+        if($chart_of_accounts)
+        {
+            $success['chart_of_accounts'] =  $chart_of_accounts;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Accounts List Found!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountActiveList(){
+        $chart_of_accounts = DB::table('chart_of_accounts')
+            ->select('id','head_code','head_name','parent_head_name','head_type','head_level','is_active','is_transaction','is_general_ledger')
+            ->where('is_active',1)
+            ->orderBy('id','desc')
+            ->get();
+
+        if($chart_of_accounts)
+        {
+            $success['chart_of_accounts'] =  $chart_of_accounts;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Accounts List Found!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountParentHeadDetails(Request $request){
+        $validator = Validator::make($request->all(), [
+            'parent_head_name'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $chart_of_account_parent_head_details = DB::table('chart_of_accounts')
+            ->select('id','head_code','head_name','parent_head_name','head_type','head_level','is_active','is_transaction','is_general_ledger')
+            ->where('head_name',$request->parent_head_name)
+            ->orderBy('id','desc')
+            ->get();
+
+        if($chart_of_account_parent_head_details)
+        {
+            $success['chart_of_account_parent_head_details'] =  $chart_of_account_parent_head_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Accounts Parent Head Details Found!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'head_code'=> 'required',
+            'head_name' => 'required|unique:chart_of_accounts,head_name',
+            'parent_head_name'=> 'required',
+            'head_type'=> 'required',
+            'head_level'=> 'required',
+            'is_active'=> 'required',
+            'is_transaction'=> 'required',
+            'is_general_ledger'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $chart_of_accounts = new ChartOfAccount();
+        $chart_of_accounts->head_code = $request->head_code;
+        $chart_of_accounts->head_name = $request->head_name;
+        $chart_of_accounts->parent_head_name = $request->parent_head_name;
+        $chart_of_accounts->head_type = $request->head_type;
+        $chart_of_accounts->head_level = $request->head_level;
+        $chart_of_accounts->is_active = $request->is_active;
+        $chart_of_accounts->is_transaction = $request->is_transaction;
+        $chart_of_accounts->is_general_ledger = $request->is_general_ledger;
+        $chart_of_accounts->ref_id = NULL;
+        $chart_of_accounts->user_bank_account_no = NULL;
+        $chart_of_accounts->save();
+        $insert_id = $chart_of_accounts->id;
+
+        if($insert_id){
+            return response()->json(['success'=>true,'response' => $chart_of_accounts], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Chart Of Accounts Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'head_code'=> 'required',
+            'head_name' => 'required|unique:chart_of_accounts,head_name,'.$request->chart_of_account_id,
+            'parent_head_name'=> 'required',
+            'head_type'=> 'required',
+            'head_level'=> 'required',
+            'is_active'=> 'required',
+            'is_transaction'=> 'required',
+            'is_general_ledger'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_chart_of_account = DB::table("chart_of_accounts")->where('id',$request->chart_of_account_id)->pluck('id')->first();
+        if($check_exists_chart_of_account == null){
+            return response()->json(['success'=>false,'response'=>'No Chart Of Account Found!'], $this->failStatus);
+        }
+
+        $chart_of_accounts = ChartOfAccount::find($request->chart_of_account_id);
+        $chart_of_accounts->head_code = $request->head_code;
+        $chart_of_accounts->head_name = $request->head_name;
+        $chart_of_accounts->parent_head_name = $request->parent_head_name;
+        $chart_of_accounts->head_type = $request->head_type;
+        $chart_of_accounts->head_level = $request->head_level;
+        $chart_of_accounts->is_active = $request->is_active;
+        $chart_of_accounts->is_transaction = $request->is_transaction;
+        $chart_of_accounts->is_general_ledger = $request->is_general_ledger;
+        $update_chart_of_account = $chart_of_accounts->save();
+
+        if($update_chart_of_account){
+            return response()->json(['success'=>true,'response' => $chart_of_accounts], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Chart Of Account Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountDelete(Request $request){
+        $check_exists_chart_of_account = DB::table("chart_of_accounts")->where('id',$request->chart_of_account_id)->pluck('id')->first();
+        if($check_exists_chart_of_account == null){
+            return response()->json(['success'=>false,'response'=>'No chart_of_account Found!'], $this->failStatus);
+        }
+
+        //$delete_party = DB::table("product_brands")->where('id',$request->product_brand_id)->delete();
+        $soft_delete_chart_of_account = ChartOfAccount::find($request->chart_of_account_id);
+        $soft_delete_chart_of_account->is_active=0;
+        $affected_row = $soft_delete_chart_of_account->update();
+        if($affected_row)
+        {
+            return response()->json(['success'=>true,'response' => 'Chart Of Account Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Account Deleted!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountTransactionList(){
+        $chart_of_account_transactions = DB::table('chart_of_account_transactions')
+            ->join('voucher_types','chart_of_account_transactions.voucher_type_id','voucher_types.id')
+            ->select(
+                'chart_of_account_transactions.id',
+                'chart_of_account_transactions.voucher_type_id',
+                'voucher_types.name as voucher_type_name',
+                'chart_of_account_transactions.voucher_no',
+                'chart_of_account_transactions.is_approved',
+                'chart_of_account_transactions.transaction_date',
+                'chart_of_account_transactions.transaction_date_time'
+            )
+            ->orderBy('id','desc')
+            ->get();
+
+        if($chart_of_account_transactions)
+        {
+            $success['chart_of_account_transactions'] =  $chart_of_account_transactions;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Account Transactions List Found!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountTransactionDetails(Request $request){
+        $validator = Validator::make($request->all(), [
+            'chart_of_account_transaction_id'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $chart_of_account_transaction_details = DB::table('chart_of_account_transaction_details')
+            ->select(
+                'chart_of_account_transaction_details.id',
+                'chart_of_account_transaction_details.chart_of_account_transaction_id',
+                'chart_of_account_transaction_details.chart_of_account_id ',
+                'chart_of_account_transaction_details.chart_of_account_number',
+                'chart_of_account_transaction_details.chart_of_account_name',
+                'chart_of_account_transaction_details.chart_of_account_parent_name',
+                'chart_of_account_transaction_details.chart_of_account_type',
+                'chart_of_account_transaction_details.debit',
+                'chart_of_account_transaction_details.credit',
+                'chart_of_account_transaction_details.description',
+                'chart_of_account_transaction_details.transaction_date',
+                'chart_of_account_transaction_details.transaction_date_time'
+            )
+            ->where('chart_of_account_transaction_details.chart_of_account_transaction_id',$request->chart_of_account_transaction_id)
+            ->orderBy('chart_of_account_transaction_details.id','desc')
+            ->get();
+
+        if($chart_of_account_transaction_details)
+        {
+            $success['chart_of_account_transaction_details'] =  $chart_of_account_transaction_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Accounts Transaction Details Found!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountTransactionCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'voucher_type_id'=> 'required',
+            'chart_of_account_name'=> 'required',
+            'debit'=> 'required',
+            'credit'=> 'required',
+            'description'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $user_id = Auth::user()->id;
+        $transaction_date = date('Y-m-d');
+        $year = date('Y');
+        $month = date('m');
+        $transaction_date_time = date('Y-m-d H:i:s');
+
+        $get_voucher_name = VoucherType::where('id',$request->voucher_type_id)->pluck('name')->first();
+        $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',$request->voucher_type_id)->latest()->pluck('voucher_no')->first();
+        if(!empty($get_voucher_no)){
+            $get_voucher_name_str = $get_voucher_name."-";
+            $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+            $voucher_no = $get_voucher+1;
+        }else{
+            $voucher_no = 8000;
+        }
+        $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+
+
+        $chart_of_account_transactions = new ChartOfAccountTransaction();
+        $chart_of_account_transactions->user_id = $user_id;
+        $chart_of_account_transactions->voucher_type_id = $request->voucher_type_id;
+        $chart_of_account_transactions->voucher_no = $final_voucher_no;
+        $chart_of_account_transactions->is_approved = 'approved';
+        $chart_of_account_transactions->transaction_date = $transaction_date;
+        $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+        $chart_of_account_transactions->save();
+        $insert_id = $chart_of_account_transactions->id;
+
+        if($insert_id){
+            foreach ($request->transactions as $data){
+                $chart_of_account_info = ChartOfAccount::where('head_name',$data['chart_of_account_name'])->first();
+
+                $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
+                $chart_of_account_transaction_details->chart_of_account_id = $chart_of_account_info->id;
+                $chart_of_account_transaction_details->chart_of_account_number = $chart_of_account_info->head_code;
+                $chart_of_account_transaction_details->chart_of_account_name = $data['chart_of_account_name'];
+                $chart_of_account_transaction_details->chart_of_account_parent_name = $chart_of_account_info->parent_head_name;
+                $chart_of_account_transaction_details->chart_of_account_type = $chart_of_account_info->head_type;
+                $chart_of_account_transaction_details->debit = $data['debit'];
+                $chart_of_account_transaction_details->credit = $data['credit'];
+                $chart_of_account_transaction_details->description = $data['description'];
+                $chart_of_account_transaction_details->year = $year;
+                $chart_of_account_transaction_details->month = $month;
+                $chart_of_account_transaction_details->transaction_date = $transaction_date;
+                $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                $chart_of_account_transaction_details->save();
+            }
+            return response()->json(['success'=>true,'response' => $chart_of_account_transactions], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Chart Of Account Transactions Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountTransactionEdit(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'chart_of_account_transaction_id'=> 'required',
+            'voucher_type_id'=> 'required',
+            'chart_of_account_name'=> 'required',
+            'debit'=> 'required',
+            'credit'=> 'required',
+            'description'=> 'required',
+            'chart_of_account_transaction_detail_id'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $user_id = Auth::user()->id;
+
+        $get_voucher_name = VoucherType::where('id',$request->voucher_type_id)->pluck('name')->first();
+        $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',$request->voucher_type_id)->latest()->pluck('voucher_no')->first();
+        if(!empty($get_voucher_no)){
+            $get_voucher_name_str = $get_voucher_name."-";
+            $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+            $voucher_no = $get_voucher+1;
+        }else{
+            $voucher_no = 8000;
+        }
+        $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+
+
+        $chart_of_account_transactions = ChartOfAccountTransaction::find($request->chart_of_account_transaction_id);
+        $chart_of_account_transactions->user_id = $user_id;
+        $chart_of_account_transactions->voucher_type_id = $request->voucher_type_id;
+        $chart_of_account_transactions->voucher_no = $final_voucher_no;
+        $chart_of_account_transactions->save();
+        $insert_id = $chart_of_account_transactions->id;
+
+        if($insert_id){
+            foreach ($request->transactions as $data){
+                $chart_of_account_info = ChartOfAccount::where('head_name',$data['chart_of_account_name'])->first();
+
+                $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::find($request->chart_of_account_transaction_detail_id);
+                $chart_of_account_transaction_details->chart_of_account_id = $chart_of_account_info->id;
+                $chart_of_account_transaction_details->chart_of_account_number = $chart_of_account_info->head_code;
+                $chart_of_account_transaction_details->chart_of_account_name = $data['chart_of_account_name'];
+                $chart_of_account_transaction_details->chart_of_account_parent_name = $chart_of_account_info->parent_head_name;
+                $chart_of_account_transaction_details->chart_of_account_type = $chart_of_account_info->head_type;
+                $chart_of_account_transaction_details->debit = $data['debit'];
+                $chart_of_account_transaction_details->credit = $data['credit'];
+                $chart_of_account_transaction_details->description = $data['description'];
+                $chart_of_account_transaction_details->save();
+            }
+            return response()->json(['success'=>true,'response' => $chart_of_account_transactions], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Chart Of Account Transactions Not Updated Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountTransactionDelete(Request $request){
+        $check_exists_chart_of_account = DB::table("chart_of_account_transactions")->where('id',$request->chart_of_account_transaction_id)->pluck('id')->first();
+        if($check_exists_chart_of_account == null){
+            return response()->json(['success'=>false,'response'=>'No Chart Of Account Transaction Found!'], $this->failStatus);
+        }
+
+        $delete_chart_of_account_transaction = DB::table("chart_of_account_transactions")->where('id',$request->chart_of_account_transaction_id)->delete();
+        DB::table("chart_of_account_transaction_details")->where('chart_of_account_transaction_id',$request->chart_of_account_transaction_id)->delete();
+
+        if($delete_chart_of_account_transaction)
+        {
+            return response()->json(['success'=>true,'response' => 'Chart Of Account Transaction Successfully Soft Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Account Transaction Deleted!'], $this->failStatus);
+        }
+    }
+
+    public function ledger(Request $request){
+        $validator = Validator::make($request->all(), [
+            'chart_of_account_name'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $chart_of_account_transaction = DB::table("chart_of_account_transaction_details")->where('chart_of_account_name',$request->chart_of_account_name)
+            ->select('debit','credit','description','transaction_date_time')
+            ->get();
+
+        if($chart_of_account_transaction)
+        {
+            return response()->json(['success'=>true,'response' => $chart_of_account_transaction], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Account Transaction Found!'], $this->failStatus);
+        }
+    }
+
+    public function balanceSheet(Request $request){
+        $validator = Validator::make($request->all(), [
+            'year'=> 'required',
+            'month'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $sum_asset_amount = DB::table('chart_of_account_transaction_details')
+            ->where('chart_of_account_type','=','A')
+            ->where('year','=',$request->year)
+            ->where('month','<=',$request->month)
+            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+            ->first();
+
+        $sum_income_amount = DB::table('chart_of_account_transaction_details')
+            ->where('chart_of_account_type','=','I')
+            ->where('year','=',$request->year)
+            ->where('month','<=',$request->month)
+            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+            ->first();
+
+        $sum_expense_amount = DB::table('chart_of_account_transaction_details')
+            ->where('chart_of_account_type','=','E')
+            ->where('year','=',$request->year)
+            ->where('month','<=',$request->month)
+            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+            ->first();
+
+        $sum_liability_amount = DB::table('chart_of_account_transaction_details')
+            ->where('chart_of_account_type','=','L')
+            ->where('year','=',$request->year)
+            ->where('month','<=',$request->month)
+            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+            ->first();
+
+        $response = [
+            'sum_asset_amount' => $sum_asset_amount,
+            'sum_income_amount' => $sum_income_amount,
+            'sum_expense_amount' => $sum_expense_amount,
+            'sum_liability_amount' => $sum_liability_amount,
+        ];
+
+        if($sum_asset_amount)
+        {
+            return response()->json(['success'=>true,'response' => $response], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Account Transaction Found!'], $this->failStatus);
+        }
+    }
+
+
 
 
 
