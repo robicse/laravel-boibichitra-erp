@@ -168,7 +168,9 @@ Route::middleware('auth:api')->post('/product_pos_purchase_details', 'API\Backen
 Route::middleware('auth:api')->post('/product_pos_purchase_create', 'API\BackendController@productPOSPurchaseCreate');
 Route::middleware('auth:api')->post('/product_pos_purchase_edit', 'API\BackendController@productPOSPurchaseEdit');
 Route::middleware('auth:api')->post('/product_pos_purchase_delete', 'API\BackendController@productPOSPurchaseDelete');
-Route::middleware('auth:api')->post('/product_pos_purchase_remove', 'API\BackendController@productPOSPurchaseRemove');
+
+// product purchase/warehouse stock remove
+Route::middleware('auth:api')->post('/product_purchase_remove', 'API\BackendController@productPurchaseRemove');
 
 // product purchase return
 Route::middleware('auth:api')->get('/product_purchase_invoice_list', 'API\BackendController@productPurchaseInvoiceList');
@@ -396,7 +398,13 @@ Route::middleware('auth:api')->post('/voucher_type_delete', 'API\BackendControll
 
 // chart of account
 Route::middleware('auth:api')->get('/chart_of_account_list', 'API\BackendController@chartOfAccountList');
+Route::middleware('auth:api')->post('/chart_of_account_list_by_head_name', 'API\BackendController@chartOfAccountListByName');
+//Route::middleware('auth:api')->get('/chart_of_account_recursive_list', 'API\BackendController@chartOfAccountRecursiveList');
 Route::middleware('auth:api')->get('/chart_of_account_active_list', 'API\BackendController@chartOfAccountActiveList');
+Route::middleware('auth:api')->get('/chart_of_account_is_transaction_list', 'API\BackendController@chartOfAccountIsTransactionList');
+Route::middleware('auth:api')->get('/chart_of_account_is_general_ledger_list', 'API\BackendController@chartOfAccountIsGeneralLedgerList');
+Route::middleware('auth:api')->post('/chart_of_account_details', 'API\BackendController@chartOfAccountDetails');
+Route::middleware('auth:api')->post('/chart_of_account_generate_head_code', 'API\BackendController@chartOfAccountGenerateHeadCode');
 Route::middleware('auth:api')->post('/chart_of_account_parent_head_details', 'API\BackendController@chartOfAccountParentHeadDetails');
 Route::middleware('auth:api')->post('/chart_of_account_create', 'API\BackendController@chartOfAccountCreate');
 Route::middleware('auth:api')->post('/chart_of_account_edit', 'API\BackendController@chartOfAccountEdit');

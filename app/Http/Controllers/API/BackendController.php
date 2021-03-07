@@ -722,6 +722,85 @@ class BackendController extends Controller
                 UserInfo::smsAPI("88".$request->phone,$text);
             }
 
+
+
+
+            if($request->type == 'customer'){
+                $account = DB::table('chart_of_accounts')
+                    ->where('head_level',3)
+                    ->where('head_code', 'like', '1010301%')
+                    ->Orderby('created_at', 'desc')
+                    ->limit(1)
+                    ->first();
+                //dd($account);
+                if(!empty($account)){
+                    $head_code=$account->head_code+1;
+                    //$p_acc = $headcode ."-".$request->name;
+                }else{
+                    $head_code="1010301";
+                    //$p_acc = $headcode ."-".$request->name;
+                }
+                $head_name = $request->name;
+
+                $parent_head_name = 'Account Receivable';
+                $head_level = 3;
+                $head_type = 'A';
+
+
+                $coa = new ChartOfAccount();
+                $coa->head_code             = $head_code;
+                $coa->head_name             = $head_name;
+                $coa->parent_head_name      = $parent_head_name;
+                $coa->head_type             = $head_type;
+                $coa->head_level            = $head_level;
+                $coa->is_active             = '1';
+                $coa->is_transaction        = '1';
+                $coa->is_general_ledger     = '1';
+                $coa->ref_id                = NULL;
+                $coa->user_bank_account_no  = NULL;
+                $coa->created_by              = Auth::User()->id;
+                $coa->updated_by              = Auth::User()->id;
+                $coa->save();
+            }else{
+                $account = DB::table('chart_of_accounts')
+                    ->where('head_level',3)
+                    ->where('head_code', 'like', '5010101%')
+                    ->Orderby('created_at', 'desc')
+                    ->limit(1)
+                    ->first();
+                //dd($account);
+                if(!empty($account)){
+                    $head_code=$account->head_code+1;
+                    //$p_acc = $headcode ."-".$request->name;
+                }else{
+                    $head_code="5010101";
+                    //$p_acc = $headcode ."-".$request->name;
+                }
+                $head_name = $request->name;
+
+                $parent_head_name = 'Account Payable';
+                $head_level = 3;
+                $head_type = 'L';
+
+
+                $coa = new ChartOfAccount();
+                $coa->head_code             = $head_code;
+                $coa->head_name             = $head_name;
+                $coa->parent_head_name      = $parent_head_name;
+                $coa->head_type             = $head_type;
+                $coa->head_level            = $head_level;
+                $coa->is_active             = '1';
+                $coa->is_transaction        = '1';
+                $coa->is_general_ledger     = '1';
+                $coa->ref_id                = NULL;
+                $coa->user_bank_account_no  = NULL;
+                $coa->created_by              = Auth::User()->id;
+                $coa->updated_by              = Auth::User()->id;
+                $coa->save();
+            }
+
+
+
             return response()->json(['success'=>true,'response' => $parties,'exist'=>0], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'Party Not Created Successfully!'], $this->failStatus);
@@ -861,13 +940,13 @@ class BackendController extends Controller
         }
 
         $product_sale_details = DB::table('product_sales')
-                ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
-                ->leftJoin('products','product_sale_details.product_id','products.id')
-                ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
-                ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
-                ->where('product_sales.id',$request->sale_id)
-                ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.sale_date','product_sale_details.return_among_day','product_sale_details.price as mrp_price')
-                ->get();
+            ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
+            ->leftJoin('products','product_sale_details.product_id','products.id')
+            ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
+            ->where('product_sales.id',$request->sale_id)
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.sale_date','product_sale_details.return_among_day','product_sale_details.price as mrp_price')
+            ->get();
         if(count($product_sale_details) > 0){
 
             $success['product_sale_details'] = $product_sale_details;
@@ -2126,7 +2205,7 @@ class BackendController extends Controller
         }
     }
 
-    public function productWholePurchaseRemove(Request $request){
+    public function productPurchaseRemove(Request $request){
 
         $this->validate($request, [
             'product_purchase_id'=> 'required',
@@ -2136,6 +2215,7 @@ class BackendController extends Controller
             'due_amount'=> 'required',
             'total_amount'=> 'required',
             'payment_type'=> 'required',
+            'product_purchase_detail_id'=> 'required',
         ]);
 
 
@@ -2531,7 +2611,7 @@ class BackendController extends Controller
                         $stock->save();
 
                         // warehouse current stock
-                        $warehouse_current_stock_update->current_stock=$exists_current_stock + $new_stock_out;
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock + $new_stock_in;
                         $warehouse_current_stock_update->save();
                     }else{
                         $new_stock_out = $previous_purchase_qty - $data['qty'];
@@ -3309,23 +3389,23 @@ class BackendController extends Controller
         $warehouse_stock_product = [];
         foreach($warehouse_stock_product_list as $stock_row){
 
-                $nested_data['stock_id'] = $stock_row->id;
-                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
-                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
-                $nested_data['product_id'] = $stock_row->product_id;
-                $nested_data['product_name'] = $stock_row->product_name;
-                $nested_data['purchase_price'] = $stock_row->purchase_price;
-                $nested_data['selling_price'] = $stock_row->selling_price;
-                $nested_data['item_code'] = $stock_row->item_code;
-                $nested_data['barcode'] = $stock_row->barcode;
-                $nested_data['image'] = $stock_row->image;
-                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
-                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
-                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
-                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
-                $nested_data['current_stock'] = $stock_row->current_stock;
+            $nested_data['stock_id'] = $stock_row->id;
+            $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+            $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+            $nested_data['product_id'] = $stock_row->product_id;
+            $nested_data['product_name'] = $stock_row->product_name;
+            $nested_data['purchase_price'] = $stock_row->purchase_price;
+            $nested_data['selling_price'] = $stock_row->selling_price;
+            $nested_data['item_code'] = $stock_row->item_code;
+            $nested_data['barcode'] = $stock_row->barcode;
+            $nested_data['image'] = $stock_row->image;
+            $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+            $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+            $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+            $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+            $nested_data['current_stock'] = $stock_row->current_stock;
 
-                array_push($warehouse_stock_product,$nested_data);
+            array_push($warehouse_stock_product,$nested_data);
 
         }
 
@@ -3926,6 +4006,107 @@ class BackendController extends Controller
             $store_stock_return_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
             $store_stock_return_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
             $store_stock_return_detail->save();
+
+            $warehouse_id = $request->return_to_warehouse_id;
+            $store_id = $request->return_from_store_id;
+
+            $check_previous_warehouse_current_stock = Stock::where('warehouse_id',$warehouse_id)
+                ->where('product_id',$product_id)
+                ->where('stock_where','warehouse')
+                ->latest('id','desc')
+                ->pluck('current_stock')
+                ->first();
+
+            if($check_previous_warehouse_current_stock){
+                $previous_warehouse_current_stock = $check_previous_warehouse_current_stock;
+            }else{
+                $previous_warehouse_current_stock = 0;
+            }
+
+            // stock in warehouse product
+            $stock = new Stock();
+            $stock->ref_id = $store_stock_return_insert_id;
+            $stock->user_id = $user_id;
+            $stock->warehouse_id = $warehouse_id;
+            $stock->store_id = NULL;
+            $stock->product_id = $product_id;
+            $stock->product_unit_id = $data['product_unit_id'];
+            $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $stock->stock_type = 'from_warehouse_to_store';
+            $stock->stock_where = 'warehouse';
+            $stock->stock_in_out = 'stock_in';
+            $stock->previous_stock = $previous_warehouse_current_stock;
+            $stock->stock_in = $data['qty'];
+            $stock->stock_out = 0;
+            $stock->current_stock = $previous_warehouse_current_stock + $data['qty'];
+            $stock->stock_date = $date;
+            $stock->stock_date_time = $date_time;
+            $stock->save();
+
+
+            $check_previous_store_current_stock = Stock::where('warehouse_id',$warehouse_id)
+                ->where('store_id',$store_id)
+                ->where('product_id',$product_id)
+                ->where('stock_where','store')
+                ->latest('id','desc')
+                ->pluck('current_stock')
+                ->first();
+
+            if($check_previous_store_current_stock){
+                $previous_store_current_stock = $check_previous_store_current_stock;
+            }else{
+                $previous_store_current_stock = 0;
+            }
+
+            // stock out store product
+            $stock = new Stock();
+            $stock->ref_id = $store_stock_return_insert_id;
+            $stock->user_id = $user_id;
+            $stock->warehouse_id = $warehouse_id;
+            $stock->store_id = $store_id;
+            $stock->product_id = $product_id;
+            $stock->product_unit_id = $data['product_unit_id'];
+            $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+            $stock->stock_type = 'from_warehouse_to_store';
+            $stock->stock_where = 'store';
+            $stock->stock_in_out = 'stock_out';
+            $stock->previous_stock = $previous_store_current_stock;
+            $stock->stock_in = 0;
+            $stock->stock_out = $data['qty'];
+            $stock->current_stock = $previous_store_current_stock - $data['qty'];
+            $stock->stock_date = $date;
+            $stock->stock_date_time = $date_time;
+            $stock->save();
+            $insert_id = $stock->id;
+
+            // warehouse current stock
+            $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
+                ->where('product_id',$product_id)
+                ->first();
+            $exists_current_stock = $warehouse_current_stock_update->current_stock;
+            $final_warehouse_current_stock = $exists_current_stock + $data['qty'];
+            $warehouse_current_stock_update->current_stock=$final_warehouse_current_stock;
+            $warehouse_current_stock_update->save();
+
+            // warehouse store current stock
+            $check_exists_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                ->where('store_id',$store_id)
+                ->where('product_id',$product_id)
+                ->first();
+
+            if($check_exists_warehouse_store_current_stock){
+                $exists_current_stock = $check_exists_warehouse_store_current_stock->current_stock;
+                $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
+                $check_exists_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
+                $check_exists_warehouse_store_current_stock->save();
+            }else{
+                $warehouse_store_current_stock = new WarehouseStoreCurrentStock();
+                $warehouse_store_current_stock->warehouse_id=$warehouse_id;
+                $warehouse_store_current_stock->store_id=$store_id;
+                $warehouse_store_current_stock->product_id=$product_id;
+                $warehouse_store_current_stock->current_stock=$data['qty'];
+                $warehouse_store_current_stock->save();
+            }
         }
 
         if($store_stock_return_insert_id){
@@ -3943,6 +4124,8 @@ class BackendController extends Controller
         ]);
 
         $user_id = Auth::user()->id;
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
         $return_from_store_id = $request->return_from_store_id;
         $return_to_warehouse_id = $request->return_to_warehouse_id;
 
@@ -3961,6 +4144,7 @@ class BackendController extends Controller
 
             $store_stock_return_detail_id = $data['store_stock_return_detail_id'];
             $store_stock_return_detail = StoreStockReturnDetail::find($store_stock_return_detail_id);
+            $previous_store_stock_return_qty = $store_stock_return_detail->qty;
             $store_stock_return_detail->product_unit_id = $data['product_unit_id'];
             $store_stock_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
             $store_stock_return_detail->product_id = $product_id;
@@ -3970,6 +4154,138 @@ class BackendController extends Controller
             $store_stock_return_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
             $store_stock_return_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
             $store_stock_return_detail->save();
+
+
+
+
+            $warehouse_id = $request->return_to_warehouse_id;
+            $store_id = $request->return_from_store_id;
+
+            // product stock
+            $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
+            $current_stock = $stock_row->current_stock;
+
+            // warehouse current stock
+            $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
+                ->where('product_id',$product_id)
+                ->first();
+            $exists_current_stock = $warehouse_current_stock_update->current_stock;
+
+
+            // warehouse store current stock
+            $warehouse_store_current_stock_update = WarehouseStoreCurrentStock::where('warehouse_id',$request->warehouse_id)
+                ->where('store_id',$store_id)
+                ->where('product_id',$product_id)
+                ->first();
+            $exists_warehouse_store_current_stock = $warehouse_store_current_stock_update->current_stock;
+            if($stock_row->stock_in != $data['qty']){
+                if($data['qty'] > $stock_row->stock_in){
+                    $new_stock_in = $data['qty'] - $previous_store_stock_return_qty;
+
+                    // stock in warehouse product
+                    $stock = new Stock();
+                    $stock->ref_id = $store_stock_return->id;
+                    $stock->user_id = $user_id;
+                    $stock->warehouse_id = $warehouse_id;
+                    $stock->store_id = NULL;
+                    $stock->product_id = $product_id;
+                    $stock->product_unit_id = $data['product_unit_id'];
+                    $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                    $stock->stock_type = 'from_warehouse_to_store';
+                    $stock->stock_where = 'warehouse';
+                    $stock->stock_in_out = 'stock_in';
+                    $stock->previous_stock = $current_stock;
+                    $stock->stock_in = $new_stock_in;
+                    $stock->stock_out=0;
+                    $stock->current_stock=$current_stock + $new_stock_in;
+                    $stock->stock_date = $date;
+                    $stock->stock_date_time = $date_time;
+                    $stock->save();
+
+                    // warehouse current stock
+                    $warehouse_current_stock_update->current_stock=$exists_current_stock + $new_stock_in;
+                    $warehouse_current_stock_update->save();
+
+
+                    $new_stock_out = $data['qty'] - $previous_store_stock_return_qty;
+                    // stock out store product
+                    $stock = new Stock();
+                    $stock->ref_id = $request->stock_transfer_id;
+                    $stock->user_id = $user_id;
+                    $stock->warehouse_id = $warehouse_id;
+                    $stock->store_id = $store_id;
+                    $stock->product_id = $product_id;
+                    $stock->product_unit_id = $data['product_unit_id'];
+                    $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                    $stock->stock_type = 'from_warehouse_to_store';
+                    $stock->stock_where = 'store';
+                    $stock->stock_in_out = 'stock_in';
+                    $stock->previous_stock = $exists_warehouse_store_current_stock;
+                    $stock->stock_in = 0;
+                    $stock->stock_out = $new_stock_out;
+                    $stock->current_stock = $exists_warehouse_store_current_stock - $new_stock_out;
+                    $stock->stock_date = $date;
+                    $stock->stock_date_time = $date_time;
+                    $stock->save();
+
+                    // warehouse store current stock
+                    $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock - $new_stock_out;
+                    $warehouse_store_current_stock_update->save();
+
+                }else{
+                    $new_stock_out = $previous_store_stock_return_qty - $data['qty'];
+
+                    // stock out warehouse product
+                    $stock = new Stock();
+                    $stock->ref_id = $store_stock_return->id;
+                    $stock->user_id = $user_id;
+                    $stock->warehouse_id = $warehouse_id;
+                    $stock->store_id = NULL;
+                    $stock->product_id = $product_id;
+                    $stock->product_unit_id = $data['product_unit_id'];
+                    $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                    $stock->stock_type = 'from_warehouse_to_store';
+                    $stock->stock_where = 'warehouse';
+                    $stock->stock_in_out = 'stock_out';
+                    $stock->previous_stock = $current_stock;
+                    $stock->stock_in=0;
+                    $stock->stock_out = $new_stock_out;
+                    $stock->current_stock=$current_stock - $new_stock_out;
+                    $stock->stock_date = $date;
+                    $stock->stock_date_time = $date_time;
+                    $stock->save();
+
+                    // warehouse current stock
+                    $warehouse_current_stock_update->current_stock=$exists_current_stock - $new_stock_out;
+                    $warehouse_current_stock_update->save();
+
+
+                    $new_stock_in = $previous_store_stock_return_qty - $data['qty'];
+                    // stock in store product
+                    $stock = new Stock();
+                    $stock->ref_id = $store_stock_return->id;
+                    $stock->user_id = $user_id;
+                    $stock->warehouse_id = $warehouse_id;
+                    $stock->store_id = $store_id;
+                    $stock->product_id = $product_id;
+                    $stock->product_unit_id = $data['product_unit_id'];
+                    $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                    $stock->stock_type = 'from_warehouse_to_store';
+                    $stock->stock_where = 'store';
+                    $stock->stock_in_out = 'stock_in';
+                    $stock->previous_stock = $exists_warehouse_store_current_stock;
+                    $stock->stock_in = $new_stock_in;
+                    $stock->stock_out = 0;
+                    $stock->current_stock = $exists_warehouse_store_current_stock + $new_stock_out;
+                    $stock->stock_date = $date;
+                    $stock->stock_date_time = $date_time;
+                    $stock->save();
+
+                    // warehouse store current stock
+                    $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock + $new_stock_out;
+                    $warehouse_store_current_stock_update->save();
+                }
+            }
         }
 
         if($affectedRow){
@@ -4455,144 +4771,151 @@ class BackendController extends Controller
         $affectedRow = $stock_transfer->save();
 
         if($affectedRow){
-           foreach ($request->products as $data) {
+            foreach ($request->products as $data) {
 
-               $product_id = $data['product_id'];
-               $product_info = Product::where('id',$product_id)->first();
-
-
-               $stock_transfer_detail = StockTransferDetail::where('id',$data['stock_transfer_detail_id'])->first();
-               $stock_transfer_detail->product_unit_id = $data['product_unit_id'];
-               $stock_transfer_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-               $stock_transfer_detail->product_id = $product_id;
-               $stock_transfer_detail->barcode = $product_info->barcode;
-               $stock_transfer_detail->qty = $data['qty'];
-               $stock_transfer_detail->vat_amount = 0;
-               $stock_transfer_detail->price = $product_info->purchase_price;
-               $stock_transfer_detail->sub_total = $data['qty']*$product_info->purchase_price;
-               $stock_transfer_detail->issue_date = $date;
-               $stock_transfer_detail->save();
-
-               // product stock
-               $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
-               $current_stock = $stock_row->current_stock;
-
-               // warehouse current stock
-               $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
-                   ->where('product_id',$product_id)
-                   ->first();
-               $exists_current_stock = $warehouse_current_stock_update->current_stock;
+                $product_id = $data['product_id'];
+                $product_info = Product::where('id',$product_id)->first();
 
 
-               // warehouse store current stock
-               $warehouse_store_current_stock_update = WarehouseStoreCurrentStock::where('warehouse_id',$request->warehouse_id)
-                   ->where('store_id',$store_id)
-                   ->where('product_id',$product_id)
-                   ->first();
-               $exists_warehouse_store_current_stock = $warehouse_store_current_stock_update->current_stock;
-               if($data['qty'] > $stock_row->stock_in){
+                $stock_transfer_detail = StockTransferDetail::where('id',$data['stock_transfer_detail_id'])->first();
+                $previous_stock_transfer_qty = $stock_transfer_detail->qty;
+                $stock_transfer_detail->product_unit_id = $data['product_unit_id'];
+                $stock_transfer_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $stock_transfer_detail->product_id = $product_id;
+                $stock_transfer_detail->barcode = $product_info->barcode;
+                $stock_transfer_detail->qty = $data['qty'];
+                $stock_transfer_detail->vat_amount = 0;
+                $stock_transfer_detail->price = $product_info->purchase_price;
+                $stock_transfer_detail->sub_total = $data['qty']*$product_info->purchase_price;
+                $stock_transfer_detail->issue_date = $date;
+                $stock_transfer_detail->save();
+
+                // product stock
+                $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
+                $current_stock = $stock_row->current_stock;
+
+                // warehouse current stock
+                $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
+                    ->where('product_id',$product_id)
+                    ->first();
+                $exists_current_stock = $warehouse_current_stock_update->current_stock;
 
 
-                   // stock out warehouse product
-                   $stock = new Stock();
-                   $stock->ref_id = $request->stock_transfer_id;
-                   $stock->user_id = $user_id;
-                   $stock->warehouse_id = $warehouse_id;
-                   $stock->store_id = NULL;
-                   $stock->product_id = $product_id;
-                   $stock->product_unit_id = $data['product_unit_id'];
-                   $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                   $stock->stock_type = 'from_warehouse_to_store';
-                   $stock->stock_where = 'warehouse';
-                   $stock->stock_in_out = 'stock_out';
-                   $stock->previous_stock = $current_stock;
-                   $stock->stock_in = 0;
-                   $stock->stock_out = $data['qty'];
-                   $stock->current_stock = $current_stock - $data['qty'];
-                   $stock->stock_date = $date;
-                   $stock->stock_date_time = $date_time;
-                   $stock->save();
+                // warehouse store current stock
+                $warehouse_store_current_stock_update = WarehouseStoreCurrentStock::where('warehouse_id',$request->warehouse_id)
+                    ->where('store_id',$store_id)
+                    ->where('product_id',$product_id)
+                    ->first();
+                $exists_warehouse_store_current_stock = $warehouse_store_current_stock_update->current_stock;
+                if($stock_row->stock_in != $data['qty']){
+                    if($data['qty'] > $stock_row->stock_in){
+                        $new_stock_out = $data['qty'] - $previous_stock_transfer_qty;
 
-                   // warehouse current stock
-                   $warehouse_current_stock_update->current_stock=$exists_current_stock - $data['qty'];
-                   $warehouse_current_stock_update->save();
+                        // stock out warehouse product
+                        $stock = new Stock();
+                        $stock->ref_id = $request->stock_transfer_id;
+                        $stock->user_id = $user_id;
+                        $stock->warehouse_id = $warehouse_id;
+                        $stock->store_id = NULL;
+                        $stock->product_id = $product_id;
+                        $stock->product_unit_id = $data['product_unit_id'];
+                        $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->stock_type = 'from_warehouse_to_store';
+                        $stock->stock_where = 'warehouse';
+                        $stock->stock_in_out = 'stock_out';
+                        $stock->previous_stock = $current_stock;
+                        $stock->stock_in = 0;
+                        $stock->stock_out=$new_stock_out;
+                        $stock->current_stock=$current_stock - $new_stock_out;
+                        $stock->stock_date = $date;
+                        $stock->stock_date_time = $date_time;
+                        $stock->save();
 
-
-                   // stock in store product
-                   $stock = new Stock();
-                   $stock->ref_id = $request->stock_transfer_id;
-                   $stock->user_id = $user_id;
-                   $stock->warehouse_id = $warehouse_id;
-                   $stock->store_id = $store_id;
-                   $stock->product_id = $product_id;
-                   $stock->product_unit_id = $data['product_unit_id'];
-                   $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                   $stock->stock_type = 'from_warehouse_to_store';
-                   $stock->stock_where = 'store';
-                   $stock->stock_in_out = 'stock_in';
-                   $stock->previous_stock = $exists_warehouse_store_current_stock;
-                   $stock->stock_in = $data['qty'];
-                   $stock->stock_out = 0;
-                   $stock->current_stock = $exists_warehouse_store_current_stock + $data['qty'];
-                   $stock->stock_date = $date;
-                   $stock->stock_date_time = $date_time;
-                   $stock->save();
-
-                   // warehouse store current stock
-                   $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock + $data['qty'];
-                   $warehouse_store_current_stock_update->save();
-
-               }else{
-                   // stock out warehouse product
-                   $stock = new Stock();
-                   $stock->ref_id = $request->stock_transfer_id;
-                   $stock->user_id = $user_id;
-                   $stock->warehouse_id = $warehouse_id;
-                   $stock->store_id = NULL;
-                   $stock->product_id = $product_id;
-                   $stock->product_unit_id = $data['product_unit_id'];
-                   $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                   $stock->stock_type = 'from_warehouse_to_store';
-                   $stock->stock_where = 'warehouse';
-                   $stock->stock_in_out = 'stock_out';
-                   $stock->previous_stock = $current_stock;
-                   $stock->stock_in = $data['qty'];
-                   $stock->stock_out = 0;
-                   $stock->current_stock = $current_stock + $data['qty'];
-                   $stock->stock_date = $date;
-                   $stock->stock_date_time = $date_time;
-                   $stock->save();
-
-                   // warehouse current stock
-                   $warehouse_current_stock_update->current_stock=$exists_current_stock + $data['qty'];
-                   $warehouse_current_stock_update->save();
+                        // warehouse current stock
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock - $new_stock_out;
+                        $warehouse_current_stock_update->save();
 
 
-                   // stock in store product
-                   $stock = new Stock();
-                   $stock->ref_id = $request->stock_transfer_id;
-                   $stock->user_id = $user_id;
-                   $stock->warehouse_id = $warehouse_id;
-                   $stock->store_id = $store_id;
-                   $stock->product_id = $product_id;
-                   $stock->product_unit_id = $data['product_unit_id'];
-                   $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                   $stock->stock_type = 'from_warehouse_to_store';
-                   $stock->stock_where = 'store';
-                   $stock->stock_in_out = 'stock_in';
-                   $stock->previous_stock = $exists_warehouse_store_current_stock;
-                   $stock->stock_in = 0;
-                   $stock->stock_out = $data['qty'];
-                   $stock->current_stock = $exists_warehouse_store_current_stock - $data['qty'];
-                   $stock->stock_date = $date;
-                   $stock->stock_date_time = $date_time;
-                   $stock->save();
+                        $new_stock_in = $data['qty'] - $previous_stock_transfer_qty;
+                        // stock in store product
+                        $stock = new Stock();
+                        $stock->ref_id = $request->stock_transfer_id;
+                        $stock->user_id = $user_id;
+                        $stock->warehouse_id = $warehouse_id;
+                        $stock->store_id = $store_id;
+                        $stock->product_id = $product_id;
+                        $stock->product_unit_id = $data['product_unit_id'];
+                        $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->stock_type = 'from_warehouse_to_store';
+                        $stock->stock_where = 'store';
+                        $stock->stock_in_out = 'stock_in';
+                        $stock->previous_stock = $exists_warehouse_store_current_stock;
+                        $stock->stock_in = $new_stock_in;
+                        $stock->stock_out = 0;
+                        $stock->current_stock = $exists_warehouse_store_current_stock + $new_stock_in;
+                        $stock->stock_date = $date;
+                        $stock->stock_date_time = $date_time;
+                        $stock->save();
 
-                   // warehouse store current stock
-                   $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock - $data['qty'];
-                   $warehouse_store_current_stock_update->save();
-               }
-           }
+                        // warehouse store current stock
+                        $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock + $new_stock_in;
+                        $warehouse_store_current_stock_update->save();
+
+                    }else{
+                        $new_stock_in = $previous_stock_transfer_qty - $data['qty'];
+
+                        // stock out warehouse product
+                        $stock = new Stock();
+                        $stock->ref_id = $request->stock_transfer_id;
+                        $stock->user_id = $user_id;
+                        $stock->warehouse_id = $warehouse_id;
+                        $stock->store_id = NULL;
+                        $stock->product_id = $product_id;
+                        $stock->product_unit_id = $data['product_unit_id'];
+                        $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->stock_type = 'from_warehouse_to_store';
+                        $stock->stock_where = 'warehouse';
+                        $stock->stock_in_out = 'stock_out';
+                        $stock->previous_stock = $current_stock;
+                        $stock->stock_in=$new_stock_in;
+                        $stock->stock_out = 0;
+                        $stock->current_stock=$current_stock + $new_stock_in;
+                        $stock->stock_date = $date;
+                        $stock->stock_date_time = $date_time;
+                        $stock->save();
+
+                        // warehouse current stock
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock + $new_stock_in;
+                        $warehouse_current_stock_update->save();
+
+
+                        $new_stock_out = $previous_stock_transfer_qty - $data['qty'];
+                        // stock in store product
+                        $stock = new Stock();
+                        $stock->ref_id = $request->stock_transfer_id;
+                        $stock->user_id = $user_id;
+                        $stock->warehouse_id = $warehouse_id;
+                        $stock->store_id = $store_id;
+                        $stock->product_id = $product_id;
+                        $stock->product_unit_id = $data['product_unit_id'];
+                        $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->stock_type = 'from_warehouse_to_store';
+                        $stock->stock_where = 'store';
+                        $stock->stock_in_out = 'stock_in';
+                        $stock->previous_stock = $exists_warehouse_store_current_stock;
+                        $stock->stock_in = 0;
+                        $stock->stock_out = $new_stock_out;
+                        $stock->current_stock = $exists_warehouse_store_current_stock - $new_stock_out;
+                        $stock->stock_date = $date;
+                        $stock->stock_date_time = $date_time;
+                        $stock->save();
+
+                        // warehouse store current stock
+                        $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock - $new_stock_out;
+                        $warehouse_store_current_stock_update->save();
+                    }
+                }
+            }
         }
 
         if($affectedRow){
@@ -4869,28 +5192,28 @@ class BackendController extends Controller
 
         $store_stock_product = [];
         foreach($store_stock_product_list as $stock_row){
-                $nested_data['stock_id'] = $stock_row->id;
-                $nested_data['warehouse_id'] = $stock_row->warehouse_id;
-                $nested_data['warehouse_name'] = $stock_row->warehouse_name;
-                $nested_data['product_id'] = $stock_row->product_id;
-                $nested_data['product_name'] = $stock_row->product_name;
-                $nested_data['purchase_price'] = $stock_row->purchase_price;
-                $nested_data['whole_sale_price'] = $stock_row->whole_sale_price;
-                $nested_data['selling_price'] = $stock_row->selling_price;
-                $nested_data['vat_status'] = $stock_row->vat_status;
-                $nested_data['vat_percentage'] = $stock_row->vat_percentage;
-                $nested_data['vat_amount'] = $stock_row->vat_amount;
-                $nested_data['vat_whole_amount'] = $stock_row->vat_whole_amount;
-                $nested_data['item_code'] = $stock_row->item_code;
-                $nested_data['barcode'] = $stock_row->barcode;
-                $nested_data['image'] = $stock_row->image;
-                $nested_data['product_unit_id'] = $stock_row->product_unit_id;
-                $nested_data['product_unit_name'] = $stock_row->product_unit_name;
-                $nested_data['product_brand_id'] = $stock_row->product_brand_id;
-                $nested_data['product_brand_name'] = $stock_row->product_brand_name;
-                $nested_data['current_stock'] = $stock_row->current_stock;
+            $nested_data['stock_id'] = $stock_row->id;
+            $nested_data['warehouse_id'] = $stock_row->warehouse_id;
+            $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+            $nested_data['product_id'] = $stock_row->product_id;
+            $nested_data['product_name'] = $stock_row->product_name;
+            $nested_data['purchase_price'] = $stock_row->purchase_price;
+            $nested_data['whole_sale_price'] = $stock_row->whole_sale_price;
+            $nested_data['selling_price'] = $stock_row->selling_price;
+            $nested_data['vat_status'] = $stock_row->vat_status;
+            $nested_data['vat_percentage'] = $stock_row->vat_percentage;
+            $nested_data['vat_amount'] = $stock_row->vat_amount;
+            $nested_data['vat_whole_amount'] = $stock_row->vat_whole_amount;
+            $nested_data['item_code'] = $stock_row->item_code;
+            $nested_data['barcode'] = $stock_row->barcode;
+            $nested_data['image'] = $stock_row->image;
+            $nested_data['product_unit_id'] = $stock_row->product_unit_id;
+            $nested_data['product_unit_name'] = $stock_row->product_unit_name;
+            $nested_data['product_brand_id'] = $stock_row->product_brand_id;
+            $nested_data['product_brand_name'] = $stock_row->product_brand_name;
+            $nested_data['current_stock'] = $stock_row->current_stock;
 
-                array_push($store_stock_product,$nested_data);
+            array_push($store_stock_product,$nested_data);
 
         }
 
@@ -6612,6 +6935,7 @@ class BackendController extends Controller
                 $warehouse_product_damage_detail_id = $data['warehouse_product_damage_detail_id'];
                 // warehouse damage product
                 $warehouse_product_damage = WarehouseProductDamageDetail::find($warehouse_product_damage_detail_id);
+                $previous_warehouse_product_damage_qty = $warehouse_product_damage->qty;
                 $warehouse_product_damage->product_unit_id = $data['product_unit_id'];
                 $warehouse_product_damage->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $warehouse_product_damage->product_id = $product_id;
@@ -6633,6 +6957,7 @@ class BackendController extends Controller
                     if($stock_row->stock_in != $data['qty']){
 
                         if($data['qty'] > $stock_row->stock_in){
+                            $new_stock_out = $data['qty'] - $previous_warehouse_product_damage_qty;
 
                             $stock = new Stock();
                             $stock->ref_id=$request->warehouse_product_damage_id;
@@ -6647,16 +6972,17 @@ class BackendController extends Controller
                             $stock->stock_in_out='stock_out';
                             $stock->previous_stock=$current_stock;
                             $stock->stock_in=0;
-                            $stock->stock_out=$data['qty'];
-                            $stock->current_stock=$current_stock - $data['qty'];
+                            $stock->stock_out=$new_stock_out;
+                            $stock->current_stock=$current_stock - $new_stock_out;
                             $stock->stock_date=$date;
                             $stock->stock_date_time=$date_time;
                             $stock->save();
 
                             // warehouse current stock
-                            $warehouse_current_stock->current_stock=$exists_current_stock - $data['qty'];
+                            $warehouse_current_stock->current_stock=$exists_current_stock - $new_stock_out;
                             $warehouse_current_stock->save();
                         }else{
+                            $new_stock_in =  $previous_warehouse_product_damage_qty - $data['qty'];
 
                             $stock = new Stock();
                             $stock->ref_id=$request->warehouse_product_damage_id;
@@ -6670,15 +6996,15 @@ class BackendController extends Controller
                             $stock->stock_where='warehouse';
                             $stock->stock_in_out='stock_out';
                             $stock->previous_stock=$current_stock;
-                            $stock->stock_in=$data['qty'];
+                            $stock->stock_in=$new_stock_in;
                             $stock->stock_out=0;
-                            $stock->current_stock=$current_stock - $data['qty'];
+                            $stock->current_stock=$current_stock + $new_stock_in;
                             $stock->stock_date=$date;
                             $stock->stock_date_time=$date_time;
                             $stock->save();
 
                             // warehouse current stock
-                            $warehouse_current_stock->current_stock=$exists_current_stock + $data['qty'];
+                            $warehouse_current_stock->current_stock=$exists_current_stock + $new_stock_in;
                             $warehouse_current_stock->save();
                         }
                     }
@@ -7589,9 +7915,9 @@ class BackendController extends Controller
         $holiday = Holiday::find($request->holiday_id);
         $holiday->name = $request->name;
         $holiday->date = $request->date;
-        $weekend->year = $year;
-        $weekend->month = $month;
-        $weekend->day = $day;
+        $holiday->year = $year;
+        $holiday->month = $month;
+        $holiday->day = $day;
         $holiday->details = $request->details;
         $holiday->status = $request->status;
         $update_holiday = $holiday->save();
@@ -9720,9 +10046,135 @@ class BackendController extends Controller
     }
 
     public function chartOfAccountList(){
+
         $chart_of_accounts = DB::table('chart_of_accounts')
             ->select('id','head_code','head_name','parent_head_name','user_bank_account_no','head_level','is_active','is_transaction','is_general_ledger','head_type')
-            ->orderBy('id','desc')
+            ->get();
+
+
+        if($chart_of_accounts)
+        {
+            $success['chart_of_accounts'] =  $chart_of_accounts;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Accounts List Found!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountListByName(Request $request){
+
+        if($request->head_name == ''){
+            $chart_of_accounts = DB::table('chart_of_accounts')
+                ->select('id','head_code','head_name','parent_head_name','user_bank_account_no','head_level','is_active','is_transaction','is_general_ledger','head_type')
+                ->where('head_level',0)
+                ->get();
+        }else{
+            $chart_of_accounts = DB::table('chart_of_accounts')
+                ->select('id','head_code','head_name','parent_head_name','user_bank_account_no','head_level','is_active','is_transaction','is_general_ledger','head_type')
+                ->where('parent_head_name',$request->head_name)
+                ->get();
+        }
+
+
+        if($chart_of_accounts)
+        {
+            $success['chart_of_accounts'] =  $chart_of_accounts;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Accounts List Found!'], $this->failStatus);
+        }
+    }
+
+    public function child($head_name){
+        $chart_of_accounts = DB::table('chart_of_accounts')
+            ->select(
+                'id',
+                'head_code',
+                'head_name',
+                'parent_head_name',
+                'user_bank_account_no',
+                'head_level',
+                'is_active',
+                'is_transaction',
+                'is_general_ledger',
+                'head_type'
+            )
+            ->where('parent_head_name',$head_name)
+            //->orderBy('id','desc')
+            ->get();
+    }
+
+    public function chartOfAccountRecursiveList(Request $request){
+
+
+        $result = Array();
+        $chart_of_accounts = DB::table('chart_of_accounts')
+            ->select(
+                'id',
+                'head_code',
+                'head_name',
+                'parent_head_name',
+                'user_bank_account_no',
+                'head_level',
+                'is_active',
+                'is_transaction',
+                'is_general_ledger',
+                'head_type'
+            )
+            ->where('head_level',0)
+            //->orderBy('id','desc')
+            ->get();
+//        foreach ($categories as $category){
+//            $subcategories = ServicesSubCategory::where('category_id', $category->id)->get();
+//            foreach ($subcategories as $subcategory){
+//                $services = ServiceManage::where('sub_category',$subcategory->id)->get();
+//                $subcategory->service = (sizeof($services) > 0) ? $services : false;
+//            }
+//
+//            $category->subcategories = (sizeof($subcategories) > 0) ? $subcategories : false;
+//            array_push($result, $category);
+//        }
+
+        foreach ($chart_of_accounts as $chart_of_account){
+
+
+            $coa['id'] = $chart_of_account->id;
+            $coa['head_code'] = $chart_of_account->head_code;
+            $coa['head_name'] = $chart_of_account->head_name;
+            $coa['parent_head_name'] = $chart_of_account->parent_head_name;
+            $coa['head_type'] = $chart_of_account->head_type;
+            $coa['head_level'] = $chart_of_account->head_level;
+            $coa['is_active'] = $chart_of_account->is_active;
+            $coa['is_transaction'] = $chart_of_account->is_transaction;
+            $coa['is_general_ledger'] = $chart_of_account->is_general_ledger;
+            $coa['user_bank_account_no'] = $chart_of_account->user_bank_account_no;
+
+
+            $child = ChartOfAccount::where('parent_head_name',$chart_of_account->head_name)
+                //->where('parent_head_name',$chart_of_account->head_code)
+                ->get();
+
+            if(count($child) > 0){
+                $this->child($chart_of_account->head_name);
+            }
+
+            array_push($result, $coa);
+        }
+
+        //$success['question'] =
+        return response()->json(['success'=> $result], $this-> successStatus);
+    }
+
+
+
+
+
+
+    public function chartOfAccountActiveList(){
+        $chart_of_accounts = DB::table('chart_of_accounts')
+            ->select('id','head_code','head_name','parent_head_name','head_type','head_level','is_active','is_transaction','is_general_ledger')
+            ->where('is_active',1)
+            //->orderBy('id','desc')
             ->get();
 
         if($chart_of_accounts)
@@ -9734,11 +10186,11 @@ class BackendController extends Controller
         }
     }
 
-    public function chartOfAccountActiveList(){
+    public function chartOfAccountIsTransactionList(){
         $chart_of_accounts = DB::table('chart_of_accounts')
             ->select('id','head_code','head_name','parent_head_name','head_type','head_level','is_active','is_transaction','is_general_ledger')
-            ->where('is_active',1)
-            ->orderBy('id','desc')
+            ->where('is_transaction',1)
+            //->orderBy('id','desc')
             ->get();
 
         if($chart_of_accounts)
@@ -9747,6 +10199,98 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Chart Of Accounts List Found!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountIsGeneralLedgerList(){
+        $chart_of_accounts = DB::table('chart_of_accounts')
+            ->select('id','head_code','head_name','parent_head_name','head_type','head_level','is_active','is_transaction','is_general_ledger')
+            ->where('is_general_ledger',1)
+            //->orderBy('id','desc')
+            ->get();
+
+        if($chart_of_accounts)
+        {
+            $success['chart_of_accounts'] =  $chart_of_accounts;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Accounts List Found!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountDetails(Request $request){
+        $validator = Validator::make($request->all(), [
+            'head_name'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $chart_of_account_details = DB::table('chart_of_accounts')
+            ->select('id','head_code','head_name','parent_head_name','head_type','head_level','is_active','is_transaction','is_general_ledger')
+            ->where('head_name',$request->head_name)
+            ->orderBy('id','desc')
+            ->get();
+
+        if($chart_of_account_details)
+        {
+            $success['chart_of_account__details'] =  $chart_of_account_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Accounts Details Found!'], $this->failStatus);
+        }
+    }
+
+    public function chartOfAccountGenerateHeadCode(Request $request){
+        $validator = Validator::make($request->all(), [
+            'head_name'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $n = 1;
+        $chart_of_account_head_code = DB::table('chart_of_accounts')
+            ->where('parent_head_name',$request->head_name)
+            ->latest('id')
+            ->pluck('head_code')
+            ->first();
+
+        if($chart_of_account_head_code != NULL){
+            $head_code = $chart_of_account_head_code + 1;
+        }else{
+            $current_head_code = DB::table('chart_of_accounts')
+                ->where('head_name',$request->head_name)
+                ->latest('id')
+                ->pluck('head_code')
+                ->first();
+
+            if($current_head_code){
+                $head_code = $current_head_code . "0" . $n;
+            }
+        }
+
+        if($head_code)
+        {
+
+            $success['head_code'] =  $head_code;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Head Code Found!'], $this->failStatus);
         }
     }
 
@@ -9803,9 +10347,30 @@ class BackendController extends Controller
             return response()->json($response, $this-> validationStatus);
         }
 
+        $n = 1;
+        $chart_of_account_head_code = DB::table('chart_of_accounts')
+            ->where('parent_head_name',$request->parent_head_name)
+            ->latest('id')
+            ->pluck('head_code')
+            ->first();
+
+        if($chart_of_account_head_code != NULL){
+            $head_code = $chart_of_account_head_code + 1;
+        }else{
+            $current_head_code = DB::table('chart_of_accounts')
+                ->where('head_name',$request->parent_head_name)
+                ->latest('id')
+                ->pluck('head_code')
+                ->first();
+
+            if($current_head_code){
+                $head_code = $current_head_code . "0" . $n;
+            }
+        }
+
 
         $chart_of_accounts = new ChartOfAccount();
-        $chart_of_accounts->head_code = $request->head_code;
+        $chart_of_accounts->head_code = $head_code;
         $chart_of_accounts->head_name = $request->head_name;
         $chart_of_accounts->parent_head_name = $request->parent_head_name;
         $chart_of_accounts->head_type = $request->head_type;
@@ -9828,11 +10393,12 @@ class BackendController extends Controller
     public function chartOfAccountEdit(Request $request){
 
         $validator = Validator::make($request->all(), [
-            'head_code'=> 'required',
-            'head_name' => 'required|unique:chart_of_accounts,head_name,'.$request->chart_of_account_id,
-            'parent_head_name'=> 'required',
-            'head_type'=> 'required',
-            'head_level'=> 'required',
+            'chart_of_account_id'=> 'required',
+            //'head_code'=> 'required',
+            //'head_name' => 'required|unique:chart_of_accounts,head_name,'.$request->chart_of_account_id,
+            //'parent_head_name'=> 'required',
+            //'head_type'=> 'required',
+            //'head_level'=> 'required',
             'is_active'=> 'required',
             'is_transaction'=> 'required',
             'is_general_ledger'=> 'required',
@@ -9854,11 +10420,11 @@ class BackendController extends Controller
         }
 
         $chart_of_accounts = ChartOfAccount::find($request->chart_of_account_id);
-        $chart_of_accounts->head_code = $request->head_code;
-        $chart_of_accounts->head_name = $request->head_name;
-        $chart_of_accounts->parent_head_name = $request->parent_head_name;
-        $chart_of_accounts->head_type = $request->head_type;
-        $chart_of_accounts->head_level = $request->head_level;
+        //$chart_of_accounts->head_code = $request->head_code;
+        //$chart_of_accounts->head_name = $request->head_name;
+        //$chart_of_accounts->parent_head_name = $request->parent_head_name;
+        //$chart_of_accounts->head_type = $request->head_type;
+        //$chart_of_accounts->head_level = $request->head_level;
         $chart_of_accounts->is_active = $request->is_active;
         $chart_of_accounts->is_transaction = $request->is_transaction;
         $chart_of_accounts->is_general_ledger = $request->is_general_ledger;
@@ -9960,10 +10526,11 @@ class BackendController extends Controller
 
         $validator = Validator::make($request->all(), [
             'voucher_type_id'=> 'required',
-            'chart_of_account_name'=> 'required',
-            'debit'=> 'required',
-            'credit'=> 'required',
-            'description'=> 'required',
+            'date'=> 'required',
+            //'chart_of_account_name'=> 'required',
+            //'debit'=> 'required',
+            //'credit'=> 'required',
+            //'description'=> 'required',
         ]);
 
         if ($validator->fails()) {
@@ -9977,9 +10544,12 @@ class BackendController extends Controller
         }
 
         $user_id = Auth::user()->id;
-        $transaction_date = date('Y-m-d');
-        $year = date('Y');
-        $month = date('m');
+        //$transaction_date = date('Y-m-d');
+        //$year = date('Y');
+        //$month = date('m');
+        $transaction_date = $request->date;
+        $month = date('m', strtotime($request->date));
+        $year = date('Y', strtotime($request->date));
         $transaction_date_time = date('Y-m-d H:i:s');
 
         $get_voucher_name = VoucherType::where('id',$request->voucher_type_id)->pluck('name')->first();
@@ -10006,17 +10576,27 @@ class BackendController extends Controller
 
         if($insert_id){
             foreach ($request->transactions as $data){
-                $chart_of_account_info = ChartOfAccount::where('head_name',$data['chart_of_account_name'])->first();
+                $debit = NULL;
+                $credit = NULL;
+                $debit_or_credit = $data['debit_or_credit'];
+                if($debit_or_credit == 'debit'){
+                    $debit = $data['amount'];
+                }
+                if($debit_or_credit == 'credit'){
+                    $credit = $data['amount'];
+                }
+
+                $chart_of_account_info = ChartOfAccount::where('head_name',$data['chart_of_account_name']['head_name'])->first();
 
                 $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
                 $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
                 $chart_of_account_transaction_details->chart_of_account_id = $chart_of_account_info->id;
                 $chart_of_account_transaction_details->chart_of_account_number = $chart_of_account_info->head_code;
-                $chart_of_account_transaction_details->chart_of_account_name = $data['chart_of_account_name'];
+                $chart_of_account_transaction_details->chart_of_account_name = $data['chart_of_account_name']['head_name'];
                 $chart_of_account_transaction_details->chart_of_account_parent_name = $chart_of_account_info->parent_head_name;
                 $chart_of_account_transaction_details->chart_of_account_type = $chart_of_account_info->head_type;
-                $chart_of_account_transaction_details->debit = $data['debit'];
-                $chart_of_account_transaction_details->credit = $data['credit'];
+                $chart_of_account_transaction_details->debit = $debit;
+                $chart_of_account_transaction_details->credit = $credit;
                 $chart_of_account_transaction_details->description = $data['description'];
                 $chart_of_account_transaction_details->year = $year;
                 $chart_of_account_transaction_details->month = $month;
@@ -10075,6 +10655,17 @@ class BackendController extends Controller
 
         if($insert_id){
             foreach ($request->transactions as $data){
+
+                $debit = NULL;
+                $credit = NULL;
+                $debit_or_credit = $data['debit'];
+                if($debit_or_credit == 'debit'){
+                    $debit = $data['amount'];
+                }
+                if($debit_or_credit == 'credit'){
+                    $credit = $data['amount'];
+                }
+
                 $chart_of_account_info = ChartOfAccount::where('head_name',$data['chart_of_account_name'])->first();
 
                 $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::find($request->chart_of_account_transaction_detail_id);
@@ -10083,8 +10674,8 @@ class BackendController extends Controller
                 $chart_of_account_transaction_details->chart_of_account_name = $data['chart_of_account_name'];
                 $chart_of_account_transaction_details->chart_of_account_parent_name = $chart_of_account_info->parent_head_name;
                 $chart_of_account_transaction_details->chart_of_account_type = $chart_of_account_info->head_type;
-                $chart_of_account_transaction_details->debit = $data['debit'];
-                $chart_of_account_transaction_details->credit = $data['credit'];
+                $chart_of_account_transaction_details->debit = $debit;
+                $chart_of_account_transaction_details->credit = $credit;
                 $chart_of_account_transaction_details->description = $data['description'];
                 $chart_of_account_transaction_details->save();
             }
