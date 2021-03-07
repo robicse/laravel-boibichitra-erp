@@ -1961,6 +1961,7 @@ class BackendController extends Controller
                 $product_purchase_detail_id = $data['product_purchase_detail_id'];
                 // product purchase detail
                 $purchase_purchase_detail = ProductPurchaseDetail::find($product_purchase_detail_id);
+                $previous_purchase_qty = $purchase_purchase_detail->qty;
                 $purchase_purchase_detail->product_unit_id = $data['product_unit_id'];
                 $purchase_purchase_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_purchase_detail->product_id = $product_id;
@@ -1985,6 +1986,7 @@ class BackendController extends Controller
                 if($stock_row->stock_in != $data['qty']){
 
                     if($data['qty'] > $stock_row->stock_in){
+                        $new_stock_in = $data['qty'] - $previous_purchase_qty;
 
                         $stock = new Stock();
                         $stock->ref_id=$request->product_purchase_id;
@@ -1998,17 +2000,18 @@ class BackendController extends Controller
                         $stock->stock_where='warehouse';
                         $stock->stock_in_out='stock_in';
                         $stock->previous_stock=$current_stock;
-                        $stock->stock_in=$data['qty'];
+                        $stock->stock_in=$new_stock_in;
                         $stock->stock_out=0;
-                        $stock->current_stock=$current_stock + $data['qty'];
+                        $stock->current_stock=$current_stock + $new_stock_in;
                         $stock->stock_date=$date;
                         $stock->stock_date_time=$date_time;
                         $stock->save();
 
                         // warehouse current stock
-                        $warehouse_current_stock_update->current_stock=$exists_current_stock + $data['qty'];
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock + $new_stock_in;
                         $warehouse_current_stock_update->save();
                     }else{
+                        $new_stock_out = $previous_purchase_qty - $data['qty'];
 
                         $stock = new Stock();
                         $stock->ref_id=$request->product_purchase_id;
@@ -2022,15 +2025,15 @@ class BackendController extends Controller
                         $stock->stock_where='warehouse';
                         $stock->stock_in_out='stock_in';
                         $stock->previous_stock=$current_stock;
-                        $stock->stock_in=$data['qty'];
+                        $stock->stock_in=$new_stock_out;
                         $stock->stock_out=0;
-                        $stock->current_stock=$current_stock - $data['qty'];
+                        $stock->current_stock=$current_stock - $new_stock_out;
                         $stock->stock_date=$date;
                         $stock->stock_date_time=$date_time;
                         $stock->save();
 
                         // warehouse current stock
-                        $warehouse_current_stock_update->current_stock=$exists_current_stock - $data['qty'];
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock - $new_stock_out;
                         $warehouse_current_stock_update->save();
                     }
                 }
@@ -2481,6 +2484,7 @@ class BackendController extends Controller
                 $product_purchase_detail_id = $data['product_purchase_detail_id'];
                 // product purchase detail
                 $purchase_purchase_detail = ProductPurchaseDetail::find($product_purchase_detail_id);
+                $previous_purchase_qty = $purchase_purchase_detail->qty;
                 $purchase_purchase_detail->product_unit_id = $data['product_unit_id'];
                 $purchase_purchase_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_purchase_detail->product_id = $product_id;
@@ -2505,6 +2509,7 @@ class BackendController extends Controller
                 if($stock_row->stock_in != $data['qty']){
 
                     if($data['qty'] > $stock_row->stock_in){
+                        $new_stock_in = $data['qty'] - $previous_purchase_qty;
 
                         $stock = new Stock();
                         $stock->ref_id=$request->product_purchase_id;
@@ -2518,17 +2523,18 @@ class BackendController extends Controller
                         $stock->stock_where='warehouse';
                         $stock->stock_in_out='stock_in';
                         $stock->previous_stock=$current_stock;
-                        $stock->stock_in=$data['qty'];
+                        $stock->stock_in=$new_stock_in;
                         $stock->stock_out=0;
-                        $stock->current_stock=$current_stock + $data['qty'];
+                        $stock->current_stock=$current_stock + $new_stock_in;
                         $stock->stock_date=$date;
                         $stock->stock_date_time=$date_time;
                         $stock->save();
 
                         // warehouse current stock
-                        $warehouse_current_stock_update->current_stock=$exists_current_stock + $data['qty'];
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock + $new_stock_out;
                         $warehouse_current_stock_update->save();
                     }else{
+                        $new_stock_out = $previous_purchase_qty - $data['qty'];
 
                         $stock = new Stock();
                         $stock->ref_id=$request->product_purchase_id;
@@ -2542,15 +2548,15 @@ class BackendController extends Controller
                         $stock->stock_where='warehouse';
                         $stock->stock_in_out='stock_in';
                         $stock->previous_stock=$current_stock;
-                        $stock->stock_in=$data['qty'];
-                        $stock->stock_out=0;
-                        $stock->current_stock=$current_stock - $data['qty'];
+                        $stock->stock_in=0;
+                        $stock->stock_out=$new_stock_out;
+                        $stock->current_stock=$current_stock - $new_stock_out;
                         $stock->stock_date=$date;
                         $stock->stock_date_time=$date_time;
                         $stock->save();
 
                         // warehouse current stock
-                        $warehouse_current_stock_update->current_stock=$exists_current_stock - $data['qty'];
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock - $new_stock_out;
                         $warehouse_current_stock_update->save();
                     }
                 }
@@ -5410,6 +5416,7 @@ class BackendController extends Controller
                 $product_sale_detail_id = $data['product_sale_detail_id'];
                 // product purchase detail
                 $product_sale_detail = ProductSaleDetail::find($product_sale_detail_id);
+                $previous_sale_qty = $product_sale_detail->qty;
                 $product_sale_detail->product_unit_id = $data['product_unit_id'];
                 $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $product_sale_detail->product_id = $product_id;
@@ -5436,6 +5443,7 @@ class BackendController extends Controller
                 if($stock_row->stock_out != $data['qty']){
 
                     if($data['qty'] > $stock_row->stock_in){
+                        $new_stock_out = $data['qty'] - $previous_sale_qty;
 
                         $stock = new Stock();
                         $stock->ref_id=$request->product_sale_id;
@@ -5450,16 +5458,17 @@ class BackendController extends Controller
                         $stock->stock_in_out='stock_out';
                         $stock->previous_stock=$current_stock;
                         $stock->stock_in=0;
-                        $stock->stock_out=$data['qty'];
-                        $stock->current_stock=$current_stock - $data['qty'];
+                        $stock->stock_out=$new_stock_out;
+                        $stock->current_stock=$current_stock - $new_stock_out;
                         $stock->stock_date=$date;
                         $stock->stock_date_time=$date_time;
                         $stock->save();
 
                         // warehouse current stock
-                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock - $data['qty'];
+                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock - $new_stock_out;
                         $update_warehouse_store_current_stock->save();
                     }else{
+                        $new_stock_in = $previous_sale_qty - $data['qty'];
 
                         $stock = new Stock();
                         $stock->ref_id=$request->product_sale_id;
@@ -5473,15 +5482,15 @@ class BackendController extends Controller
                         $stock->stock_where='store';
                         $stock->stock_in_out='stock_in';
                         $stock->previous_stock=$current_stock;
-                        $stock->stock_in=$data['qty'];
+                        $stock->stock_in=$new_stock_in;
                         $stock->stock_out=0;
-                        $stock->current_stock=$current_stock + $data['qty'];
+                        $stock->current_stock=$current_stock + $new_stock_in;
                         $stock->stock_date=$date;
                         $stock->stock_date_time=$date_time;
                         $stock->save();
 
                         // warehouse current stock
-                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $data['qty'];
+                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $new_stock_in;
                         $update_warehouse_store_current_stock->save();
                     }
                 }
@@ -5912,6 +5921,7 @@ class BackendController extends Controller
                 $product_sale_detail_id = $data['product_sale_detail_id'];
                 // product purchase detail
                 $purchase_sale_detail = ProductSaleDetail::find($product_sale_detail_id);
+                $previous_sale_qty = $purchase_sale_detail->qty;
                 $purchase_sale_detail->product_unit_id = $data['product_unit_id'];
                 $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_sale_detail->product_id = $product_id;
@@ -5937,6 +5947,7 @@ class BackendController extends Controller
                 if($stock_row->stock_out != $data['qty']){
 
                     if($data['qty'] > $stock_row->stock_in){
+                        $new_stock_out = $data['qty'] - $previous_sale_qty;
 
                         $stock = new Stock();
                         $stock->ref_id=$request->product_sale_id;
@@ -5951,16 +5962,17 @@ class BackendController extends Controller
                         $stock->stock_in_out='stock_out';
                         $stock->previous_stock=$current_stock;
                         $stock->stock_in=0;
-                        $stock->stock_out=$data['qty'];
-                        $stock->current_stock=$current_stock - $data['qty'];
+                        $stock->stock_out=$new_stock_out;
+                        $stock->current_stock=$current_stock - $new_stock_out;
                         $stock->stock_date=$date;
                         $stock->stock_date_time=$date_time;
                         $stock->save();
 
                         // warehouse current stock
-                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock - $data['qty'];
+                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock - $new_stock_out;
                         $update_warehouse_store_current_stock->save();
                     }else{
+                        $new_stock_in = $previous_sale_qty - $data['qty'];
 
                         $stock = new Stock();
                         $stock->ref_id=$request->product_sale_id;
@@ -5974,15 +5986,15 @@ class BackendController extends Controller
                         $stock->stock_where='store';
                         $stock->stock_in_out='stock_in';
                         $stock->previous_stock=$current_stock;
-                        $stock->stock_in=$data['qty'];
+                        $stock->stock_in=$new_stock_in;
                         $stock->stock_out=0;
-                        $stock->current_stock=$current_stock + $data['qty'];
+                        $stock->current_stock=$current_stock + $new_stock_in;
                         $stock->stock_date=$date;
                         $stock->stock_date_time=$date_time;
                         $stock->save();
 
                         // warehouse current stock
-                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $data['qty'];
+                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $new_stock_in;
                         $update_warehouse_store_current_stock->save();
                     }
                 }
