@@ -2214,6 +2214,8 @@ class BackendController extends Controller
             'paid_amount'=> 'required',
             'due_amount'=> 'required',
             'total_amount'=> 'required',
+            'product_id'=> 'required',
+            'sub_total'=> 'required',
             'payment_type'=> 'required',
             'product_purchase_detail_id'=> 'required',
         ]);
@@ -2241,6 +2243,7 @@ class BackendController extends Controller
 
             // product stock
             $stock_row = Stock::where('warehouse_id',$request->warehouse_id)->where('product_id',$product_id)->latest()->first();
+
             $current_stock = $stock_row->current_stock;
 
             // warehouse current stock
@@ -2272,6 +2275,7 @@ class BackendController extends Controller
             // warehouse current stock
             $warehouse_current_stock_update->current_stock=$exists_current_stock - $request->qty;
             $warehouse_current_stock_update->save();
+
 
             //work on
             // transaction
@@ -10498,7 +10502,7 @@ class BackendController extends Controller
             ->select(
                 'chart_of_account_transaction_details.id',
                 'chart_of_account_transaction_details.chart_of_account_transaction_id',
-                'chart_of_account_transaction_details.chart_of_account_id ',
+                'chart_of_account_transaction_details.chart_of_account_id',
                 'chart_of_account_transaction_details.chart_of_account_number',
                 'chart_of_account_transaction_details.chart_of_account_name',
                 'chart_of_account_transaction_details.chart_of_account_parent_name',
@@ -10615,11 +10619,11 @@ class BackendController extends Controller
         $validator = Validator::make($request->all(), [
             'chart_of_account_transaction_id'=> 'required',
             'voucher_type_id'=> 'required',
-            'chart_of_account_name'=> 'required',
-            'debit'=> 'required',
-            'credit'=> 'required',
-            'description'=> 'required',
-            'chart_of_account_transaction_detail_id'=> 'required',
+            //'chart_of_account_name'=> 'required',
+            //'debit'=> 'required',
+            //'credit'=> 'required',
+            //'description'=> 'required',
+            //'chart_of_account_transaction_detail_id'=> 'required',
         ]);
 
         if ($validator->fails()) {
@@ -10633,6 +10637,11 @@ class BackendController extends Controller
         }
 
         $user_id = Auth::user()->id;
+
+        $transaction_date = $request->date;
+        $month = date('m', strtotime($request->date));
+        $year = date('Y', strtotime($request->date));
+        $transaction_date_time = date('Y-m-d H:i:s');
 
         $get_voucher_name = VoucherType::where('id',$request->voucher_type_id)->pluck('name')->first();
         $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',$request->voucher_type_id)->latest()->pluck('voucher_no')->first();
@@ -10650,6 +10659,8 @@ class BackendController extends Controller
         $chart_of_account_transactions->user_id = $user_id;
         $chart_of_account_transactions->voucher_type_id = $request->voucher_type_id;
         $chart_of_account_transactions->voucher_no = $final_voucher_no;
+        $chart_of_account_transactions->transaction_date = $transaction_date;
+        $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
         $chart_of_account_transactions->save();
         $insert_id = $chart_of_account_transactions->id;
 
@@ -10658,7 +10669,7 @@ class BackendController extends Controller
 
                 $debit = NULL;
                 $credit = NULL;
-                $debit_or_credit = $data['debit'];
+                $debit_or_credit = $data['debit_or_credit'];
                 if($debit_or_credit == 'debit'){
                     $debit = $data['amount'];
                 }
@@ -10668,7 +10679,7 @@ class BackendController extends Controller
 
                 $chart_of_account_info = ChartOfAccount::where('head_name',$data['chart_of_account_name'])->first();
 
-                $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::find($request->chart_of_account_transaction_detail_id);
+                $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::find($data['chart_of_account_transaction_detail_id']);
                 $chart_of_account_transaction_details->chart_of_account_id = $chart_of_account_info->id;
                 $chart_of_account_transaction_details->chart_of_account_number = $chart_of_account_info->head_code;
                 $chart_of_account_transaction_details->chart_of_account_name = $data['chart_of_account_name'];
@@ -10677,6 +10688,10 @@ class BackendController extends Controller
                 $chart_of_account_transaction_details->debit = $debit;
                 $chart_of_account_transaction_details->credit = $credit;
                 $chart_of_account_transaction_details->description = $data['description'];
+                $chart_of_account_transaction_details->year = $year;
+                $chart_of_account_transaction_details->month = $month;
+                $chart_of_account_transaction_details->transaction_date = $transaction_date;
+                $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
                 $chart_of_account_transaction_details->save();
             }
             return response()->json(['success'=>true,'response' => $chart_of_account_transactions], $this->successStatus);
@@ -10717,9 +10732,38 @@ class BackendController extends Controller
             return response()->json($response, $this-> validationStatus);
         }
 
-        $chart_of_account_transaction = DB::table("chart_of_account_transaction_details")->where('chart_of_account_name',$request->chart_of_account_name)
-            ->select('debit','credit','description','transaction_date_time')
-            ->get();
+        if($request->from_date && $request->to_date){
+            $chart_of_account_transaction = DB::table("chart_of_account_transaction_details")
+                ->join('chart_of_account_transactions','chart_of_account_transaction_details.chart_of_account_transaction_id','=','chart_of_account_transactions.id')
+                ->leftJoin('voucher_types','chart_of_account_transactions.voucher_type_id','=','voucher_types.id')
+                ->where('chart_of_account_transaction_details.chart_of_account_name',$request->chart_of_account_name)
+                ->where('chart_of_account_transaction_details.transaction_date','>=',$request->from_date)
+                ->where('chart_of_account_transaction_details.transaction_date','<=',$request->to_date)
+                ->select(
+                    'voucher_types.name as voucher_type_name',
+                    'chart_of_account_transactions.voucher_no',
+                    'chart_of_account_transaction_details.debit',
+                    'chart_of_account_transaction_details.credit',
+                    'chart_of_account_transaction_details.description',
+                    'chart_of_account_transaction_details.transaction_date_time'
+                )
+                ->get();
+        }else{
+            $chart_of_account_transaction = DB::table("chart_of_account_transaction_details")
+                ->join('chart_of_account_transactions','chart_of_account_transaction_details.chart_of_account_transaction_id','=','chart_of_account_transactions.id')
+                ->leftJoin('voucher_types','chart_of_account_transactions.voucher_type_id','=','voucher_types.id')
+                ->where('chart_of_account_transaction_details.chart_of_account_name',$request->chart_of_account_name)
+                ->select(
+                    'voucher_types.name as voucher_type_name',
+                    'chart_of_account_transactions.voucher_no',
+                    'chart_of_account_transaction_details.debit',
+                    'chart_of_account_transaction_details.debit',
+                    'chart_of_account_transaction_details.credit',
+                    'chart_of_account_transaction_details.description',
+                    'chart_of_account_transaction_details.transaction_date_time'
+                )
+                ->get();
+        }
 
         if($chart_of_account_transaction)
         {
@@ -10752,6 +10796,13 @@ class BackendController extends Controller
             ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
             ->first();
 
+        $sum_liability_amount = DB::table('chart_of_account_transaction_details')
+            ->where('chart_of_account_type','=','L')
+            ->where('year','=',$request->year)
+            ->where('month','<=',$request->month)
+            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+            ->first();
+
         $sum_income_amount = DB::table('chart_of_account_transaction_details')
             ->where('chart_of_account_type','=','I')
             ->where('year','=',$request->year)
@@ -10766,8 +10817,17 @@ class BackendController extends Controller
             ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
             ->first();
 
-        $sum_liability_amount = DB::table('chart_of_account_transaction_details')
-            ->where('chart_of_account_type','=','L')
+
+
+        $sum_equity_amount = DB::table('chart_of_account_transaction_details')
+            ->where('chart_of_account_type','=','EL')
+            ->where('year','=',$request->year)
+            ->where('month','<=',$request->month)
+            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+            ->first();
+
+        $sum_drawing_amount = DB::table('chart_of_account_transaction_details')
+            ->where('chart_of_account_type','=','DL')
             ->where('year','=',$request->year)
             ->where('month','<=',$request->month)
             ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
@@ -10775,9 +10835,13 @@ class BackendController extends Controller
 
         $response = [
             'sum_asset_amount' => $sum_asset_amount,
-            'sum_income_amount' => $sum_income_amount,
-            'sum_expense_amount' => $sum_expense_amount,
             'sum_liability_amount' => $sum_liability_amount,
+            'sum_oe_amount' => [
+                'sum_equity_amount' => $sum_equity_amount,
+                'sum_income_amount' => $sum_income_amount,
+                'sum_expense_amount' => $sum_expense_amount,
+                'sum_drawing_amount' => $sum_drawing_amount,
+            ]
         ];
 
         if($sum_asset_amount)
@@ -10885,5 +10949,21 @@ class BackendController extends Controller
             exec('rm ' . $backup_file_name);
         }
     }
+
+//    public function sum_sub_total(){
+//        $sum_price = DB::table('product_purchase_details')
+//            //->where('stock_transfer_id', $stock_transfer_id)
+//            ->select('product_id',DB::raw('SUM(sub_total) as total_amount'))
+//            ->groupBy('product_id')
+//            ->orderBy('total_amount', 'DESC')
+//            ->get();
+//
+//        if($sum_price)
+//        {
+//            return response()->json(['success'=>true,'response' => $sum_price], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Sum Price Found!'], $this->failStatus);
+//        }
+//    }
 
 }
