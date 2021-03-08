@@ -169,6 +169,7 @@ class StockSyncController extends Controller
     function warehouse_stock_sync(){
         $stock_data = Stock::whereIn('id', function($query) {
             $query->from('stocks')
+                ->where('stock_where','warehouse')
                 ->groupBy('warehouse_id')
                 //->groupBy('store_id')
                 ->groupBy('product_id')
