@@ -4084,7 +4084,7 @@ class BackendController extends Controller
             $insert_id = $stock->id;
 
             // warehouse current stock
-            $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
+            $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)
                 ->where('product_id',$product_id)
                 ->first();
             $exists_current_stock = $warehouse_current_stock_update->current_stock;
@@ -8674,6 +8674,24 @@ class BackendController extends Controller
             ];
 
             return response()->json($response, $this-> validationStatus);
+        }
+
+        foreach ($request->attendances as $data) {
+            $card_no = DB::table('employee_office_informations')
+                ->where('card_no',$data['card_no'])
+                ->pluck('card_no')
+                ->first();
+
+            if(empty($card_no)){
+                $response = [
+                    'success' => false,
+                    'data' => 'Validation Error.',
+                    'message' => ['This ['.$data['card_no'].'] Not Found, For Any Employee.]'],
+                    'exist'=>1
+                ];
+                return response()->json($response, $this-> failStatus);
+            }
+
         }
 
         $success_insert_flag = true;
