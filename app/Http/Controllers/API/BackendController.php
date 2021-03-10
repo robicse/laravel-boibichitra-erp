@@ -2887,36 +2887,88 @@ class BackendController extends Controller
         }
     }
 
-    public function productPurchaseReturnDetails(Request $request){
-        //dd($request->all());
-        $this->validate($request, [
-            'product_purchase_invoice_no'=> 'required',
-        ]);
+    public function productPurchaseReturnList(){
+        $product_purchase_return_list = DB::table('product_purchase_returns')
+            ->leftJoin('users','product_purchase_returns.user_id','users.id')
+            ->leftJoin('parties','product_purchase_returns.party_id','parties.id')
+            ->leftJoin('warehouses','product_purchase_returns.warehouse_id','warehouses.id')
+            //->where('product_purchases.purchase_type','whole_purchase')
+            ->select(
+                'product_purchase_returns.id',
+                'product_purchase_returns.invoice_no',
+                'product_purchase_returns.product_purchase_invoice_no',
+                'product_purchase_returns.discount_type',
+                'product_purchase_returns.discount_amount',
+                'product_purchase_returns.total_amount',
+                'product_purchase_returns.paid_amount',
+                'product_purchase_returns.due_amount',
+                'product_purchase_returns.product_purchase_return_date_time',
+                'users.name as user_name',
+                'parties.id as supplier_id',
+                'parties.name as supplier_name',
+                'warehouses.id as warehouse_id',
+                'warehouses.name as warehouse_name'
+            )
+            ->orderBy('product_purchase_returns.id','desc')
+            ->get();
 
-        $product_purchases = DB::table('product_purchases')
-            ->leftJoin('users','product_purchases.user_id','users.id')
-            ->leftJoin('parties','product_purchases.party_id','parties.id')
-            ->leftJoin('warehouses','product_purchases.warehouse_id','warehouses.id')
-            ->where('product_purchases.invoice_no',$request->product_purchase_invoice_no)
-            ->select('product_purchases.id','product_purchases.invoice_no','product_purchases.discount_type','product_purchases.discount_amount','product_purchases.total_amount','product_purchases.paid_amount','product_purchases.due_amount','product_purchases.purchase_date_time','users.name as user_name','parties.id as supplier_id','parties.name as supplier_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
-            ->first();
+        if(count($product_purchase_return_list) > 0)
+        {
+            $product_purchase_return_arr = [];
+            foreach ($product_purchase_return_list as $data){
+                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','whole_purchase')->pluck('payment_type')->first();
 
-        if($product_purchases){
+                $nested_data['id']=$data->id;
+                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['product_purchase_invoice_no']=$data->product_purchase_invoice_no;
+                $nested_data['discount_type']=$data->discount_type;
+                $nested_data['discount_amount']=$data->discount_amount;
+                $nested_data['total_amount']=$data->total_amount;
+                $nested_data['paid_amount']=$data->paid_amount;
+                $nested_data['due_amount']=$data->due_amount;
+                $nested_data['product_purchase_return_date_time']=$data->product_purchase_return_date_time;
+                $nested_data['user_name']=$data->user_name;
+                $nested_data['supplier_id']=$data->supplier_id;
+                $nested_data['supplier_name']=$data->supplier_name;
+                $nested_data['warehouse_id']=$data->warehouse_id;
+                $nested_data['warehouse_name']=$data->warehouse_name;
+                $nested_data['payment_type']=$payment_type;
 
-            $product_pos_purchase_details = DB::table('product_purchases')
-                ->join('product_purchase_details','product_purchases.id','product_purchase_details.product_purchase_id')
-                ->leftJoin('products','product_purchase_details.product_id','products.id')
-                ->leftJoin('product_units','product_purchase_details.product_unit_id','product_units.id')
-                ->leftJoin('product_brands','product_purchase_details.product_brand_id','product_brands.id')
-                ->where('product_purchases.invoice_no',$request->product_purchase_invoice_no)
-                ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_purchase_details.qty','product_purchase_details.qty as current_qty','product_purchase_details.id as product_purchase_detail_id','product_purchase_details.price','product_purchase_details.mrp_price')
-                ->get();
-
-            $success['product_purchases'] = $product_purchases;
-            $success['product_pos_purchase_details'] = $product_pos_purchase_details;
+                array_push($product_purchase_return_arr,$nested_data);
+            }
+            $success['product_purchase_return_list'] =  $product_purchase_return_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'No Product Purchase Data Found!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Product Purchase Return List Found!'], $this->failStatus);
+        }
+    }
+
+    public function productPurchaseReturnDetails(Request $request){
+        $product_purchase_return_details = DB::table('product_purchase_returns')
+            ->join('product_purchase_return_details','product_purchase_returns.id','product_purchase_return_details.pro_pur_return_id')
+            ->leftJoin('products','product_purchase_return_details.product_id','products.id')
+            ->leftJoin('product_units','product_purchase_return_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','product_purchase_return_details.product_brand_id','product_brands.id')
+            ->where('product_purchase_return_details.pro_pur_return_id',$request->product_purchase_return_id)
+            ->select(
+                'products.id as product_id',
+                'products.name as product_name',
+                'product_units.id as product_unit_id',
+                'product_units.name as product_unit_name',
+                'product_brands.id as product_brand_id',
+                'product_brands.name as product_brand_name',
+                'product_purchase_return_details.qty',
+                'product_purchase_return_details.id as product_purchase_return_detail_id',
+                'product_purchase_return_details.price'
+            )
+            ->get();
+
+        if($product_purchase_return_details)
+        {
+            $success['product_purchase_return_details'] =  $product_purchase_return_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Purchase Return Detail Found!'], $this->failStatus);
         }
     }
 
@@ -6432,37 +6484,130 @@ class BackendController extends Controller
         }
     }
 
-    public function productSaleReturnDetails(Request $request){
-        //dd($request->all());
-        $this->validate($request, [
-            'product_sale_invoice_no'=> 'required',
-        ]);
+    public function productSaleReturnList(){
+        $product_whole_sales = DB::table('product_sale_returns')
+            ->leftJoin('users','product_sale_returns.user_id','users.id')
+            ->leftJoin('parties','product_sale_returns.party_id','parties.id')
+            ->leftJoin('warehouses','product_sale_returns.warehouse_id','warehouses.id')
+            ->leftJoin('stores','product_sale_returns.store_id','stores.id')
+            ->select(
+                'product_sale_returns.id',
+                'product_sale_returns.invoice_no',
+                'product_sale_returns.product_sale_invoice_no',
+                'product_sale_returns.discount_type',
+                'product_sale_returns.discount_amount',
+                //'product_sale_returns.total_vat_amount',
+                'product_sale_returns.total_amount',
+                'product_sale_returns.paid_amount',
+                'product_sale_returns.due_amount',
+                'product_sale_returns.product_sale_return_date_time',
+                'users.name as user_name',
+                'parties.id as customer_id',
+                'parties.name as customer_name',
+                'warehouses.id as warehouse_id',
+                'warehouses.name as warehouse_name',
+                'stores.id as store_id',
+                'stores.name as store_name',
+                'stores.address as store_address'
+            )
+            ->orderBy('product_sale_returns.id','desc')
+            ->get();
 
-        $product_sales = DB::table('product_sales')
-            ->leftJoin('users','product_sales.user_id','users.id')
-            ->leftJoin('parties','product_sales.party_id','parties.id')
-            ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
-            ->leftJoin('stores','product_sales.store_id','stores.id')
-            ->where('product_sales.invoice_no',$request->product_sale_invoice_no)
-            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
-            ->first();
+        if(count($product_whole_sales) > 0)
+        {
+            $product_whole_sale_arr = [];
+            foreach ($product_whole_sales as $data){
+                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','sale_return_balance')->pluck('payment_type')->first();
 
-        if($product_sales){
+                $nested_data['id']=$data->id;
+                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['product_sale_invoice_no']=$data->product_sale_invoice_no;
+                $nested_data['discount_type']=$data->discount_type;
+                $nested_data['discount_amount']=$data->discount_amount;
+                $nested_data['total_amount']=$data->total_amount;
+                $nested_data['paid_amount']=$data->paid_amount;
+                $nested_data['due_amount']=$data->due_amount;
+                $nested_data['product_sale_return_date_time']=$data->product_sale_return_date_time;
+                $nested_data['user_name']=$data->user_name;
+                $nested_data['customer_id']=$data->customer_id;
+                $nested_data['customer_name']=$data->customer_name;
+                $nested_data['warehouse_id']=$data->warehouse_id;
+                $nested_data['warehouse_name']=$data->warehouse_name;
+                $nested_data['store_id']=$data->store_id;
+                $nested_data['store_name']=$data->store_name;
+                $nested_data['store_address']=$data->store_address;
+                $nested_data['payment_type']=$payment_type;
 
-            $product_sale_details = DB::table('product_sales')
-                ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
-                ->leftJoin('products','product_sale_details.product_id','products.id')
-                ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
-                ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
-                ->where('product_sales.invoice_no',$request->product_sale_invoice_no)
-                ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.qty as current_qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.sale_date','product_sale_details.return_among_day','product_sale_details.price as mrp_price')
-                ->get();
+                array_push($product_whole_sale_arr,$nested_data);
+            }
 
-            $success['product_sales'] = $product_sales;
-            $success['product_sale_details'] = $product_sale_details;
+            $success['product_whole_sales'] =  $product_whole_sale_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'No Product Sale Data Found!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);
+        }
+    }
+
+//    public function productSaleReturnDetails(Request $request){
+//        //dd($request->all());
+//        $this->validate($request, [
+//            'product_sale_invoice_no'=> 'required',
+//        ]);
+//
+//        $product_sales = DB::table('product_sales')
+//            ->leftJoin('users','product_sales.user_id','users.id')
+//            ->leftJoin('parties','product_sales.party_id','parties.id')
+//            ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+//            ->leftJoin('stores','product_sales.store_id','stores.id')
+//            ->where('product_sales.invoice_no',$request->product_sale_invoice_no)
+//            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+//            ->first();
+//
+//        if($product_sales){
+//
+//            $product_sale_details = DB::table('product_sales')
+//                ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
+//                ->leftJoin('products','product_sale_details.product_id','products.id')
+//                ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
+//                ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
+//                ->where('product_sales.invoice_no',$request->product_sale_invoice_no)
+//                ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.qty as current_qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.sale_date','product_sale_details.return_among_day','product_sale_details.price as mrp_price')
+//                ->get();
+//
+//            $success['product_sales'] = $product_sales;
+//            $success['product_sale_details'] = $product_sale_details;
+//            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Product Sale Data Found!'], $this->failStatus);
+//        }
+//    }
+
+    public function productSaleReturnDetails(Request $request){
+        $product_sale_return_details = DB::table('product_sale_returns')
+            ->join('product_sale_return_details','product_sale_returns.id','product_sale_return_details.pro_sale_return_id')
+            ->leftJoin('products','product_sale_return_details.product_id','products.id')
+            ->leftJoin('product_units','product_sale_return_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','product_sale_return_details.product_brand_id','product_brands.id')
+            ->where('product_sale_return_details.pro_sale_return_id',$request->product_sale_return_id)
+            ->select(
+                'products.id as product_id',
+                'products.name as product_name',
+                'product_units.id as product_unit_id',
+                'product_units.name as product_unit_name',
+                'product_brands.id as product_brand_id',
+                'product_brands.name as product_brand_name',
+                'product_sale_return_details.qty',
+                'product_sale_return_details.id as product_sale_return_detail_id',
+                'product_sale_return_details.price as mrp_price'
+            )
+            ->get();
+
+        if($product_sale_return_details)
+        {
+            $success['product_sale_return_details'] =  $product_sale_return_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Sale Return Detail Found!'], $this->failStatus);
         }
     }
 
