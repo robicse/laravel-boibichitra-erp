@@ -174,6 +174,7 @@ Route::middleware('auth:api')->post('/product_purchase_remove', 'API\BackendCont
 
 // product purchase return
 Route::middleware('auth:api')->get('/product_purchase_invoice_list', 'API\BackendController@productPurchaseInvoiceList');
+Route::middleware('auth:api')->post('/product_purchase_details', 'API\BackendController@productPurchaseDetails');
 Route::middleware('auth:api')->get('/product_purchase_return_list', 'API\BackendController@productPurchaseReturnList');
 Route::middleware('auth:api')->post('/product_purchase_return_details', 'API\BackendController@productPurchaseReturnDetails');
 Route::middleware('auth:api')->post('/product_purchase_return_create', 'API\BackendController@productPurchaseReturnCreate');
@@ -232,6 +233,7 @@ Route::middleware('auth:api')->post('/product_pos_sale_delete', 'API\BackendCont
 
 // product sale return
 Route::middleware('auth:api')->get('/product_sale_invoice_list', 'API\BackendController@productSaleInvoiceList');
+Route::middleware('auth:api')->post('/product_sale_details', 'API\BackendController@productSaleDetails');
 Route::middleware('auth:api')->get('/product_sale_return_list', 'API\BackendController@productSaleReturnList');
 Route::middleware('auth:api')->post('/product_sale_return_details', 'API\BackendController@productSaleReturnDetails');
 Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendController@productSaleReturnCreate');
