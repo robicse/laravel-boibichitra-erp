@@ -91,6 +91,8 @@ Route::middleware('auth:api')->post('/user_delete', 'API\BackendController@userD
 
 // party
 Route::middleware('auth:api')->get('/party_list', 'API\BackendController@partyList');
+Route::middleware('auth:api')->get('/party_customer_list', 'API\BackendController@partyCustomerList');
+Route::middleware('auth:api')->get('/party_supplier_list', 'API\BackendController@partySupplierList');
 Route::middleware('auth:api')->post('/party_create', 'API\BackendController@partyCreate');
 Route::middleware('auth:api')->post('/party_details', 'API\BackendController@partyDetails');
 Route::middleware('auth:api')->post('/party_update', 'API\BackendController@partyUpdate');
@@ -123,6 +125,8 @@ Route::middleware('auth:api')->post('/product_vat_delete', 'API\BackendControlle
 // product
 Route::middleware('auth:api')->get('/product_list', 'API\BackendController@productList');
 Route::middleware('auth:api')->get('/all_active_product_list', 'API\BackendController@allActiveProductList');
+Route::middleware('auth:api')->post('/all_active_product_list_barcode', 'API\BackendController@allActiveProductListBarcode');
+Route::middleware('auth:api')->post('/all_active_product_list_item_code', 'API\BackendController@allActiveProductListItemcode');
 Route::middleware('auth:api')->post('/product_create', 'API\BackendController@productCreate');
 Route::middleware('auth:api')->post('/product_edit', 'API\BackendController@productEdit');
 Route::middleware('auth:api')->post('/product_delete', 'API\BackendController@productDelete');
@@ -238,6 +242,13 @@ Route::middleware('auth:api')->get('/product_sale_return_list', 'API\BackendCont
 Route::middleware('auth:api')->post('/product_sale_return_details', 'API\BackendController@productSaleReturnDetails');
 Route::middleware('auth:api')->post('/product_sale_return_create', 'API\BackendController@productSaleReturnCreate');
 
+// product sale exchange
+Route::middleware('auth:api')->get('/product_sale_exchange_list', 'API\BackendController@productSaleExchangeList');
+Route::middleware('auth:api')->post('/product_sale_exchange_details', 'API\BackendController@productSaleExchangeDetails');
+Route::middleware('auth:api')->post('/product_sale_exchange_create', 'API\BackendController@productSaleExchangeCreate');
+//Route::middleware('auth:api')->post('/product_sale_exchange_edit', 'API\BackendController@productSaleExchangeEdit');
+Route::middleware('auth:api')->post('/product_sale_exchange_delete', 'API\BackendController@productSaleExchangeDelete');
+
 // warehouse product damages
 Route::middleware('auth:api')->get('/warehouse_product_damage_list', 'API\BackendController@warehouseProductDamageList');
 Route::middleware('auth:api')->post('/warehouse_product_damage_details', 'API\BackendController@warehouseProductDamageDetails');
@@ -261,7 +272,7 @@ Route::middleware('auth:api')->post('/store_due_paid_list_by_store_date_differen
 
 
 // transaction history
-Route::middleware('auth:api')->get('/transaction_history', 'API\BackendController@transactionHistory');
+Route::middleware('auth:api')->post('/changed_password', 'API\BackendController@changedPassword');
 
 // report
 Route::middleware('auth:api')->post('/date_wise_sales_report', 'API\BackendController@dateWiseSalesReport');
@@ -277,6 +288,10 @@ Route::middleware('auth:api')->get('/today_sale_return', 'API\BackendController@
 Route::middleware('auth:api')->get('/total_sale_return', 'API\BackendController@totalSaleReturn');
 Route::middleware('auth:api')->get('/today_profit', 'API\BackendController@todayProfit');
 Route::middleware('auth:api')->get('/total_profit', 'API\BackendController@totalProfit');
+
+
+Route::middleware('auth:api')->post('/password_reset', 'API\BackendController@passwordEeset');
+
 
 
 // stock_sync

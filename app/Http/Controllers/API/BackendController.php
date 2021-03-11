@@ -30,6 +30,8 @@ use App\ProductPurchaseReturn;
 use App\ProductPurchaseReturnDetail;
 use App\ProductSale;
 use App\ProductSaleDetail;
+use App\ProductSaleExchange;
+use App\ProductSaleExchangeDetail;
 use App\ProductSaleReturn;
 use App\ProductSaleReturnDetail;
 use App\ProductUnit;
@@ -648,7 +650,10 @@ class BackendController extends Controller
     }
 
     public function partyList(){
-        $parties = DB::table('parties')->select('id','type','customer_type','name','phone','address','virtual_balance','status')->orderBy('id','desc')->get();
+        $parties = DB::table('parties')
+            ->select('id','type','customer_type','name','phone','address','virtual_balance','status')
+            ->orderBy('id','desc')
+            ->get();
 
         if($parties)
         {
@@ -656,6 +661,96 @@ class BackendController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Party List Found!'], $this->failStatus);
+        }
+    }
+
+    public function partyCustomerList(){
+        $party_customers = DB::table('parties')
+            ->select('id','type','customer_type','name','phone','address','virtual_balance','status')
+            ->where('type','customer')
+            ->orderBy('id','desc')
+            ->get();
+
+        if($party_customers)
+        {
+            $party_customer_arr = [];
+            foreach($party_customers as $party_customer){
+
+                $sale_total_amount = 0;
+
+                $total_amount = DB::table('transactions')
+                    ->select(DB::raw('SUM(amount) as sum_total_amount'))
+                    ->where('party_id',$party_customer->id)
+                    ->where('transaction_type','whole_sale')
+                    ->orWhere('transaction_type','pos_sale')
+                    ->first();
+
+                if(!empty($total_amount)){
+                    $sale_total_amount = $total_amount->sum_total_amount;
+                }
+
+                $nested_data['id'] = $party_customer->id;
+                $nested_data['type'] = $party_customer->type;
+                $nested_data['customer_type'] = $party_customer->customer_type;
+                $nested_data['name'] = $party_customer->name;
+                $nested_data['phone'] = $party_customer->phone;
+                $nested_data['address'] = $party_customer->address;
+                $nested_data['sale_total_amount'] = $sale_total_amount;
+                $nested_data['virtual_balance'] = $party_customer->virtual_balance;
+                $nested_data['status'] = $party_customer->status;
+
+                array_push($party_customer_arr,$nested_data);
+            }
+
+                $success['party_customers'] =  $party_customer_arr;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Party Customer List Found!'], $this->failStatus);
+        }
+    }
+
+    public function partySupplierList(){
+        $party_suppliers = DB::table('parties')
+            ->select('id','type','customer_type','name','phone','address','virtual_balance','status')
+            ->where('type','supplier')
+            ->orderBy('id','desc')
+            ->get();
+
+        if($party_suppliers)
+        {
+            $party_supplier_arr = [];
+            foreach($party_suppliers as $party_supplier){
+
+                $purchase_total_amount = 0;
+
+                $total_amount = DB::table('transactions')
+                    ->select(DB::raw('SUM(amount) as sum_total_amount'))
+                    ->where('party_id',$party_supplier->id)
+                    ->where('transaction_type','whole_purchase')
+                    ->orWhere('transaction_type','pos_purchase')
+                    ->first();
+
+                if(!empty($total_amount)){
+                    $purchase_total_amount = $total_amount->sum_total_amount;
+                }
+
+                $nested_data['id'] = $party_supplier->id;
+                $nested_data['type'] = $party_supplier->type;
+                $nested_data['customer_type'] = $party_supplier->customer_type;
+                $nested_data['name'] = $party_supplier->name;
+                $nested_data['phone'] = $party_supplier->phone;
+                $nested_data['address'] = $party_supplier->address;
+                $nested_data['purchase_total_amount'] = $purchase_total_amount;
+                $nested_data['virtual_balance'] = $party_supplier->virtual_balance;
+                $nested_data['status'] = $party_supplier->status;
+
+                array_push($party_supplier_arr,$nested_data);
+            }
+
+            $success['party_suppliers'] =  $party_supplier_arr;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Party Supplier List Found!'], $this->failStatus);
         }
     }
 
@@ -1361,6 +1456,40 @@ class BackendController extends Controller
             ->where('products.status',1)
             ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             ->orderBy('products.id','desc')
+            ->get();
+
+        if($products)
+        {
+            $success['products'] =  $products;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product List Found!'], $this->failStatus);
+        }
+    }
+
+    public function allActiveProductListBarcode(Request $request){
+        $products = DB::table('products')
+            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+            ->where('products.barcode',$request->barcode)
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
+            ->get();
+
+        if($products)
+        {
+            $success['products'] =  $products;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product List Found!'], $this->failStatus);
+        }
+    }
+
+    public function allActiveProductListItemcode(Request $request){
+        $products = DB::table('products')
+            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+            ->where('products.item_code',$request->item_code)
+            ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount')
             ->get();
 
         if($products)
@@ -5272,11 +5401,12 @@ class BackendController extends Controller
 
         $store_stock_product_list = DB::table('warehouse_store_current_stocks')
             ->join('warehouses','warehouse_store_current_stocks.warehouse_id','warehouses.id')
+            ->leftJoin('stores','warehouse_store_current_stocks.store_id','stores.id')
             ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('warehouse_store_current_stocks.store_id',$request->store_id)
-            ->select('warehouse_store_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+            ->select('warehouse_store_current_stocks.*','warehouses.name as warehouse_name','stores.name as store_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->get();
 
         $store_stock_product = [];
@@ -5284,6 +5414,8 @@ class BackendController extends Controller
             $nested_data['stock_id'] = $stock_row->id;
             $nested_data['warehouse_id'] = $stock_row->warehouse_id;
             $nested_data['warehouse_name'] = $stock_row->warehouse_name;
+            $nested_data['store_id'] = $stock_row->store_id;
+            $nested_data['store_name'] = $stock_row->store_name;
             $nested_data['product_id'] = $stock_row->product_id;
             $nested_data['product_name'] = $stock_row->product_name;
             $nested_data['purchase_price'] = $stock_row->purchase_price;
@@ -6502,6 +6634,367 @@ class BackendController extends Controller
         }
     }
 
+    public function changedPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'old_password' => 'required',
+            'password' => 'required|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $hashedPassword = Auth::user()->password;
+
+        if (Hash::check($request->old_password, $hashedPassword)) {
+            if (!Hash::check($request->password, $hashedPassword)) {
+                $user = \App\User::find(Auth::id());
+                $user->password = Hash::make($request->password);
+                $user->save();
+                return response()->json(['success'=>true,'response' => 'Password Updated Successfully'], $this-> successStatus);
+            } else {
+                return response()->json(['success'=>false,'response'=>'New password cannot be the same as old password.'], $this->failStatus);
+            }
+        } else {
+            return response()->json(['success'=>false,'response'=>'Current password not match.'], $this->failStatus);
+        }
+
+    }
+
+
+    // sale exchange
+    public function productSaleExchangeList(){
+        $product_pos_sales = DB::table('product_sale_exchanges')
+            ->leftJoin('users','product_sale_exchanges.user_id','users.id')
+            ->leftJoin('parties','product_sale_exchanges.party_id','parties.id')
+            ->leftJoin('warehouses','product_sale_exchanges.warehouse_id','warehouses.id')
+            ->leftJoin('stores','product_sale_exchanges.store_id','stores.id')
+            //->where('product_sale_exchanges.sale_type','pos_sale')
+            ->select(
+                'product_sale_exchanges.id',
+                'product_sale_exchanges.invoice_no',
+                'product_sale_exchanges.sale_invoice_no',
+                'product_sale_exchanges.discount_type',
+                'product_sale_exchanges.discount_amount',
+                'product_sale_exchanges.total_vat_amount',
+                'product_sale_exchanges.total_amount',
+                'product_sale_exchanges.paid_amount',
+                'product_sale_exchanges.due_amount',
+                'product_sale_exchanges.sale_exchange_date_time',
+                'users.name as user_name',
+                'parties.id as customer_id',
+                'parties.name as customer_name',
+                'warehouses.id as warehouse_id',
+                'warehouses.name as warehouse_name',
+                'stores.id as store_id',
+                'stores.name as store_name',
+                'stores.address as store_address'
+            )
+            ->orderBy('product_sale_exchanges.id','desc')
+            ->get();
+
+        if(count($product_pos_sales) > 0)
+        {
+            $product_sale_exchange_arr = [];
+            foreach ($product_pos_sales as $data){
+                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','sale_exchange')->pluck('payment_type')->first();
+
+                $nested_data['id']=$data->id;
+                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['sale_invoice_no']=$data->sale_invoice_no;
+                $nested_data['discount_type']=$data->discount_type;
+                $nested_data['discount_amount']=$data->discount_amount;
+                $nested_data['total_vat_amount']=$data->total_vat_amount;
+                $nested_data['total_amount']=$data->total_amount;
+                $nested_data['paid_amount']=$data->paid_amount;
+                $nested_data['due_amount']=$data->due_amount;
+                $nested_data['sale_exchange_date_time']=$data->sale_exchange_date_time;
+                $nested_data['user_name']=$data->user_name;
+                $nested_data['customer_id']=$data->customer_id;
+                $nested_data['customer_name']=$data->customer_name;
+                $nested_data['warehouse_id']=$data->warehouse_id;
+                $nested_data['warehouse_name']=$data->warehouse_name;
+                $nested_data['store_id']=$data->store_id;
+                $nested_data['store_name']=$data->store_name;
+                $nested_data['store_address']=$data->store_address;
+                $nested_data['payment_type']=$payment_type;
+
+                array_push($product_sale_exchange_arr,$nested_data);
+            }
+
+            $success['product_sale_exchange'] =  $product_sale_exchange_arr;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Sale Exchange List Found!'], $this->failStatus);
+        }
+    }
+
+    public function productSaleExchangeDetails(Request $request){
+        $product_sale_exchange_details = DB::table('product_sale_exchanges')
+            ->join('product_sale_exchange_details','product_sale_exchanges.id','product_sale_exchange_details.pro_sale_ex_id')
+            ->leftJoin('products','product_sale_exchange_details.product_id','products.id')
+            ->leftJoin('product_units','product_sale_exchange_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','product_sale_exchange_details.product_brand_id','product_brands.id')
+            ->where('product_sale_exchanges.id',$request->product_sale_exchange_id)
+            ->select(
+                'products.id as product_id',
+                'products.name as product_name',
+                'product_units.id as product_unit_id',
+                'product_units.name as product_unit_name',
+                'product_brands.id as product_brand_id',
+                'product_brands.name as product_brand_name',
+                'product_sale_exchange_details.qty',
+                'product_sale_exchange_details.id as product_sale_exchange_detail_id',
+                'product_sale_exchange_details.price as mrp_price',
+                'product_sale_exchange_details.vat_amount'
+            )
+            ->get();
+
+        if($product_sale_exchange_details)
+        {
+            $success['product_sale_exchange_details'] =  $product_sale_exchange_details;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Sale Exchange Detail Found!'], $this->failStatus);
+        }
+    }
+
+    public function productSaleExchangeCreate(Request $request){
+
+        $this->validate($request, [
+            'sale_invoice_no'=> 'required',
+            'party_id'=> 'required',
+            'store_id'=> 'required',
+            'previous_paid_amount'=> 'required',
+            'paid_amount'=> 'required',
+            'due_amount'=> 'required',
+            'total_amount'=> 'required',
+            'payment_type'=> 'required',
+        ]);
+
+        $get_invoice_no = ProductSaleExchange::latest('id','desc')->pluck('invoice_no')->first();
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("sale-exchange-","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
+        }else{
+            $invoice_no = 110000;
+        }
+        $final_invoice = 'sale-exchange-'.$invoice_no;
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+        //$add_two_day_date =  date('Y-m-d', strtotime("+2 days"));
+
+        $user_id = Auth::user()->id;
+        $store_id = $request->store_id;
+        $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
+
+        // product purchase
+        $productSaleExchange = new ProductSaleExchange();
+        $productSaleExchange ->invoice_no = $final_invoice;
+        $productSaleExchange ->sale_invoice_no = $request->sale_invoice_no;
+        $productSaleExchange ->user_id = $user_id;
+        $productSaleExchange ->party_id = $request->party_id;
+        $productSaleExchange ->warehouse_id = $warehouse_id;
+        $productSaleExchange ->store_id = $store_id;
+        $productSaleExchange ->sale_exchange_type = 'sale_exchange';
+        $productSaleExchange ->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSaleExchange ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+        $productSaleExchange ->previous_paid_amount = $request->previous_paid_amount;
+        $productSaleExchange ->paid_amount = $request->paid_amount;
+        $productSaleExchange ->due_amount = $request->due_amount;
+        $productSaleExchange ->total_vat_amount = $request->total_vat_amount;
+        $productSaleExchange ->total_amount = $request->total_amount;
+        $productSaleExchange ->sale_exchange_date = $date;
+        $productSaleExchange ->sale_exchange_date_time = $date_time;
+        $productSaleExchange->save();
+        $insert_id = $productSaleExchange->id;
+
+        if($insert_id)
+        {
+
+            // for live testing
+            foreach ($request->products as $data) {
+
+                $product_id =  $data['product_id'];
+
+                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+
+                // product purchase detail
+                $product_sale_exchange_detail = new ProductSaleExchangeDetail();
+                $product_sale_exchange_detail->product_sale_id = $insert_id;
+                $product_sale_exchange_detail->product_unit_id = $data['product_unit_id'];
+                $product_sale_exchange_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $product_sale_exchange_detail->product_id = $product_id;
+                $product_sale_exchange_detail->barcode = $barcode;
+                $product_sale_exchange_detail->qty = $data['qty'];
+                $product_sale_exchange_detail->price = $data['mrp_price'];
+                $product_sale_exchange_detail->vat_amount = $data['vat_amount'];
+                $product_sale_exchange_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                $product_sale_exchange_detail->sale_exchange_date = $date;
+                $product_sale_exchange_detail->save();
+
+                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                if(!empty($check_previous_stock)){
+                    $previous_stock = $check_previous_stock;
+                }else{
+                    $previous_stock = 0;
+                }
+
+                // product stock
+                $stock = new Stock();
+                $stock->ref_id = $insert_id;
+                $stock->user_id = $user_id;
+                $stock->warehouse_id = $warehouse_id;
+                $stock->store_id = $store_id;
+                $stock->product_id = $product_id;
+                $stock->product_unit_id = $data['product_unit_id'];
+                $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $stock->stock_type = 'sale_exchange';
+                $stock->stock_where = 'store';
+                $stock->stock_in_out = 'stock_out';
+                $stock->previous_stock = $previous_stock;
+                $stock->stock_in = 0;
+                $stock->stock_out = $data['qty'];
+                $stock->current_stock = $previous_stock - $data['qty'];
+                $stock->stock_date = $date;
+                $stock->stock_date_time = $date_time;
+                $stock->save();
+
+                // warehouse store current stock
+                $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                    ->where('store_id',$store_id)
+                    ->where('product_id',$product_id)
+                    ->first();
+
+                $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+                $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
+                $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
+                $update_warehouse_store_current_stock->save();
+            }
+
+            // transaction
+            $transaction = new Transaction();
+            $transaction->ref_id = $insert_id;
+            $transaction->invoice_no = $final_invoice;
+            $transaction->user_id = $user_id;
+            $transaction->warehouse_id = $warehouse_id;
+            $transaction->store_id = $store_id;
+            $transaction->party_id = $request->party_id;
+            $transaction->transaction_type = 'sale_exchange';
+            $transaction->payment_type = $request->payment_type;
+            $transaction->amount = $request->paid_amount;
+            $transaction->transaction_date = $date;
+            $transaction->transaction_date_time = $date_time;
+            $transaction->save();
+            $transaction_id = $transaction->id;
+
+            // payment paid
+            $payment_collection = new PaymentCollection();
+            $payment_collection->invoice_no = $final_invoice;
+            $payment_collection->product_sale_id = $insert_id;
+            $payment_collection->user_id = $user_id;
+            $payment_collection->party_id = $request->party_id;
+            $payment_collection->warehouse_id = $warehouse_id;
+            $payment_collection->store_id = $store_id;
+            $payment_collection->collection_type = 'Sale';
+            $payment_collection->collection_amount = $request->paid_amount;
+            $payment_collection->due_amount = $request->due_amount;
+            $payment_collection->current_collection_amount = $request->paid_amount;
+            $payment_collection->collection_date = $date;
+            $payment_collection->collection_date_time = $date_time;
+            $payment_collection->save();
+
+            $product_pos_sale = DB::table('product_sales')
+                ->leftJoin('users','product_sales.user_id','users.id')
+                ->leftJoin('parties','product_sales.party_id','parties.id')
+                ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+                ->leftJoin('stores','product_sales.store_id','stores.id')
+                ->where('product_sales.sale_type','pos_sale')
+                ->where('product_sales.id',$insert_id)
+                ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
+                ->first();
+
+            return response()->json(['success'=>true,'product_pos_sale' => $product_pos_sale], $this->successStatus);
+
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function productSaleExchangeDelete(Request $request){
+        $check_exists_product_sale_exchange = DB::table("product_sale_exchanges")->where('id',$request->product_sale_exchange_id)->pluck('id')->first();
+        if($check_exists_product_sale_exchange == null){
+            return response()->json(['success'=>false,'response'=>'No Product Sale Exchange Found!'], $this->failStatus);
+        }
+
+        $productSaleExchange = ProductSaleExchange::find($request->product_sale_exchange_id);
+        if($productSaleExchange){
+            $user_id = Auth::user()->id;
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d H:i:s');
+
+            $product_sale_exchange_details = DB::table('product_sale_exchange_details')->where('pro_sale_ex_id',$request->product_sale_exchange_id)->get();
+
+            if(count($product_sale_exchange_details) > 0){
+                foreach ($product_sale_exchange_details as $product_sale_exchange_detail){
+                    // current stock
+                    $stock_row = Stock::where('stock_where','store')->where('warehouse_id',$productSaleExchange->warehouse_id)
+                        ->where('product_id',$product_sale_exchange_detail->product_id)
+                        ->latest('id')->first();
+                    $current_stock = $stock_row->current_stock;
+
+                    $stock = new Stock();
+                    $stock->ref_id=$productSaleExchange->id;
+                    $stock->user_id=$user_id;
+                    $stock->product_unit_id= $product_sale_exchange_detail->product_unit_id;
+                    $stock->product_brand_id= $product_sale_exchange_detail->product_brand_id;
+                    $stock->product_id= $product_sale_exchange_detail->product_id;
+                    $stock->stock_type='sale_exchange_delete';
+                    $stock->warehouse_id= $productSale->warehouse_id;
+                    $stock->store_id=$productSale->store_id;
+                    $stock->stock_where='store';
+                    $stock->stock_in_out='stock_in';
+                    $stock->previous_stock=$current_stock;
+                    $stock->stock_in=$product_sale_exchange_detail->qty;
+                    $stock->stock_out=0;
+                    $stock->current_stock=$current_stock + $product_sale_exchange_detail->qty;
+                    $stock->stock_date=$date;
+                    $stock->stock_date_time=$date_time;
+                    $stock->save();
+
+
+                    $warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$productSale->warehouse_id)
+                        ->where('store_id',$productSaleExchange->store_id)
+                        ->where('product_id',$product_sale_exchange_detail->product_id)
+                        ->first();
+                    $exists_current_stock = $warehouse_store_current_stock->current_stock;
+                    $warehouse_store_current_stock->current_stock=$exists_current_stock + $product_sale_exchange_detail->qty;
+                    $warehouse_store_current_stock->update();
+                }
+            }
+        }
+        $delete_sale = $productSaleExchange->delete();
+
+        DB::table('product_sale_exchange_details')->where('pro_sale_ex_id',$request->product_sale_exchange_id)->delete();
+        //DB::table('stocks')->where('ref_id',$request->product_sale_id)->delete();
+        DB::table('transactions')->where('ref_id',$request->product_sale_exchange_id)->delete();
+        DB::table('payment_collections')->where('product_sale_exchange_id',$request->product_sale_exchange_id)->delete();
+
+        if($delete_sale)
+        {
+            return response()->json(['success'=>true,'response' =>'Sale Successfully Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Sale Exchange Not Deleted!'], $this->failStatus);
+        }
+    }
+
     // product sale invoice list
     public function productSaleInvoiceList(){
         $product_sale_invoices = DB::table('product_sales')
@@ -6608,10 +7101,10 @@ class BackendController extends Controller
                 array_push($product_whole_sale_arr,$nested_data);
             }
 
-            $success['product_whole_sales'] =  $product_whole_sale_arr;
+            $success['product_sale_return_list'] =  $product_whole_sale_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
-            return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);
+            return response()->json(['success'=>false,'response'=>'No Product Sale Return List Found!'], $this->failStatus);
         }
     }
 
