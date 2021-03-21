@@ -776,16 +776,20 @@ class BackendController extends Controller
 
         if($request->type == 'customer'){
 
-            $parties = Party::where('phone',$request->phone)->pluck('id','name')->first();
+//            $parties = Party::where('phone',$request->phone)->pluck('id','name')->first();
 
+//            if($parties){
+//                $response = [
+//                    'success' => false,
+//                    'data' => 'Validation Error.',
+//                    'message' => ['Phone No Already Exist'],
+//                    'exist'=>1
+//                ];
+//                return response()->json($response, $this-> failStatus);
+//            }
+            $parties = Party::where('phone',$request->phone)->first();
             if($parties){
-                $response = [
-                    'success' => false,
-                    'data' => 'Validation Error.',
-                    'message' => ['Phone No Already Exist'],
-                    'exist'=>1
-                ];
-                return response()->json($response, $this-> failStatus);
+                return response()->json(['success'=>true,'response' => $parties,'exist'=>1], $this->successStatus);
             }
         }
 
@@ -3187,7 +3191,7 @@ class BackendController extends Controller
         $customer_lists = DB::table('parties')
             ->where('type','customer')
             ->where('customer_type','POS Sale')
-            ->select('id','name')
+            ->select('id','name','phone')
             ->orderBy('id','desc')
             ->get();
 
@@ -6144,7 +6148,7 @@ class BackendController extends Controller
             ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
             ->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.sale_type','pos_sale')
-            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone')
             ->orderBy('product_sales.id','desc')
             ->get();
 
