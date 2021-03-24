@@ -124,6 +124,7 @@ Route::middleware('auth:api')->post('/product_vat_delete', 'API\BackendControlle
 
 // product
 Route::middleware('auth:api')->get('/product_list', 'API\BackendController@productList');
+Route::middleware('auth:api')->post('/barcode-products', 'API\BackendController@barcodeProductList');
 Route::middleware('auth:api')->get('/all_active_product_list', 'API\BackendController@allActiveProductList');
 Route::middleware('auth:api')->post('/all_active_product_list_barcode', 'API\BackendController@allActiveProductListBarcode');
 Route::middleware('auth:api')->post('/all_active_product_list_item_code', 'API\BackendController@allActiveProductListItemcode');

@@ -1367,6 +1367,37 @@ class BackendController extends Controller
         }
     }
 
+    public function barcodeProductList(Request $request){
+
+        if($request->count == 0){
+            $products = DB::table('products')
+                ->leftJoin('product_units','products.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+                ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.whole_sale_price as whole_sale_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount')
+                ->where('products.id', '>=',$request->first_product)
+                //->limit($request->count)
+                ->orderBy('products.id','desc')
+                ->get();
+        }else{
+            $products = DB::table('products')
+                ->leftJoin('product_units','products.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+                ->select('products.id','products.name as product_name','products.image','product_units.id as unit_id','product_units.name as unit_name','products.item_code','products.barcode','products.self_no','products.low_inventory_alert','product_brands.id as brand_id','product_brands.name as brand_name','products.purchase_price','products.whole_sale_price as whole_sale_price','products.selling_price','products.note','products.date','products.status','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount')
+                ->where('products.id', '>=',$request->first_product)
+                ->limit($request->count)
+                ->orderBy('products.id','desc')
+                ->get();
+        }
+
+        if($products)
+        {
+            $success['products'] =  $products;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product List Found!'], $this->failStatus);
+        }
+    }
+
 
 
     public function productListPagination(){
@@ -6175,6 +6206,7 @@ class BackendController extends Controller
                 $nested_data['store_id']=$data->store_id;
                 $nested_data['store_name']=$data->store_name;
                 $nested_data['store_address']=$data->store_address;
+                $nested_data['phone']=$data->phone;
                 $nested_data['payment_type']=$payment_type;
 
                 array_push($product_pos_sale_arr,$nested_data);
