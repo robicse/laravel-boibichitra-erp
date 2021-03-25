@@ -1056,6 +1056,46 @@ class BackendController extends Controller
         }
     }
 
+    public function customerSaleByCustomerId(Request $request){
+
+
+        $product_sales = DB::table('product_sales')
+            ->leftJoin('users','product_sales.user_id','users.id')
+            ->leftJoin('parties','product_sales.party_id','parties.id')
+            ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+            ->leftJoin('stores','product_sales.store_id','stores.id')
+            ->where('product_sales.party_id',$request->customer_id)
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->get();
+        if(count($product_sales) > 0){
+            $success['product_sales'] = $product_sales;
+
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Sale Found!'], $this->failStatus);
+        }
+    }
+
+    public function customerSaleDetailsBySaleId(Request $request){
+
+        $product_sale_details = DB::table('product_sales')
+            ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
+            ->leftJoin('products','product_sale_details.product_id','products.id')
+            ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
+            ->where('product_sales.id',$request->sale_id)
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.sale_date','product_sale_details.return_among_day','product_sale_details.price as mrp_price')
+            ->get();
+        if(count($product_sale_details) > 0){
+
+            $success['product_sale_details'] = $product_sale_details;
+
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Sale Details Found!'], $this->failStatus);
+        }
+    }
+
     // product brand
     public function productBrandList(){
         $product_brands = DB::table('product_brands')->select('id','name','status')->orderBy('id','desc')->get();
@@ -7322,7 +7362,7 @@ class BackendController extends Controller
                 $check_return_last_date = ProductSaleDetail::where('id',$data['product_sale_detail_id'])->pluck('return_last_date')->first();
                 $today_date = date('Y-m-d');
                 if($check_return_last_date >= $today_date){
-                    // for sale return cash
+                    // for sale return cash back among 2 days
                     // transaction
                     $transaction = new Transaction();
                     $transaction->ref_id = $insert_id;
@@ -7355,7 +7395,7 @@ class BackendController extends Controller
                     $payment_collection->collection_date_time = $date_time;
                     $payment_collection->save();
                 }else{
-                    // for sale return balance
+                    // for sale return balance add after 2 days
                     // transaction
                     $transaction = new Transaction();
                     $transaction->ref_id = $insert_id;

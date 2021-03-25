@@ -103,6 +103,9 @@ Route::middleware('auth:api')->post('/customer_virtual_balance', 'API\BackendCon
 Route::middleware('auth:api')->post('/customer_sale_information', 'API\BackendController@customerSaleInformation');
 Route::middleware('auth:api')->post('/customer_sale_details_information', 'API\BackendController@customerSaleDetailsInformation');
 
+Route::middleware('auth:api')->post('/customer_sale_by_customer_id', 'API\BackendController@customerSaleByCustomerId');
+Route::middleware('auth:api')->post('/customer_sale_details_by_sale_id', 'API\BackendController@customerSaleDetailsBySaleId');
+
 
 // product brand
 Route::middleware('auth:api')->get('/product_brand_list', 'API\BackendController@productBrandList');
