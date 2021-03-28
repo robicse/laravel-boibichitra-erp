@@ -21,6 +21,7 @@ class CreateProductSaleDetailsTable extends Migration
             $table->bigInteger('product_id')->unsigned();
             $table->string('barcode');
             $table->integer('qty');
+            $table->float('discount', 8,2)->nullable();
             $table->float('price', 8,2);
             $table->float('vat_amount', 8,2);
             $table->float('sub_total', 8,2);
