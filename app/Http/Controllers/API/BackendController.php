@@ -6259,6 +6259,53 @@ class BackendController extends Controller
         }
     }
 
+    public function productPOSSaleListPagination(){
+        $product_pos_sales = DB::table('product_sales')
+            ->leftJoin('users','product_sales.user_id','users.id')
+            ->leftJoin('parties','product_sales.party_id','parties.id')
+            ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+            ->leftJoin('stores','product_sales.store_id','stores.id')
+            ->where('product_sales.sale_type','pos_sale')
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone')
+            ->orderBy('product_sales.id','desc')
+            ->paginate(12);
+
+        if(count($product_pos_sales) > 0)
+        {
+            $product_pos_sale_arr = [];
+            foreach ($product_pos_sales as $data){
+                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','pos_sale')->pluck('payment_type')->first();
+
+                $nested_data['id']=$data->id;
+                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['discount_type']=$data->discount_type;
+                $nested_data['discount_amount']=$data->discount_amount;
+                $nested_data['total_vat_amount']=$data->total_vat_amount;
+                $nested_data['total_amount']=$data->total_amount;
+                $nested_data['paid_amount']=$data->paid_amount;
+                $nested_data['due_amount']=$data->due_amount;
+                $nested_data['sale_date_time']=$data->sale_date_time;
+                $nested_data['user_name']=$data->user_name;
+                $nested_data['customer_id']=$data->customer_id;
+                $nested_data['customer_name']=$data->customer_name;
+                $nested_data['warehouse_id']=$data->warehouse_id;
+                $nested_data['warehouse_name']=$data->warehouse_name;
+                $nested_data['store_id']=$data->store_id;
+                $nested_data['store_name']=$data->store_name;
+                $nested_data['store_address']=$data->store_address;
+                $nested_data['phone']=$data->phone;
+                $nested_data['payment_type']=$payment_type;
+
+                array_push($product_pos_sale_arr,$nested_data);
+            }
+
+            $success['product_pos_sales'] =  $product_pos_sale_arr;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);
+        }
+    }
+
     public function productPOSSaleDetails(Request $request){
         $product_sale_details = DB::table('product_sales')
             ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')

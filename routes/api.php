@@ -234,6 +234,7 @@ Route::middleware('auth:api')->post('/product_whole_sale_delete', 'API\BackendCo
 
 // product sale pos
 Route::middleware('auth:api')->get('/product_pos_sale_list', 'API\BackendController@productPOSSaleList');
+Route::middleware('auth:api')->get('/product_pos_sale_pagination', 'API\BackendController@productPOSSaleListPagination');
 Route::middleware('auth:api')->post('/product_pos_sale_details', 'API\BackendController@productPOSSaleDetails');
 Route::middleware('auth:api')->post('/product_pos_sale_create', 'API\BackendController@productPOSSaleCreate');
 Route::middleware('auth:api')->post('/product_pos_sale_edit', 'API\BackendController@productPOSSaleEdit');
