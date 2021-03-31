@@ -508,7 +508,7 @@ class BackendController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required',
             'phone' => 'required|unique:users,phone',
-            'email' => 'required|email|unique:users,email',
+            //'email' => 'required|email|unique:users,email',
             'password' => 'required|same:confirm_password',
             'roles' => 'required',
             'status' => 'required',
@@ -8958,6 +8958,8 @@ class BackendController extends Controller
         $employee->phone = $request->phone;
         $employee->gender = $request->gender;
         $employee->date_of_birth = $request->date_of_birth;
+        $employee->blood_group = $request->blood_group;
+        $employee->national_id = $request->national_id;
         $employee->marital_status = $request->marital_status;
         $employee->present_address = $request->present_address;
         $employee->permanent_address = $request->permanent_address;
@@ -9017,6 +9019,8 @@ class BackendController extends Controller
         $employee->phone = $request->phone;
         $employee->gender = $request->gender;
         $employee->date_of_birth = $request->date_of_birth;
+        $employee->blood_group = $request->blood_group;
+        $employee->national_id = $request->national_id;
         $employee->marital_status = $request->marital_status;
         $employee->present_address = $request->present_address;
         $employee->permanent_address = $request->permanent_address;
