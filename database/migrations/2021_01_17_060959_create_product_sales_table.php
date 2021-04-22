@@ -19,7 +19,7 @@ class CreateProductSalesTable extends Migration
             $table->bigInteger('user_id');
             $table->bigInteger('party_id')->unsigned();
             $table->bigInteger('warehouse_id')->unsigned()->nullable();
-            $table->bigInteger('store_id')->unsigned();
+            $table->bigInteger('store_id')->unsigned()->nullable();
             $table->enum('sale_type', ['whole_sale','pos_sale']);
             $table->enum('discount_type', ['Flat','Percentage'])->nullable();
             $table->string('discount_amount')->nullable();

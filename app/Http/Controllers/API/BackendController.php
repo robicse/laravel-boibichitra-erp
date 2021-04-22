@@ -55,6 +55,7 @@ use App\WarehouseProductDamage;
 use App\WarehouseProductDamageDetail;
 use App\WarehouseStoreCurrentStock;
 use App\Weekend;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -702,7 +703,7 @@ class BackendController extends Controller
                 array_push($party_customer_arr,$nested_data);
             }
 
-                $success['party_customers'] =  $party_customer_arr;
+            $success['party_customers'] =  $party_customer_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Party Customer List Found!'], $this->failStatus);
@@ -1426,10 +1427,10 @@ class BackendController extends Controller
             foreach($products as $product){
 
                 $warehouse_current_stock = DB::table('warehouse_current_stocks')
-                                            ->where('product_id',$product->id)
-                                            ->latest('id')
-                                            ->pluck('current_stock')
-                                            ->first();
+                    ->where('product_id',$product->id)
+                    ->latest('id')
+                    ->pluck('current_stock')
+                    ->first();
 
                 if($warehouse_current_stock == NULL){
                     $warehouse_current_stock = 0;
@@ -3740,7 +3741,7 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('warehouse_current_stocks.warehouse_id',$request->warehouse_id)
-            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.whole_sale_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->get();
 
         $warehouse_stock_product = [];
@@ -3753,9 +3754,13 @@ class BackendController extends Controller
             $nested_data['product_name'] = $stock_row->product_name;
             $nested_data['purchase_price'] = $stock_row->purchase_price;
             $nested_data['selling_price'] = $stock_row->selling_price;
+            $nested_data['whole_sale_price'] = $stock_row->whole_sale_price;
             $nested_data['item_code'] = $stock_row->item_code;
             $nested_data['barcode'] = $stock_row->barcode;
             $nested_data['image'] = $stock_row->image;
+            $nested_data['vat_status'] = $stock_row->vat_status;
+            $nested_data['vat_percentage'] = $stock_row->vat_percentage;
+            $nested_data['vat_amount'] = $stock_row->vat_amount;
             $nested_data['product_unit_id'] = $stock_row->product_unit_id;
             $nested_data['product_unit_name'] = $stock_row->product_unit_name;
             $nested_data['product_brand_id'] = $stock_row->product_brand_id;
@@ -3906,7 +3911,8 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('warehouse_current_stocks.warehouse_id',$request->warehouse_id)
-            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.whole_sale_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+            //->select('warehouses.name as warehouse_name')
             ->paginate(12);
 
 
@@ -3953,8 +3959,9 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('warehouse_current_stocks.warehouse_id',$request->warehouse_id)
+            ->where('warehouse_current_stocks.current_stock','>',0)
             ->where('products.barcode',$request->barcode)
-            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.whole_sale_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->paginate(1);
 
         if($warehouse_stock_product)
@@ -3992,6 +3999,27 @@ class BackendController extends Controller
 //        }
 //    }
 
+//    public function warehouseCurrentStockListPaginationItemcode(Request $request){
+//
+//        $warehouse_stock_product = DB::table('warehouse_current_stocks')
+//            ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+//            ->leftJoin('products','warehouse_current_stocks.product_id','products.id')
+//            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+//            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+//            ->where('warehouse_current_stocks.warehouse_id',$request->warehouse_id)
+//            ->where('products.barcode',$request->item_code)
+//            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.whole_sale_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+//            ->paginate(1);
+//
+//        if($warehouse_stock_product)
+//        {
+//            $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
+//            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+//        }
+//    }
+
     public function warehouseCurrentStockListPaginationItemcode(Request $request){
 
         $warehouse_stock_product = DB::table('warehouse_current_stocks')
@@ -4000,8 +4028,9 @@ class BackendController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('warehouse_current_stocks.warehouse_id',$request->warehouse_id)
-            ->where('products.barcode',$request->item_code)
-            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+            ->where('warehouse_current_stocks.current_stock','>',0)
+            ->where('products.item_code',$request->item_code)
+            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.whole_sale_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->paginate(1);
 
         if($warehouse_stock_product)
@@ -4048,7 +4077,7 @@ class BackendController extends Controller
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('warehouse_current_stocks.warehouse_id',$request->warehouse_id)
             ->where('products.name','like','%'.$request->name.'%')
-            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.whole_sale_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->paginate(1);
 
         if($warehouse_stock_product)
@@ -5813,9 +5842,10 @@ class BackendController extends Controller
             ->leftJoin('users','product_sales.user_id','users.id')
             ->leftJoin('parties','product_sales.party_id','parties.id')
             ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
-            ->leftJoin('stores','product_sales.store_id','stores.id')
+            //->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.sale_type','whole_sale')
-            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
+            //->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
             ->orderBy('product_sales.id','desc')
             ->get();
 
@@ -5839,9 +5869,9 @@ class BackendController extends Controller
                 $nested_data['customer_name']=$data->customer_name;
                 $nested_data['warehouse_id']=$data->warehouse_id;
                 $nested_data['warehouse_name']=$data->warehouse_name;
-                $nested_data['store_id']=$data->store_id;
-                $nested_data['store_name']=$data->store_name;
-                $nested_data['store_address']=$data->store_address;
+                //$nested_data['store_id']=$data->store_id;
+                //$nested_data['store_name']=$data->store_name;
+                //$nested_data['store_address']=$data->store_address;
                 $nested_data['payment_type']=$payment_type;
 
                 array_push($product_whole_sale_arr,$nested_data);
@@ -5896,7 +5926,8 @@ class BackendController extends Controller
 
         $this->validate($request, [
             'party_id'=> 'required',
-            'store_id'=> 'required',
+            //'store_id'=> 'required',
+            'warehouse_id'=> 'required',
             'paid_amount'=> 'required',
             'due_amount'=> 'required',
             'total_amount'=> 'required',
@@ -5917,14 +5948,16 @@ class BackendController extends Controller
         $add_two_day_date =  date('Y-m-d', strtotime("+2 days"));
 
         $user_id = Auth::user()->id;
-        $store_id = $request->store_id;
-        $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
+        //$store_id = $request->store_id;
+        $warehouse_id = $request->warehouse_id;
+        //$warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
 
         // product purchase
         $productSale = new ProductSale();
         $productSale->invoice_no = $final_invoice;
         $productSale->user_id = $user_id;
-        $productSale->store_id = $store_id;
+        //$productSale->store_id = $store_id;
+        $productSale->store_id = NULL;
         $productSale->warehouse_id = $warehouse_id;
         $productSale->party_id = $request->party_id;
         $productSale->sale_type = 'whole_sale';
@@ -6011,7 +6044,8 @@ class BackendController extends Controller
                 $product_sale_detail->return_last_date = $add_two_day_date;
                 $product_sale_detail->save();
 
-                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                //$check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
                 if(!empty($check_previous_stock)){
                     $previous_stock = $check_previous_stock;
                 }else{
@@ -6023,12 +6057,13 @@ class BackendController extends Controller
                 $stock->ref_id = $insert_id;
                 $stock->user_id = $user_id;
                 $stock->warehouse_id = $warehouse_id;
-                $stock->store_id = $store_id;
+                //$stock->store_id = $store_id;
+                $stock->store_id = NULL;
                 $stock->product_id = $product_id;
                 $stock->product_unit_id = $data['product_unit_id'];
                 $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $stock->stock_type = 'whole_sale';
-                $stock->stock_where = 'store';
+                $stock->stock_where = 'warehouse';
                 $stock->stock_in_out = 'stock_out';
                 $stock->previous_stock = $previous_stock;
                 $stock->stock_in = 0;
@@ -6039,15 +6074,26 @@ class BackendController extends Controller
                 $stock->save();
 
                 // warehouse store current stock
-                $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
-                    ->where('store_id',$store_id)
+//                $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+//                    ->where('store_id',$store_id)
+//                    ->where('product_id',$product_id)
+//                    ->first();
+//
+//                $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+//                $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
+//                $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
+//                $update_warehouse_store_current_stock->save();
+
+                // warehouse current stock
+                $update_warehouse_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
                     ->where('product_id',$product_id)
                     ->first();
 
-                $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+                $exists_current_stock = $update_warehouse_current_stock->current_stock;
                 $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
-                $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
-                $update_warehouse_store_current_stock->save();
+                $update_warehouse_current_stock->current_stock=$final_warehouse_current_stock;
+                $update_warehouse_current_stock->save();
+
             }
 
             // transaction
@@ -6056,7 +6102,8 @@ class BackendController extends Controller
             $transaction->invoice_no = $final_invoice;
             $transaction->user_id = $user_id;
             $transaction->warehouse_id = $warehouse_id;
-            $transaction->store_id = $store_id;
+            //$transaction->store_id = $store_id;
+            $transaction->store_id = NULL;
             $transaction->party_id = $request->party_id;
             $transaction->transaction_type = 'whole_sale';
             $transaction->payment_type = $request->payment_type;
@@ -6072,6 +6119,7 @@ class BackendController extends Controller
             $payment_collection->product_sale_id = $insert_id;
             $payment_collection->user_id = $user_id;
             $payment_collection->party_id = $request->party_id;
+            $payment_collection->warehouse_id = $warehouse_id;
             $payment_collection->collection_type = 'Sale';
             $payment_collection->collection_amount = $request->paid_amount;
             $payment_collection->due_amount = $request->due_amount;
@@ -6096,7 +6144,8 @@ class BackendController extends Controller
         $this->validate($request, [
             'product_sale_id'=> 'required',
             'party_id'=> 'required',
-            'store_id'=> 'required',
+            //'store_id'=> 'required',
+            'warehouse_id'=> 'required',
             'paid_amount'=> 'required',
             'due_amount'=> 'required',
             'total_amount'=> 'required',
@@ -6107,7 +6156,7 @@ class BackendController extends Controller
         $date = date('Y-m-d');
         $date_time = date('Y-m-d H:i:s');
         $store_id = $request->store_id;
-        $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
+        $warehouse_id = $request->warehouse_id;
 
 
         // product purchase
@@ -6115,7 +6164,7 @@ class BackendController extends Controller
         $productSale->user_id = $user_id;
         $productSale->party_id = $request->party_id;
         $productSale->warehouse_id = $warehouse_id;
-        $productSale->store_id = $store_id;
+        $productSale->store_id = NULL;
         $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
         $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
@@ -6149,15 +6198,14 @@ class BackendController extends Controller
 
                 // product stock
                 // product stock
-                $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest()->first();
+                $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
                 $current_stock = $stock_row->current_stock;
 
-                // warehouse store current stock
-                $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
-                    ->where('store_id',$store_id)
+                // warehouse current stock
+                $update_warehouse_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
                     ->where('product_id',$product_id)
                     ->first();
-                $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+                $exists_current_stock = $update_warehouse_current_stock->current_stock;
 
                 if($stock_row->stock_out != $data['qty']){
 
@@ -6172,8 +6220,8 @@ class BackendController extends Controller
                         $stock->product_id= $product_id;
                         $stock->stock_type='whole_sale_increase';
                         $stock->warehouse_id= $warehouse_id;
-                        $stock->store_id=$store_id;
-                        $stock->stock_where='store';
+                        $stock->store_id=NULL;
+                        $stock->stock_where='warehouse';
                         $stock->stock_in_out='stock_out';
                         $stock->previous_stock=$current_stock;
                         $stock->stock_in=0;
@@ -6184,8 +6232,8 @@ class BackendController extends Controller
                         $stock->save();
 
                         // warehouse current stock
-                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock - $new_stock_out;
-                        $update_warehouse_store_current_stock->save();
+                        $update_warehouse_current_stock->current_stock=$exists_current_stock - $new_stock_out;
+                        $update_warehouse_current_stock->save();
                     }else{
                         $new_stock_in = $previous_sale_qty - $data['qty'];
 
@@ -6197,8 +6245,8 @@ class BackendController extends Controller
                         $stock->product_id= $product_id;
                         $stock->stock_type='whole_sale_decrease';
                         $stock->warehouse_id= $warehouse_id;
-                        $stock->store_id=$store_id;
-                        $stock->stock_where='store';
+                        $stock->store_id=NULL;
+                        $stock->stock_where='warehouse';
                         $stock->stock_in_out='stock_in';
                         $stock->previous_stock=$current_stock;
                         $stock->stock_in=$new_stock_in;
@@ -6209,8 +6257,8 @@ class BackendController extends Controller
                         $stock->save();
 
                         // warehouse current stock
-                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $new_stock_in;
-                        $update_warehouse_store_current_stock->save();
+                        $update_warehouse_current_stock->current_stock=$exists_current_stock + $new_stock_in;
+                        $update_warehouse_current_stock->save();
                     }
                 }
             }
@@ -6219,7 +6267,7 @@ class BackendController extends Controller
             $transaction = Transaction::where('ref_id',$request->product_sale_id)->first();
             $transaction->user_id = $user_id;
             $transaction->warehouse_id = $warehouse_id;
-            $transaction->store_id = $store_id;
+            $transaction->store_id = NULL;
             $transaction->party_id = $request->party_id;
             $transaction->payment_type = $request->payment_type;
             $transaction->amount = $request->paid_amount;
@@ -6230,7 +6278,7 @@ class BackendController extends Controller
             $payment_collection->user_id = $user_id;
             $payment_collection->party_id = $request->party_id;
             $payment_collection->warehouse_id = $warehouse_id;
-            $payment_collection->store_id = $store_id;
+            $payment_collection->store_id = NULL;
             $payment_collection->collection_amount = $request->paid_amount;
             $payment_collection->due_amount = $request->due_amount;
             $payment_collection->current_collection_amount = $request->paid_amount;
@@ -6260,7 +6308,7 @@ class BackendController extends Controller
             if(count($product_sale_details) > 0){
                 foreach ($product_sale_details as $product_sale_detail){
                     // current stock
-                    $stock_row = Stock::where('stock_where','store')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
+                    $stock_row = Stock::where('stock_where','warehouse')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
                     $current_stock = $stock_row->current_stock;
 
                     $stock = new Stock();
@@ -6271,8 +6319,8 @@ class BackendController extends Controller
                     $stock->product_id= $product_sale_detail->product_id;
                     $stock->stock_type='whole_sale_delete';
                     $stock->warehouse_id= $productSale->warehouse_id;
-                    $stock->store_id=$productSale->store_id;
-                    $stock->stock_where='store';
+                    $stock->store_id=NULL;
+                    $stock->stock_where='warehouse';
                     $stock->stock_in_out='stock_in';
                     $stock->previous_stock=$current_stock;
                     $stock->stock_in=$product_sale_detail->qty;
@@ -6283,10 +6331,10 @@ class BackendController extends Controller
                     $stock->save();
 
 
-                    $warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$productSale->warehouse_id)->where('store_id',$productSale->store_id)->where('product_id',$product_sale_detail->product_id)->first();
-                    $exists_current_stock = $warehouse_store_current_stock->current_stock;
-                    $warehouse_store_current_stock->current_stock=$exists_current_stock + $product_sale_detail->qty;
-                    $warehouse_store_current_stock->update();
+                    $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->first();
+                    $exists_current_stock = $warehouse_current_stock->current_stock;
+                    $warehouse_current_stock->current_stock=$exists_current_stock + $product_sale_detail->qty;
+                    $warehouse_current_stock->update();
                 }
             }
         }
@@ -12186,5 +12234,8 @@ class BackendController extends Controller
 //            return response()->json(['success'=>false,'response'=>'No Sum Price Found!'], $this->failStatus);
 //        }
 //    }
+
+
+
 
 }
