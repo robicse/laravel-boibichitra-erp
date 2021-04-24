@@ -32,6 +32,7 @@ use App\ProductSale;
 use App\ProductSaleDetail;
 use App\ProductSaleExchange;
 use App\ProductSaleExchangeDetail;
+use App\ProductSalePreviousDetail;
 use App\ProductSaleReturn;
 use App\ProductSaleReturnDetail;
 use App\ProductUnit;
@@ -7228,6 +7229,27 @@ class BackendController extends Controller
     }
 
     public function productSaleExchangeDetails(Request $request){
+        $product_sale_previous_details = DB::table('product_sale_exchanges')
+            ->join('product_sale_previous_details','product_sale_exchanges.id','product_sale_previous_details.pro_sale_ex_id')
+            ->leftJoin('products','product_sale_previous_details.product_id','products.id')
+            ->leftJoin('product_units','product_sale_previous_details.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','product_sale_previous_details.product_brand_id','product_brands.id')
+            ->where('product_sale_exchanges.id',$request->product_sale_exchange_id)
+            ->select(
+                'products.id as product_id',
+                'products.name as product_name',
+                'product_units.id as product_unit_id',
+                'product_units.name as product_unit_name',
+                'product_brands.id as product_brand_id',
+                'product_brands.name as product_brand_name',
+                'product_sale_previous_details.qty',
+                'product_sale_previous_details.id as product_sale_previous_detail_id',
+                'product_sale_previous_details.price as mrp_price',
+                'product_sale_previous_details.vat_amount'
+            )
+            ->get();
+
+
         $product_sale_exchange_details = DB::table('product_sale_exchanges')
             ->join('product_sale_exchange_details','product_sale_exchanges.id','product_sale_exchange_details.pro_sale_ex_id')
             ->leftJoin('products','product_sale_exchange_details.product_id','products.id')
@@ -7248,8 +7270,9 @@ class BackendController extends Controller
             )
             ->get();
 
-        if($product_sale_exchange_details)
+        if($product_sale_previous_details)
         {
+            $success['product_sale_previous_details'] =  $product_sale_previous_details;
             $success['product_sale_exchange_details'] =  $product_sale_exchange_details;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
@@ -7263,7 +7286,7 @@ class BackendController extends Controller
             'sale_invoice_no'=> 'required',
             'party_id'=> 'required',
             'store_id'=> 'required',
-            'previous_paid_amount'=> 'required',
+            //'previous_paid_amount'=> 'required',
             'paid_amount'=> 'required',
             'due_amount'=> 'required',
             'total_amount'=> 'required',
@@ -7287,6 +7310,17 @@ class BackendController extends Controller
         $store_id = $request->store_id;
         $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
 
+        $previous_paid_amount = 0;
+        foreach ($request->products as $data) {
+            //$previous_paid_amount += ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+            $previous_paid_amount += ($data['qty']*$data['mrp_price']);
+        }
+
+        $total_vat_amount = 0;
+        foreach ($request->exchange_products as $data) {
+            $total_vat_amount += $data['vat_amount'];
+        }
+
         // product purchase
         $productSaleExchange = new ProductSaleExchange();
         $productSaleExchange ->invoice_no = $final_invoice;
@@ -7298,10 +7332,10 @@ class BackendController extends Controller
         $productSaleExchange ->sale_exchange_type = 'sale_exchange';
         $productSaleExchange ->discount_type = $request->discount_type ? $request->discount_type : NULL;
         $productSaleExchange ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
-        $productSaleExchange ->previous_paid_amount = $request->previous_paid_amount;
+        $productSaleExchange ->previous_paid_amount = $previous_paid_amount;
         $productSaleExchange ->paid_amount = $request->paid_amount;
         $productSaleExchange ->due_amount = $request->due_amount;
-        $productSaleExchange ->total_vat_amount = $request->total_vat_amount;
+        $productSaleExchange ->total_vat_amount = $total_vat_amount;
         $productSaleExchange ->total_amount = $request->total_amount;
         $productSaleExchange ->sale_exchange_date = $date;
         $productSaleExchange ->sale_exchange_date_time = $date_time;
@@ -7310,8 +7344,7 @@ class BackendController extends Controller
 
         if($insert_id)
         {
-
-            // for live testing
+            // sale products
             foreach ($request->products as $data) {
 
                 $product_id =  $data['product_id'];
@@ -7319,8 +7352,71 @@ class BackendController extends Controller
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
 
                 // product purchase detail
+                $product_sale_previous_detail = new ProductSalePreviousDetail();
+                $product_sale_previous_detail->pro_sale_ex_id = $insert_id;
+                $product_sale_previous_detail->pro_sale_detail_id = 31;
+                $product_sale_previous_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $product_sale_previous_detail->product_unit_id = $data['product_unit_id'] ? $data['product_unit_id'] : NULL;
+                $product_sale_previous_detail->product_id = $product_id;
+                $product_sale_previous_detail->barcode = $barcode;
+                $product_sale_previous_detail->qty = $data['qty'];
+                $product_sale_previous_detail->price = $data['mrp_price'];
+                //$product_sale_previous_detail->vat_amount = $data['vat_amount'];
+                $product_sale_previous_detail->vat_amount = 0;
+                //$product_sale_previous_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                $product_sale_previous_detail->sub_total = ($data['qty']*$data['mrp_price']);
+                $product_sale_previous_detail->sale_exchange_date = $date;
+                $product_sale_previous_detail->save();
+
+                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                if(!empty($check_previous_stock)){
+                    $previous_stock = $check_previous_stock;
+                }else{
+                    $previous_stock = 0;
+                }
+
+                // product stock
+                $stock = new Stock();
+                $stock->ref_id = $insert_id;
+                $stock->user_id = $user_id;
+                $stock->warehouse_id = $warehouse_id;
+                $stock->store_id = $store_id;
+                $stock->product_id = $product_id;
+                $stock->product_unit_id = $data['product_unit_id'];
+                $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $stock->stock_type = 'sale_exchange';
+                $stock->stock_where = 'store';
+                $stock->stock_in_out = 'stock_out';
+                $stock->previous_stock = $previous_stock;
+                $stock->stock_in = $data['qty'];
+                $stock->stock_out = 0;
+                $stock->current_stock = $previous_stock + $data['qty'];
+                $stock->stock_date = $date;
+                $stock->stock_date_time = $date_time;
+                $stock->save();
+
+                // warehouse store current stock
+                $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                    ->where('store_id',$store_id)
+                    ->where('product_id',$product_id)
+                    ->first();
+
+                $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+                $final_warehouse_current_stock = $exists_current_stock + $data['qty'];
+                $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
+                $update_warehouse_store_current_stock->save();
+            }
+
+            // exchange products
+            foreach ($request->exchange_products as $data) {
+
+                $product_id =  $data['product_id'];
+
+                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+
+                // product purchase detail
                 $product_sale_exchange_detail = new ProductSaleExchangeDetail();
-                $product_sale_exchange_detail->product_sale_id = $insert_id;
+                $product_sale_exchange_detail->pro_sale_ex_id = $insert_id;
                 $product_sale_exchange_detail->product_unit_id = $data['product_unit_id'];
                 $product_sale_exchange_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $product_sale_exchange_detail->product_id = $product_id;
@@ -7390,7 +7486,8 @@ class BackendController extends Controller
             // payment paid
             $payment_collection = new PaymentCollection();
             $payment_collection->invoice_no = $final_invoice;
-            $payment_collection->product_sale_id = $insert_id;
+            //$payment_collection->product_sale_id = $insert_id;
+            $payment_collection->product_sale_exchange_id = $insert_id;
             $payment_collection->user_id = $user_id;
             $payment_collection->party_id = $request->party_id;
             $payment_collection->warehouse_id = $warehouse_id;
@@ -7403,17 +7500,7 @@ class BackendController extends Controller
             $payment_collection->collection_date_time = $date_time;
             $payment_collection->save();
 
-            $product_pos_sale = DB::table('product_sales')
-                ->leftJoin('users','product_sales.user_id','users.id')
-                ->leftJoin('parties','product_sales.party_id','parties.id')
-                ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
-                ->leftJoin('stores','product_sales.store_id','stores.id')
-                ->where('product_sales.sale_type','pos_sale')
-                ->where('product_sales.id',$insert_id)
-                ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
-                ->first();
-
-            return response()->json(['success'=>true,'product_pos_sale' => $product_pos_sale], $this->successStatus);
+            return response()->json(['success'=>true,'product_pos_sale' => 'Inserted Successfully!'], $this->successStatus);
 
         }else{
             return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
@@ -7432,6 +7519,48 @@ class BackendController extends Controller
             $date = date('Y-m-d');
             $date_time = date('Y-m-d H:i:s');
 
+            // product sale previous details
+            $product_sale_previous_details = DB::table('product_sale_previous_details')->where('pro_sale_ex_id',$request->product_sale_exchange_id)->get();
+
+            if(count($product_sale_previous_details) > 0){
+                foreach ($product_sale_previous_details as $product_sale_previous_detail){
+                    // current stock
+                    $stock_row = Stock::where('stock_where','store')->where('warehouse_id',$productSaleExchange->warehouse_id)
+                        ->where('product_id',$product_sale_previous_detail->product_id)
+                        ->latest('id')->first();
+                    $current_stock = $stock_row->current_stock;
+
+                    $stock = new Stock();
+                    $stock->ref_id=$productSaleExchange->id;
+                    $stock->user_id=$user_id;
+                    $stock->product_unit_id= $product_sale_previous_detail->product_unit_id;
+                    $stock->product_brand_id= $product_sale_previous_detail->product_brand_id;
+                    $stock->product_id= $product_sale_previous_detail->product_id;
+                    $stock->stock_type='sale_exchange_delete';
+                    $stock->warehouse_id= $productSaleExchange->warehouse_id;
+                    $stock->store_id=$productSaleExchange->store_id;
+                    $stock->stock_where='store';
+                    $stock->stock_in_out='stock_out';
+                    $stock->previous_stock=$current_stock;
+                    $stock->stock_in=0;
+                    $stock->stock_out=$product_sale_previous_detail->qty;
+                    $stock->current_stock=$current_stock - $product_sale_previous_detail->qty;
+                    $stock->stock_date=$date;
+                    $stock->stock_date_time=$date_time;
+                    $stock->save();
+
+
+                    $warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$productSaleExchange->warehouse_id)
+                        ->where('store_id',$productSaleExchange->store_id)
+                        ->where('product_id',$product_sale_previous_detail->product_id)
+                        ->first();
+                    $exists_current_stock = $warehouse_store_current_stock->current_stock;
+                    $warehouse_store_current_stock->current_stock=$exists_current_stock - $product_sale_previous_detail->qty;
+                    $warehouse_store_current_stock->update();
+                }
+            }
+
+            // product sale exchange details
             $product_sale_exchange_details = DB::table('product_sale_exchange_details')->where('pro_sale_ex_id',$request->product_sale_exchange_id)->get();
 
             if(count($product_sale_exchange_details) > 0){
@@ -7449,8 +7578,8 @@ class BackendController extends Controller
                     $stock->product_brand_id= $product_sale_exchange_detail->product_brand_id;
                     $stock->product_id= $product_sale_exchange_detail->product_id;
                     $stock->stock_type='sale_exchange_delete';
-                    $stock->warehouse_id= $productSale->warehouse_id;
-                    $stock->store_id=$productSale->store_id;
+                    $stock->warehouse_id= $productSaleExchange->warehouse_id;
+                    $stock->store_id=$productSaleExchange->store_id;
                     $stock->stock_where='store';
                     $stock->stock_in_out='stock_in';
                     $stock->previous_stock=$current_stock;
@@ -7462,7 +7591,7 @@ class BackendController extends Controller
                     $stock->save();
 
 
-                    $warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$productSale->warehouse_id)
+                    $warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$productSaleExchange->warehouse_id)
                         ->where('store_id',$productSaleExchange->store_id)
                         ->where('product_id',$product_sale_exchange_detail->product_id)
                         ->first();
@@ -7474,6 +7603,7 @@ class BackendController extends Controller
         }
         $delete_sale = $productSaleExchange->delete();
 
+        DB::table('product_sale_previous_details')->where('pro_sale_ex_id',$request->product_sale_exchange_id)->delete();
         DB::table('product_sale_exchange_details')->where('pro_sale_ex_id',$request->product_sale_exchange_id)->delete();
         //DB::table('stocks')->where('ref_id',$request->product_sale_id)->delete();
         DB::table('transactions')->where('ref_id',$request->product_sale_exchange_id)->delete();
