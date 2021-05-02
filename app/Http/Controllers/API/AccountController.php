@@ -2,73 +2,26 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Attendance;
 use App\ChartOfAccount;
 use App\ChartOfAccountTransaction;
 use App\ChartOfAccountTransactionDetail;
-use App\Department;
-use App\Designation;
-use App\Employee;
-use App\EmployeeOfficeInformation;
-use App\EmployeeSalaryInformation;
 use App\ExpenseCategory;
-use App\Helpers\UserInfo;
-use App\Holiday;
 use App\Http\Controllers\Controller;
-use App\LeaveApplication;
-use App\LeaveCategory;
 use App\Party;
-use App\PaymentCollection;
-use App\PaymentPaid;
-use App\Payroll;
-use App\Payslip;
-use App\Product;
-use App\ProductBrand;
-use App\ProductPurchase;
-use App\ProductPurchaseDetail;
-use App\ProductPurchaseReturn;
-use App\ProductPurchaseReturnDetail;
-use App\ProductSale;
-use App\ProductSaleDetail;
-use App\ProductSaleExchange;
-use App\ProductSaleExchangeDetail;
-use App\ProductSalePreviousDetail;
-use App\ProductSaleReturn;
-use App\ProductSaleReturnDetail;
-use App\ProductUnit;
-use App\ProductVat;
-use App\Stock;
-use App\StockTransfer;
-use App\StockTransferDetail;
-use App\StockTransferRequest;
-use App\StockTransferRequestDetail;
-use App\Store;
 use App\StoreExpense;
-use App\StoreStockReturn;
-use App\StoreStockReturnDetail;
 use App\TangibleAssets;
-use App\Transaction;
 use App\User;
 use App\VoucherType;
-use App\Warehouse;
-use App\WarehouseCurrentStock;
-use App\WarehouseProductDamage;
-use App\WarehouseProductDamageDetail;
-use App\WarehouseStoreCurrentStock;
-use App\Weekend;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Carbon;
+
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
+
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Intervention\Image\Facades\Image;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
+
 
 class AccountController extends Controller
 {
@@ -1228,7 +1181,13 @@ class AccountController extends Controller
         }
 
 
-
+//        $gl_pre_valance_data = DB::table('chart_of_account_transaction_details')
+//            ->select('chart_of_account_name', DB::raw('SUM(debit) as debit, SUM(credit) as credit'))
+//            ->where('transaction_date', '<',$request->from_date)
+//            ->where('chart_of_account_name',$request->chart_of_account_name)
+//            ->groupBy('chart_of_account_name')
+//            ->first();
+//        return response()->json(['success'=>true,'response' => $gl_pre_valance_data], $this->successStatus);
 
 
 
@@ -1244,53 +1203,55 @@ class AccountController extends Controller
             if( (!empty($from_date)) && (!empty($to_date)) )
             {
                 $gl_pre_valance_data = DB::table('chart_of_account_transaction_details')
-                    ->select('chart_of_account_number', DB::raw('SUM(debit) as debit, SUM(credit) as credit'))
+                    ->select('chart_of_account_name', DB::raw('SUM(debit) as debit, SUM(credit) as credit'))
                     ->where('transaction_date', '<',$from_date)
-                    ->where('chart_of_account_number',$chart_of_account_name)
+                    ->where('chart_of_account_name',$chart_of_account_name)
                     ->where('store_id',$store_id)
-                    ->groupBy('chart_of_account_number')
+                    ->groupBy('chart_of_account_name')
                     ->first();
             }else{
                 $gl_pre_valance_data = DB::table('chart_of_account_transaction_details')
-                    ->select('chart_of_account_number', DB::raw('SUM(debit) as debit, SUM(credit) as credit'))
+                    ->select('chart_of_account_name', DB::raw('SUM(debit) as debit, SUM(credit) as credit'))
                     ->where('transaction_date', '<',$from_date)
                     ->where('store_id',$store_id)
-                    ->groupBy('chart_of_account_number')
+                    ->groupBy('chart_of_account_name')
                     ->first();
             }
         }else{
             if( (!empty($from_date)) && (!empty($to_date)) )
             {
                 $gl_pre_valance_data = DB::table('chart_of_account_transaction_details')
-                    ->select('chart_of_account_number', DB::raw('SUM(debit) as debit, SUM(credit) as credit'))
-                    ->where('transaction_date', '<',$from_date)
-                    ->where('chart_of_account_number',$chart_of_account_name)
-                    ->groupBy('chart_of_account_number')
+                    ->select('chart_of_account_name', DB::raw('SUM(debit) as debit, SUM(credit) as credit'))
+                    ->where('transaction_date', '<',$request->from_date)
+                    ->where('chart_of_account_name',$request->chart_of_account_name)
+                    ->groupBy('chart_of_account_name')
                     ->first();
             }else{
                 $gl_pre_valance_data = DB::table('chart_of_account_transaction_details')
-                    ->select('chart_of_account_number', DB::raw('SUM(debit) as debit, SUM(credit) as credit'))
+                    ->select('chart_of_account_name', DB::raw('SUM(debit) as debit, SUM(credit) as credit'))
                     ->where('transaction_date', '<',$from_date)
-                    ->groupBy('chart_of_account_number')
+                    ->groupBy('chart_of_account_name')
                     ->first();
             }
         }
 
-        //dd($gl_pre_valance_data);
+//        dd($gl_pre_valance_data);
 
         $PreBalance=0;
         $preDebCre = 'De/Cr';
+        $pre_debit = 0;
+        $pre_credit = 0;
         if(!empty($gl_pre_valance_data))
         {
             //echo 'ok';exit;
-            $debit = $gl_pre_valance_data->debit;
-            $credit = $gl_pre_valance_data->credit;
-            if($debit > $credit)
+            $pre_debit = $gl_pre_valance_data->debit == NULL ? 0 : $gl_pre_valance_data->debit;
+            $pre_credit = $gl_pre_valance_data->credit == NULL ? 0 : $gl_pre_valance_data->credit;
+            if($pre_debit > $pre_credit)
             {
-                $PreBalance = $debit - $credit;
+                $PreBalance = $pre_debit - $pre_credit;
                 $preDebCre = 'De';
             }else{
-                $PreBalance = $credit - $debit;
+                $PreBalance = $pre_credit - $pre_debit;
                 $preDebCre = 'Cr';
             }
         }
@@ -1378,13 +1339,15 @@ class AccountController extends Controller
                 'chart_of_account_transaction' => $chart_of_account_transaction,
                 'PreBalance' => $PreBalance,
                 'preDebCre' => $preDebCre,
+                'pre_debit' => $pre_debit,
+                'pre_credit' => $pre_credit,
                 'chart_of_account_name' => $chart_of_account_name,
                 'from_date' => $from_date,
                 'to_date' => $to_date,
             ];
-            //return response()->json(['success'=>true,'response' => $ledger_data], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $ledger_data], $this->successStatus);
 
-            return response()->json(['success'=>true,'response' => $chart_of_account_transaction], $this->successStatus);
+            //return response()->json(['success'=>true,'response' => $chart_of_account_transaction], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Chart Of Account Transaction Found!'], $this->failStatus);
         }

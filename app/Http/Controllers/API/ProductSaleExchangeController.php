@@ -180,7 +180,7 @@ class ProductSaleExchangeController extends Controller
         foreach ($request->products as $data) {
             $product_id =  $data['product_id'];
             $vat_amount = Product::where('id',$product_id)->pluck('vat_amount')->first();
-            $previous_paid_amount += ($data['qty']*$data['mrp_price']) + ($data['qty']*$vat_amount);
+            $previous_paid_amount += ($data['exchange_quantity']*$data['mrp_price']) + ($data['current_qty']*$vat_amount);
         }
 
         $total_vat_amount = 0;
@@ -231,63 +231,65 @@ class ProductSaleExchangeController extends Controller
             // sale products
             foreach ($request->products as $data) {
 
-                $product_id =  $data['product_id'];
+                if($data['exchange_quantity'] > 0){
+                    $product_id =  $data['product_id'];
 
-                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
-                $vat_amount = Product::where('id',$product_id)->pluck('vat_amount')->first();
+                    $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+                    $vat_amount = Product::where('id',$product_id)->pluck('vat_amount')->first();
 
-                // product purchase detail
-                $product_sale_previous_detail = new ProductSalePreviousDetail();
-                $product_sale_previous_detail->pro_sale_ex_id = $insert_id;
-                $product_sale_previous_detail->pro_sale_detail_id = $data['product_sale_detail_id'];
-                $product_sale_previous_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $product_sale_previous_detail->product_unit_id = $data['product_unit_id'] ? $data['product_unit_id'] : NULL;
-                $product_sale_previous_detail->product_id = $product_id;
-                $product_sale_previous_detail->barcode = $barcode;
-                $product_sale_previous_detail->qty = $data['qty'];
-                $product_sale_previous_detail->price = $data['mrp_price'];
-                $product_sale_previous_detail->vat_amount = $vat_amount;
-                $product_sale_previous_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$vat_amount);
-                $product_sale_previous_detail->sale_exchange_date = $date;
-                $product_sale_previous_detail->save();
+                    // product purchase detail
+                    $product_sale_previous_detail = new ProductSalePreviousDetail();
+                    $product_sale_previous_detail->pro_sale_ex_id = $insert_id;
+                    $product_sale_previous_detail->pro_sale_detail_id = $data['product_sale_detail_id'];
+                    $product_sale_previous_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                    $product_sale_previous_detail->product_unit_id = $data['product_unit_id'] ? $data['product_unit_id'] : NULL;
+                    $product_sale_previous_detail->product_id = $product_id;
+                    $product_sale_previous_detail->barcode = $barcode;
+                    $product_sale_previous_detail->qty = $data['exchange_quantity'];
+                    $product_sale_previous_detail->price = $data['mrp_price'];
+                    $product_sale_previous_detail->vat_amount = $vat_amount;
+                    $product_sale_previous_detail->sub_total = ($data['exchange_quantity']*$data['mrp_price']) + ($data['exchange_quantity']*$vat_amount);
+                    $product_sale_previous_detail->sale_exchange_date = $date;
+                    $product_sale_previous_detail->save();
 
-                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
-                if(!empty($check_previous_stock)){
-                    $previous_stock = $check_previous_stock;
-                }else{
-                    $previous_stock = 0;
+                    $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                    if(!empty($check_previous_stock)){
+                        $previous_stock = $check_previous_stock;
+                    }else{
+                        $previous_stock = 0;
+                    }
+
+                    // product stock
+                    $stock = new Stock();
+                    $stock->ref_id = $insert_id;
+                    $stock->user_id = $user_id;
+                    $stock->warehouse_id = $warehouse_id;
+                    $stock->store_id = $store_id;
+                    $stock->product_id = $product_id;
+                    $stock->product_unit_id = $data['product_unit_id'];
+                    $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                    $stock->stock_type = 'sale_exchange';
+                    $stock->stock_where = 'store';
+                    $stock->stock_in_out = 'stock_out';
+                    $stock->previous_stock = $previous_stock;
+                    $stock->stock_in = $data['exchange_quantity'];
+                    $stock->stock_out = 0;
+                    $stock->current_stock = $previous_stock + $data['exchange_quantity'];
+                    $stock->stock_date = $date;
+                    $stock->stock_date_time = $date_time;
+                    $stock->save();
+
+                    // warehouse store current stock
+                    $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                        ->where('store_id',$store_id)
+                        ->where('product_id',$product_id)
+                        ->first();
+
+                    $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+                    $final_warehouse_current_stock = $exists_current_stock + $data['exchange_quantity'];
+                    $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
+                    $update_warehouse_store_current_stock->save();
                 }
-
-                // product stock
-                $stock = new Stock();
-                $stock->ref_id = $insert_id;
-                $stock->user_id = $user_id;
-                $stock->warehouse_id = $warehouse_id;
-                $stock->store_id = $store_id;
-                $stock->product_id = $product_id;
-                $stock->product_unit_id = $data['product_unit_id'];
-                $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $stock->stock_type = 'sale_exchange';
-                $stock->stock_where = 'store';
-                $stock->stock_in_out = 'stock_out';
-                $stock->previous_stock = $previous_stock;
-                $stock->stock_in = $data['qty'];
-                $stock->stock_out = 0;
-                $stock->current_stock = $previous_stock + $data['qty'];
-                $stock->stock_date = $date;
-                $stock->stock_date_time = $date_time;
-                $stock->save();
-
-                // warehouse store current stock
-                $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
-                    ->where('store_id',$store_id)
-                    ->where('product_id',$product_id)
-                    ->first();
-
-                $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
-                $final_warehouse_current_stock = $exists_current_stock + $data['qty'];
-                $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
-                $update_warehouse_store_current_stock->save();
             }
 
             // exchange products
@@ -410,12 +412,12 @@ class ProductSaleExchangeController extends Controller
         $store_id = $request->store_id;
         $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
 
-        $previous_paid_amount = 0;
-        foreach ($request->products as $data) {
-            $product_id =  $data['product_id'];
-            $vat_amount = Product::where('id',$product_id)->pluck('vat_amount')->first();
-            $previous_paid_amount += ($data['qty']*$data['mrp_price']) + ($data['qty']*$vat_amount);
-        }
+        $previous_paid_amount = $request->previous_paid_amount ? $request->previous_paid_amount : 0;
+//        foreach ($request->products as $data) {
+//            $product_id =  $data['product_id'];
+//            $vat_amount = Product::where('id',$product_id)->pluck('vat_amount')->first();
+//            $previous_paid_amount += ($data['exchange_quantity']*$data['mrp_price']) + ($data['exchange_quantity']*$vat_amount);
+//        }
 
         $total_vat_amount = 0;
         foreach ($request->exchange_products as $data) {
@@ -474,10 +476,10 @@ class ProductSaleExchangeController extends Controller
                 $product_sale_previous_detail->product_unit_id = $data['product_unit_id'] ? $data['product_unit_id'] : NULL;
                 $product_sale_previous_detail->product_id = $product_id;
                 $product_sale_previous_detail->barcode = $barcode;
-                $product_sale_previous_detail->qty = $data['qty'];
+                $product_sale_previous_detail->qty = $data['exchange_quantity'];
                 $product_sale_previous_detail->price = $data['mrp_price'];
                 $product_sale_previous_detail->vat_amount = $vat_amount;
-                $product_sale_previous_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$vat_amount);
+                $product_sale_previous_detail->sub_total = ($data['exchange_quantity']*$data['mrp_price']) + ($data['exchange_quantity']*$vat_amount);
                 $product_sale_previous_detail->sale_exchange_date = $date;
                 $product_sale_previous_detail->update();
 
@@ -495,10 +497,10 @@ class ProductSaleExchangeController extends Controller
                     ->first();
                 $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
 
-                if($stock_row->stock_out != $data['qty']){
+                if($stock_row->stock_out != $data['exchange_quantity']){
 
-                    if($data['qty'] > $stock_row->stock_in){
-                        $new_stock_out = $data['qty'] - $previous_sale_qty;
+                    if($data['exchange_quantity'] > $stock_row->stock_in){
+                        $new_stock_out = $data['exchange_quantity'] - $previous_sale_qty;
 
                         $stock = new Stock();
                         $stock->ref_id=$request->product_sale_exchange_id;
@@ -523,7 +525,7 @@ class ProductSaleExchangeController extends Controller
                         $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $new_stock_out;
                         $update_warehouse_store_current_stock->save();
                     }else{
-                        $new_stock_in = $previous_sale_qty - $data['qty'];
+                        $new_stock_in = $previous_sale_qty - $data['exchange_quantity'];
 
                         $stock = new Stock();
                         $stock->ref_id=$request->product_sale_exchange_id;
@@ -657,7 +659,7 @@ class ProductSaleExchangeController extends Controller
             $transaction->update();
 
             // payment paid
-            $payment_collection = PaymentCollection::where('product_sale_id',$request->product_sale_exchange_id)->first();
+            $payment_collection = PaymentCollection::where('product_sale_exchange_id',$request->product_sale_exchange_id)->first();
             $payment_collection->user_id = $user_id;
             $payment_collection->party_id = $request->party_id;
             $payment_collection->warehouse_id = $warehouse_id;
