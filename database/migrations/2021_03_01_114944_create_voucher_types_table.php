@@ -16,6 +16,7 @@ class CreateVoucherTypesTable extends Migration
         Schema::create('voucher_types', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('name');
+            $table->string('voucher_prefix');
             $table->integer('status')->default(1);
             $table->timestamps();
         });

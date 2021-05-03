@@ -252,7 +252,7 @@ Route::middleware('auth:api')->post('/product_pos_sale_edit', 'API\ProductSaleCo
 Route::middleware('auth:api')->post('/product_pos_sale_delete', 'API\ProductSaleController@productPOSSaleDelete');
 
 // product sale return
-Route::middleware('auth:api')->get('/product_sale_invoice_list', 'API\ProductSaleController@0');
+Route::middleware('auth:api')->get('/product_sale_invoice_list', 'API\ProductSaleController@productSaleInvoiceList');
 Route::middleware('auth:api')->post('/product_sale_details', 'API\ProductSaleController@productSaleDetails');
 Route::middleware('auth:api')->get('/product_sale_return_list', 'API\ProductSaleController@productSaleReturnList');
 Route::middleware('auth:api')->post('/product_sale_return_details', 'API\ProductSaleController@productSaleReturnDetails');

@@ -33,7 +33,7 @@ class AccountController extends Controller
 
     // voucher type
     public function voucherTypeList(){
-        $voucher_types = DB::table('voucher_types')->select('id','name','status')->orderBy('id','desc')->get();
+        $voucher_types = DB::table('voucher_types')->select('id','name','voucher_prefix','status')->orderBy('id','desc')->get();
 
         if($voucher_types)
         {
@@ -48,6 +48,7 @@ class AccountController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|unique:voucher_types,name',
+            'voucher_prefix'=> 'required',
             'status'=> 'required',
         ]);
 
@@ -64,6 +65,7 @@ class AccountController extends Controller
 
         $voucherType = new VoucherType();
         $voucherType->name = $request->name;
+        $voucherType->voucher_prefix = $request->voucher_prefix;
         $voucherType->status = $request->status;
         $voucherType->save();
         $insert_id = $voucherType->id;
@@ -80,6 +82,7 @@ class AccountController extends Controller
         $validator = Validator::make($request->all(), [
             'voucher_type_id'=> 'required',
             'name' => 'required|unique:voucher_types,name,'.$request->voucher_type_id,
+            'voucher_prefix'=> 'required',
             'status'=> 'required',
         ]);
 
@@ -100,6 +103,7 @@ class AccountController extends Controller
 
         $voucher_types = VoucherType::find($request->voucher_type_id);
         $voucher_types->name = $request->name;
+        $voucher_types->voucher_prefix = $request->voucher_prefix;
         $voucher_types->status = $request->status;
         $update_voucher_type = $voucher_types->save();
 
@@ -1012,10 +1016,17 @@ class AccountController extends Controller
         }
         $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
 
+        if($request->store_id != 0){
+            $store_id = $request->store_id;
+        }else{
+            $store_id = NULL;
+        }
+
 
         $chart_of_account_transactions = new ChartOfAccountTransaction();
         $chart_of_account_transactions->user_id = $user_id;
-        $chart_of_account_transactions->store_id = isset($request->store_id) ? $request->store_id : NULL;
+        //$chart_of_account_transactions->store_id = isset($request->store_id) ? $request->store_id : NULL;
+        $chart_of_account_transactions->store_id = $store_id;
         $chart_of_account_transactions->voucher_type_id = $request->voucher_type_id;
         $chart_of_account_transactions->voucher_no = $final_voucher_no;
         $chart_of_account_transactions->is_approved = 'approved';
@@ -1039,7 +1050,7 @@ class AccountController extends Controller
                 $chart_of_account_info = ChartOfAccount::where('head_name',$data['chart_of_account_name']['head_name'])->first();
 
                 $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                $chart_of_account_transaction_details->store_id = isset($request->store_id) ? $request->store_id : NULL;
+                $chart_of_account_transaction_details->store_id = $store_id;
                 $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
                 $chart_of_account_transaction_details->chart_of_account_id = $chart_of_account_info->id;
                 $chart_of_account_transaction_details->chart_of_account_number = $chart_of_account_info->head_code;
@@ -1090,23 +1101,29 @@ class AccountController extends Controller
         $year = date('Y', strtotime($request->date));
         $transaction_date_time = date('Y-m-d H:i:s');
 
-        $get_voucher_name = VoucherType::where('id',$request->voucher_type_id)->pluck('name')->first();
-        $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',$request->voucher_type_id)->latest()->pluck('voucher_no')->first();
-        if(!empty($get_voucher_no)){
-            $get_voucher_name_str = $get_voucher_name."-";
-            $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
-            $voucher_no = $get_voucher+1;
+//        $get_voucher_name = VoucherType::where('id',$request->voucher_type_id)->pluck('name')->first();
+//        $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',$request->voucher_type_id)->latest()->pluck('voucher_no')->first();
+//        if(!empty($get_voucher_no)){
+//            $get_voucher_name_str = $get_voucher_name."-";
+//            $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+//            $voucher_no = $get_voucher+1;
+//        }else{
+//            $voucher_no = 8000;
+//        }
+//        $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+
+        if($request->store_id != 0){
+            $store_id = $request->store_id;
         }else{
-            $voucher_no = 8000;
+            $store_id = NULL;
         }
-        $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
 
 
         $chart_of_account_transactions = ChartOfAccountTransaction::find($request->chart_of_account_transaction_id);
         $chart_of_account_transactions->user_id = $user_id;
-        $chart_of_account_transactions->store_id = isset($request->store_id) ? $request->store_id : NULL;
+        $chart_of_account_transactions->store_id = $store_id;
         $chart_of_account_transactions->voucher_type_id = $request->voucher_type_id;
-        $chart_of_account_transactions->voucher_no = $final_voucher_no;
+        //$chart_of_account_transactions->voucher_no = $final_voucher_no;
         $chart_of_account_transactions->transaction_date = $transaction_date;
         $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
         $chart_of_account_transactions->save();
@@ -1168,6 +1185,8 @@ class AccountController extends Controller
     public function ledger(Request $request){
         $validator = Validator::make($request->all(), [
             'chart_of_account_name'=> 'required',
+            'from_date'=> 'required',
+            'to_date'=> 'required',
         ]);
 
         if ($validator->fails()) {
@@ -1199,7 +1218,7 @@ class AccountController extends Controller
         $to_date = $request->to_date;
 
 
-        if(!empty($store_id)){
+        if($store_id != 0){
             if( (!empty($from_date)) && (!empty($to_date)) )
             {
                 $gl_pre_valance_data = DB::table('chart_of_account_transaction_details')
@@ -1369,49 +1388,103 @@ class AccountController extends Controller
             return response()->json($response, $this-> validationStatus);
         }
 
-        $sum_asset_amount = DB::table('chart_of_account_transaction_details')
-            ->where('chart_of_account_type','=','A')
-            ->where('year','=',$request->year)
-            ->where('month','<=',$request->month)
-            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
-            ->first();
+        if($request->store_id != 0){
+            $sum_asset_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','A')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->where('store_id',$request->store_id)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
 
-        $sum_liability_amount = DB::table('chart_of_account_transaction_details')
-            ->where('chart_of_account_type','=','L')
-            ->where('year','=',$request->year)
-            ->where('month','<=',$request->month)
-            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
-            ->first();
+            $sum_liability_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','L')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->where('store_id',$request->store_id)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
 
-        $sum_income_amount = DB::table('chart_of_account_transaction_details')
-            ->where('chart_of_account_type','=','I')
-            ->where('year','=',$request->year)
-            ->where('month','<=',$request->month)
-            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
-            ->first();
+            $sum_income_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','I')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->where('store_id',$request->store_id)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
 
-        $sum_expense_amount = DB::table('chart_of_account_transaction_details')
-            ->where('chart_of_account_type','=','E')
-            ->where('year','=',$request->year)
-            ->where('month','<=',$request->month)
-            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
-            ->first();
+            $sum_expense_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','E')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->where('store_id',$request->store_id)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
 
 
 
-        $sum_equity_amount = DB::table('chart_of_account_transaction_details')
-            ->where('chart_of_account_type','=','EL')
-            ->where('year','=',$request->year)
-            ->where('month','<=',$request->month)
-            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
-            ->first();
+            $sum_equity_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','EL')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->where('store_id',$request->store_id)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
 
-        $sum_drawing_amount = DB::table('chart_of_account_transaction_details')
-            ->where('chart_of_account_type','=','DL')
-            ->where('year','=',$request->year)
-            ->where('month','<=',$request->month)
-            ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
-            ->first();
+            $sum_drawing_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','DL')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->where('store_id',$request->store_id)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
+        }else{
+            $sum_asset_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','A')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
+
+            $sum_liability_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','L')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
+
+            $sum_income_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','I')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
+
+            $sum_expense_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','E')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
+
+
+
+            $sum_equity_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','EL')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
+
+            $sum_drawing_amount = DB::table('chart_of_account_transaction_details')
+                ->where('chart_of_account_type','=','DL')
+                ->where('year','=',$request->year)
+                ->where('month','<=',$request->month)
+                ->select(DB::raw('SUM(debit) as total_debit'),DB::raw('SUM(credit) as total_credit'))
+                ->first();
+        }
+
+
 
         $response = [
             'sum_asset_amount' => $sum_asset_amount,

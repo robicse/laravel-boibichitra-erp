@@ -21,6 +21,7 @@ class ReportController extends Controller
         $validator = Validator::make($request->all(), [
             'from_date' => 'required',
             'to_date'=> 'required',
+            'sale_type'=> 'required',
         ]);
 
         if ($validator->fails()) {
@@ -36,19 +37,50 @@ class ReportController extends Controller
         $from_date = $request->from_date ? $request->from_date : '';
         $to_date = $request->to_date ? $request->to_date : '';
         $sale_type = $request->sale_type ? $request->sale_type : '';
+        $warehouse_id = $request->warehouse_id ? $request->warehouse_id : '';
+        $store_id = $request->store_id ? $request->store_id : '';
 
 
         if($sale_type != ''){
-            $product_sales = ProductSale::where('sale_date','>=',$from_date)
-                ->where('sale_date','<=',$to_date)
-                ->where('sale_type',$sale_type)
-                ->get();
-            $total_sale_history = DB::table('product_sales')
-                ->where('sale_date','>=',$from_date)
-                ->where('sale_date','<=',$to_date)
-                ->where('sale_type',$sale_type)
-                ->select(DB::raw('SUM(total_amount) as total_sale'))
-                ->first();
+            if($sale_type == 'pos_sale'){
+                $product_sales = ProductSale::where('sale_date','>=',$from_date)
+                    ->where('sale_date','<=',$to_date)
+                    ->where('sale_type',$sale_type)
+                    ->where('store_id',$store_id)
+                    ->get();
+                $total_sale_history = DB::table('product_sales')
+                    ->where('sale_date','>=',$from_date)
+                    ->where('sale_date','<=',$to_date)
+                    ->where('sale_type',$sale_type)
+                    ->where('store_id',$store_id)
+                    ->select(DB::raw('SUM(total_amount) as total_sale'))
+                    ->first();
+            }elseif($sale_type == 'whole_sale'){
+                $product_sales = ProductSale::where('sale_date','>=',$from_date)
+                    ->where('sale_date','<=',$to_date)
+                    ->where('sale_type',$sale_type)
+                    ->where('warehouse_id',$warehouse_id)
+                    ->get();
+                $total_sale_history = DB::table('product_sales')
+                    ->where('sale_date','>=',$from_date)
+                    ->where('sale_date','<=',$to_date)
+                    ->where('sale_type',$sale_type)
+                    ->where('warehouse_id',$warehouse_id)
+                    ->select(DB::raw('SUM(total_amount) as total_sale'))
+                    ->first();
+            }else{
+                $product_sales = ProductSale::where('sale_date','>=',$from_date)
+                    ->where('sale_date','<=',$to_date)
+                    ->where('sale_type',$sale_type)
+                    ->get();
+                $total_sale_history = DB::table('product_sales')
+                    ->where('sale_date','>=',$from_date)
+                    ->where('sale_date','<=',$to_date)
+                    ->where('sale_type',$sale_type)
+                    ->select(DB::raw('SUM(total_amount) as total_sale'))
+                    ->first();
+            }
+
             $grand_total_amount = $total_sale_history->total_sale;
         }else{
             $product_sales = ProductSale::where('sale_date','>=',$from_date)

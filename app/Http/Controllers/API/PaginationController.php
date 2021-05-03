@@ -395,9 +395,25 @@ class PaginationController extends Controller
             ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.whole_sale_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->paginate(12);
 
+        $warehouse_stock_total_amounts = DB::table('warehouse_current_stocks')
+            ->leftJoin('products','warehouse_current_stocks.product_id','products.id')
+            ->where('warehouse_current_stocks.warehouse_id',$request->warehouse_id)
+            ->where('warehouse_current_stocks.current_stock','>',0)
+            //->select(DB::raw('SUM(products.selling_price) as sum_total_amount'))
+            ->select('warehouse_current_stocks.*','products.purchase_price','products.selling_price')
+            ->get();
+
+        $warehouse_stock_sum_total_amount = 0;
+        if(count($warehouse_stock_total_amounts) > 0){
+            foreach ($warehouse_stock_total_amounts as $warehouse_stock_amount){
+                $warehouse_stock_sum_total_amount += ($warehouse_stock_amount->current_stock*$warehouse_stock_amount->selling_price);
+            }
+        }
+
         if($warehouse_stock_product)
         {
             $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
+            $success['warehouse_stock_sum_total_amount'] =  $warehouse_stock_sum_total_amount;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
@@ -412,13 +428,28 @@ class PaginationController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('warehouse_store_current_stocks.store_id',$request->store_id)
-            ->where('products.item_code',$request->item_code)
+            ->where('warehouse_store_current_stocks.current_stock','>',0)
             ->select('warehouse_store_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->paginate(12);
+
+        $warehouse_store_stock_total_amounts = DB::table('warehouse_store_current_stocks')
+            ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
+            ->where('warehouse_store_current_stocks.store_id',$request->store_id)
+            ->where('warehouse_store_current_stocks.current_stock','>',0)
+            ->select('warehouse_store_current_stocks.*','products.purchase_price','products.selling_price')
+            ->get();
+
+        $warehouse_store_stock_sum_total_amount = 0;
+        if(count($warehouse_store_stock_total_amounts) > 0){
+            foreach ($warehouse_store_stock_total_amounts as $warehouse_store_stock_amount){
+                $warehouse_store_stock_sum_total_amount += ($warehouse_store_stock_amount->current_stock*$warehouse_store_stock_amount->selling_price);
+            }
+        }
 
         if($store_stock_product)
         {
             $success['store_current_stock_list'] =  $store_stock_product;
+            $success['warehouse_store_stock_sum_total_amount'] =  $warehouse_store_stock_sum_total_amount;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Store Current Stock List Found!'], $this->failStatus);
