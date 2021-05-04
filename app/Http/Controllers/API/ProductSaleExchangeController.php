@@ -5,12 +5,14 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\PaymentCollection;
 use App\Product;
+use App\ProductSale;
 use App\ProductSaleExchange;
 use App\ProductSaleExchangeDetail;
 use App\ProductSalePreviousDetail;
 use App\Stock;
 use App\Store;
 use App\Transaction;
+use App\WarehouseCurrentStock;
 use App\WarehouseStoreCurrentStock;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -204,6 +206,8 @@ class ProductSaleExchangeController extends Controller
         }
         // discount end
 
+        $sale_type = ProductSale::where('invoice_no',$request->sale_invoice_no)->pluck('sale_type')->first();
+
         // product purchase
         $productSaleExchange = new ProductSaleExchange();
         $productSaleExchange ->invoice_no = $final_invoice;
@@ -252,7 +256,13 @@ class ProductSaleExchangeController extends Controller
                     $product_sale_previous_detail->sale_exchange_date = $date;
                     $product_sale_previous_detail->save();
 
-                    $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                    if($sale_type == 'pos_sale') {
+                        $check_previous_stock = Stock::where('warehouse_id', $warehouse_id)->where('store_id', $store_id)->where('stock_where', 'store')->where('product_id', $product_id)->latest()->pluck('current_stock')->first();
+                    }
+
+                    if($sale_type == 'whole_sale') {
+                        $check_previous_stock = Stock::where('warehouse_id', $warehouse_id)->where('store_id', NULL)->where('stock_where', 'store')->where('product_id', $product_id)->latest()->pluck('current_stock')->first();
+                    }
                     if(!empty($check_previous_stock)){
                         $previous_stock = $check_previous_stock;
                     }else{
@@ -279,16 +289,30 @@ class ProductSaleExchangeController extends Controller
                     $stock->stock_date_time = $date_time;
                     $stock->save();
 
-                    // warehouse store current stock
-                    $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
-                        ->where('store_id',$store_id)
-                        ->where('product_id',$product_id)
-                        ->first();
+                    if($sale_type == 'pos_sale'){
+                        // warehouse store current stock
+                        $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                            ->where('store_id',$store_id)
+                            ->where('product_id',$product_id)
+                            ->first();
 
-                    $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
-                    $final_warehouse_current_stock = $exists_current_stock + $data['exchange_quantity'];
-                    $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
-                    $update_warehouse_store_current_stock->save();
+                        $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+                        $final_warehouse_store_current_stock = $exists_current_stock + $data['exchange_quantity'];
+                        $update_warehouse_store_current_stock->current_stock=$final_warehouse_store_current_stock;
+                        $update_warehouse_store_current_stock->save();
+                    }
+
+                    if($sale_type == 'whole_sale'){
+                        // warehouse current stock
+                        $update_warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)
+                            ->where('product_id',$product_id)
+                            ->first();
+
+                        $exists_current_stock = $update_warehouse_current_stock->current_stock;
+                        $final_warehouse_current_stock = $exists_current_stock + $data['exchange_quantity'];
+                        $update_warehouse_current_stock->current_stock=$final_warehouse_current_stock;
+                        $update_warehouse_current_stock->save();
+                    }
                 }
             }
 
@@ -313,7 +337,13 @@ class ProductSaleExchangeController extends Controller
                 $product_sale_exchange_detail->sale_exchange_date = $date;
                 $product_sale_exchange_detail->save();
 
-                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+
+                if($sale_type == 'pos_sale') {
+                    $check_previous_stock = Stock::where('warehouse_id', $warehouse_id)->where('store_id', $store_id)->where('stock_where', 'store')->where('product_id', $product_id)->latest()->pluck('current_stock')->first();
+                }
+                if($sale_type == 'whole_sale') {
+                    $check_previous_stock = Stock::where('warehouse_id', $warehouse_id)->where('store_id', NULL)->where('stock_where', 'store')->where('product_id', $product_id)->latest()->pluck('current_stock')->first();
+                }
                 if(!empty($check_previous_stock)){
                     $previous_stock = $check_previous_stock;
                 }else{
@@ -340,16 +370,31 @@ class ProductSaleExchangeController extends Controller
                 $stock->stock_date_time = $date_time;
                 $stock->save();
 
-                // warehouse store current stock
-                $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
-                    ->where('store_id',$store_id)
-                    ->where('product_id',$product_id)
-                    ->first();
+                if($sale_type == 'pos_sale'){
+                    // warehouse store current stock
+                    $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                        ->where('store_id',$store_id)
+                        ->where('product_id',$product_id)
+                        ->first();
 
-                $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
-                $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
-                $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
-                $update_warehouse_store_current_stock->save();
+                    $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+                    $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
+                    $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
+                    $update_warehouse_store_current_stock->save();
+                }
+
+                if($sale_type == 'whole_sale'){
+                    // warehouse store current stock
+                    $update_warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)
+                        ->where('product_id',$product_id)
+                        ->first();
+
+                    $exists_current_stock = $update_warehouse_current_stock->current_stock;
+                    $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
+                    $update_warehouse_current_stock->current_stock=$final_warehouse_current_stock;
+                    $update_warehouse_current_stock->save();
+                }
+
             }
 
             // transaction
