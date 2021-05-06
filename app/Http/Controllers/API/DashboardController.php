@@ -234,13 +234,23 @@ class DashboardController extends Controller
             }
         }
 
+        // product sales
         $productSaleDiscounts = DB::table('product_sales')
-            ->select(DB::raw('SUM(discount_amount) as sum_discount'))
+            ->select(DB::raw('SUM(total_vat_amount) as sum_total_vat_amount'),DB::raw('SUM(discount_amount) as sum_discount'))
             ->where('sale_date',date('Y-m-d'))
             ->first();
 
         if(!empty($productSaleDiscounts))
         {
+            // sale vat amount
+            $sum_vat_amount = $productSaleDiscounts->sum_total_vat_amount;
+            if($sum_profit_or_loss_amount > 0){
+                $sum_profit_or_loss_amount -= $sum_vat_amount;
+            }else{
+                $sum_profit_or_loss_amount += $sum_vat_amount;
+            }
+
+            // sale discount
             $sum_discount = $productSaleDiscounts->sum_discount;
             if($sum_discount > 0){
                 $sum_profit_or_loss_amount += $sum_discount;
@@ -366,12 +376,22 @@ class DashboardController extends Controller
             }
         }
 
+        // product sale
         $productSaleDiscounts = DB::table('product_sales')
-            ->select(DB::raw('SUM(discount_amount) as sum_discount'))
+            ->select(DB::raw('SUM(total_vat_amount) as sum_total_vat_amount'),DB::raw('SUM(discount_amount) as sum_discount'))
             ->first();
 
         if(!empty($productSaleDiscounts))
         {
+            // sale vat amount
+            $sum_vat_amount = $productSaleDiscounts->sum_total_vat_amount;
+            if($sum_profit_or_loss_amount > 0){
+                $sum_profit_or_loss_amount -= $sum_vat_amount;
+            }else{
+                $sum_profit_or_loss_amount += $sum_vat_amount;
+            }
+
+            // sale discount
             $sum_discount = $productSaleDiscounts->sum_discount;
             if($sum_discount > 0){
                 $sum_profit_or_loss_amount += $sum_discount;

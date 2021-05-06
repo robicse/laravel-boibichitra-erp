@@ -32,6 +32,19 @@ class ProductSaleController extends Controller
     public $ExistsStatus = 403;
     public $validationStatus = 404;
 
+    public function productSaleInvoiceNo(){
+        $get_invoice_no = ProductSale::latest()->pluck('invoice_no')->first();
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("sale-","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
+        }else{
+            $invoice_no = 100000;
+        }
+        $final_invoice = 'sale-'.$invoice_no;
+
+        return response()->json(['success'=>true,'response' => $final_invoice,'date' => date('Y-m-d')], $this->successStatus);
+    }
+
     public function productWholeSaleList(){
         $product_whole_sales = DB::table('product_sales')
             ->leftJoin('users','product_sales.user_id','users.id')
@@ -40,7 +53,7 @@ class ProductSaleController extends Controller
             //->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.sale_type','whole_sale')
             //->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
-            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.sale_date','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','product_sales.miscellaneous_comment','product_sales.miscellaneous_charge','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
             ->orderBy('product_sales.id','desc')
             ->get();
 
@@ -52,6 +65,9 @@ class ProductSaleController extends Controller
 
                 $nested_data['id']=$data->id;
                 $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['sale_date']=$data->sale_date;
+                $nested_data['miscellaneous_comment']=$data->miscellaneous_comment;
+                $nested_data['miscellaneous_charge']=$data->miscellaneous_charge;
                 $nested_data['discount_type']=$data->discount_type;
                 $nested_data['discount_amount']=$data->discount_amount;
                 $nested_data['total_vat_amount']=$data->total_vat_amount;
@@ -110,29 +126,29 @@ class ProductSaleController extends Controller
             'payment_type'=> 'required',
         ]);
 
-        $get_invoice_no = ProductSale::latest()->pluck('invoice_no')->first();
-        if(!empty($get_invoice_no)){
-            $get_invoice = str_replace("sale-","",$get_invoice_no);
-            $invoice_no = $get_invoice+1;
-        }else{
-            $invoice_no = 100000;
-        }
-        $final_invoice = 'sale-'.$invoice_no;
+//        $get_invoice_no = ProductSale::latest()->pluck('invoice_no')->first();
+//        if(!empty($get_invoice_no)){
+//            $get_invoice = str_replace("sale-","",$get_invoice_no);
+//            $invoice_no = $get_invoice+1;
+//        }else{
+//            $invoice_no = 100000;
+//        }
+//        $final_invoice = 'sale-'.$invoice_no;
+        $final_invoice = $request->invoice_no;
 
-        $date = date('Y-m-d');
-        $date_time = date('Y-m-d h:i:s');
-        $add_two_day_date =  date('Y-m-d', strtotime("+2 days"));
+        $date = $request->date;
+        $date_time = $date." ".date('h:i:s');
+        $add_two_day_date =  date('Y-m-d', strtotime($date. ' + 2 days'));
 
         $user_id = Auth::user()->id;
-        //$store_id = $request->store_id;
         $warehouse_id = $request->warehouse_id;
-        //$warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
+
+
 
         // product purchase
         $productSale = new ProductSale();
         $productSale->invoice_no = $final_invoice;
         $productSale->user_id = $user_id;
-        //$productSale->store_id = $store_id;
         $productSale->store_id = NULL;
         $productSale->warehouse_id = $warehouse_id;
         $productSale->party_id = $request->party_id;
@@ -177,8 +193,7 @@ class ProductSaleController extends Controller
                 $product_sale_detail->return_last_date = $add_two_day_date;
                 $product_sale_detail->save();
 
-                //$check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
-                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('stock_where','warehouse')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
                 if(!empty($check_previous_stock)){
                     $previous_stock = $check_previous_stock;
                 }else{
@@ -190,7 +205,6 @@ class ProductSaleController extends Controller
                 $stock->ref_id = $insert_id;
                 $stock->user_id = $user_id;
                 $stock->warehouse_id = $warehouse_id;
-                //$stock->store_id = $store_id;
                 $stock->store_id = NULL;
                 $stock->product_id = $product_id;
                 $stock->product_unit_id = $data['product_unit_id'];
@@ -208,7 +222,7 @@ class ProductSaleController extends Controller
 
 
                 // warehouse current stock
-                $update_warehouse_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                $update_warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)
                     ->where('product_id',$product_id)
                     ->first();
 
@@ -225,7 +239,6 @@ class ProductSaleController extends Controller
             $transaction->invoice_no = $final_invoice;
             $transaction->user_id = $user_id;
             $transaction->warehouse_id = $warehouse_id;
-            //$transaction->store_id = $store_id;
             $transaction->store_id = NULL;
             $transaction->party_id = $request->party_id;
             $transaction->transaction_type = 'whole_sale';
@@ -251,6 +264,181 @@ class ProductSaleController extends Controller
             $payment_collection->collection_date_time = $date_time;
             $payment_collection->save();
 
+            if($request->paid_amount > 0){
+                // posting
+                $month = date('m', strtotime($request->date));
+                $year = date('Y', strtotime($request->date));
+                $transaction_date_time = date('Y-m-d H:i:s');
+
+                $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
+                $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
+                if(!empty($get_voucher_no)){
+                    $get_voucher_name_str = $get_voucher_name."-";
+                    $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+                    $voucher_no = $get_voucher+1;
+                }else{
+                    $voucher_no = 8000;
+                }
+                $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+                $chart_of_account_transactions = new ChartOfAccountTransaction();
+                $chart_of_account_transactions->ref_id = $insert_id;
+                $chart_of_account_transactions->transaction_type = 'Sales';
+                $chart_of_account_transactions->user_id = $user_id;
+                $chart_of_account_transactions->store_id = NULL;
+                $chart_of_account_transactions->voucher_type_id = 2;
+                $chart_of_account_transactions->voucher_no = $final_voucher_no;
+                $chart_of_account_transactions->is_approved = 'approved';
+                $chart_of_account_transactions->transaction_date = $date;
+                $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+                $chart_of_account_transactions->save();
+                $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
+
+                if($chart_of_account_transactions_insert_id){
+
+                    // sales
+                    $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
+                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                    $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
+                    $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
+                    $chart_of_account_transaction_details->chart_of_account_name = 'Sales';
+                    $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
+                    $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
+                    $chart_of_account_transaction_details->debit = NULL;
+                    $chart_of_account_transaction_details->credit = $request->paid_amount;
+                    $chart_of_account_transaction_details->description = 'Income From Sales';
+                    $chart_of_account_transaction_details->year = $year;
+                    $chart_of_account_transaction_details->month = $month;
+                    $chart_of_account_transaction_details->transaction_date = $date;
+                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                    $chart_of_account_transaction_details->save();
+
+                    // cash
+                    if($request->payment_type == 'Cash'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Cash In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Check'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Check';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Check In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Card'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Card';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Card In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Bkash'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Bkash In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Nogod'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Nogod In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Rocket'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Rocket In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Upay'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Upay In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }else{
+
+                    }
+                }
+            }
+
 
             if($request->payment_type == 'SSL Commerz'){
                 return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => $request->payment_type], $this->successStatus);
@@ -275,15 +463,17 @@ class ProductSaleController extends Controller
             'payment_type'=> 'required',
         ]);
 
+        $date = $request->date;
+        $date_time = $date." ".date('h:i:s');
+        $add_two_day_date =  date('Y-m-d', strtotime($date. ' + 2 days'));
+
         $user_id = Auth::user()->id;
-        $date = date('Y-m-d');
-        $date_time = date('Y-m-d H:i:s');
-        $store_id = $request->store_id;
         $warehouse_id = $request->warehouse_id;
 
 
         // product purchase
         $productSale = ProductSale::find($request->product_sale_id);
+        $previous_paid_amount = $productSale->paid_amount;
         $productSale->user_id = $user_id;
         $productSale->party_id = $request->party_id;
         $productSale->warehouse_id = $warehouse_id;
@@ -316,6 +506,7 @@ class ProductSaleController extends Controller
                 $product_sale_detail->price = $data['mrp_price'];
                 $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
                 $product_sale_detail->barcode = $barcode;
+                $product_sale_detail->return_last_date = $add_two_day_date;
                 $product_sale_detail->update();
 
 
@@ -408,6 +599,272 @@ class ProductSaleController extends Controller
             $payment_collection->update();
 
 
+//            // posting update
+//            $month = date('m', strtotime($request->date));
+//            $year = date('Y', strtotime($request->date));
+//            $transaction_date_time = date('Y-m-d H:i:s');
+//
+//            $chart_of_account_transactions = ChartOfAccountTransaction::where('ref_id',$request->product_sale_id)->where('transaction_type','Sales')->first();
+//
+//            $chart_of_account_transactions_id = $chart_of_account_transactions->id;
+//
+//            $chart_of_account_transactions->user_id = $user_id;
+//            $chart_of_account_transactions->store_id = $store_id;
+//            $chart_of_account_transactions->transaction_date = $date;
+//            $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+//            $chart_of_account_transactions->update();
+//            $affectedRows = $chart_of_account_transactions->id;
+//
+//            if($affectedRows){
+//                // sales
+//                $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Sales')->first();
+//                $chart_of_account_transaction_details->credit = $request->paid_amount;
+//                $chart_of_account_transaction_details->year = $year;
+//                $chart_of_account_transaction_details->month = $month;
+//                $chart_of_account_transaction_details->transaction_date = $date;
+//                $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                $chart_of_account_transaction_details->save();
+//
+//                // cash
+//                if($request->payment_type == 'Cash'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Cash')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Check'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Check')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Card'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Card')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Bkash'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Bkash')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Nogod'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Nogod')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Rocket'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Rocket')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Upay'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Upay')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }else{
+//
+//                }
+//            }
+
+            $new_paid_amount = $request->paid_amount - $previous_paid_amount;
+
+            if($request->paid_amount > 0 && $new_paid_amount){
+                // posting
+                $month = date('m', strtotime($request->date));
+                $year = date('Y', strtotime($request->date));
+                $transaction_date_time = date('Y-m-d H:i:s');
+
+                $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
+                $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
+                if(!empty($get_voucher_no)){
+                    $get_voucher_name_str = $get_voucher_name."-";
+                    $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+                    $voucher_no = $get_voucher+1;
+                }else{
+                    $voucher_no = 8000;
+                }
+                $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+                $chart_of_account_transactions = new ChartOfAccountTransaction();
+                $chart_of_account_transactions->ref_id = $request->product_sale_id;
+                $chart_of_account_transactions->transaction_type = 'Sales';
+                $chart_of_account_transactions->user_id = $user_id;
+                $chart_of_account_transactions->store_id = NULL;
+                $chart_of_account_transactions->voucher_type_id = 2;
+                $chart_of_account_transactions->voucher_no = $final_voucher_no;
+                $chart_of_account_transactions->is_approved = 'approved';
+                $chart_of_account_transactions->transaction_date = $date;
+                $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+                $chart_of_account_transactions->save();
+                $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
+
+                if($chart_of_account_transactions_insert_id){
+
+                    // sales
+                    $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
+                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                    $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
+                    $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
+                    $chart_of_account_transaction_details->chart_of_account_name = 'Sales';
+                    $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
+                    $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
+                    $chart_of_account_transaction_details->debit = NULL;
+                    $chart_of_account_transaction_details->credit = $new_paid_amount;
+                    $chart_of_account_transaction_details->description = 'Income From Sales';
+                    $chart_of_account_transaction_details->year = $year;
+                    $chart_of_account_transaction_details->month = $month;
+                    $chart_of_account_transaction_details->transaction_date = $date;
+                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                    $chart_of_account_transaction_details->save();
+
+                    // cash
+                    if($request->payment_type == 'Cash'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Cash In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Check'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Check';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Check In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Card'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Card';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Card In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Bkash'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Bkash In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Nogod'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Nogod In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Rocket'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Rocket In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Upay'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Upay In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }else{
+
+                    }
+                }
+            }
+
+
             return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
@@ -473,6 +930,43 @@ class ProductSaleController extends Controller
         {
             return response()->json(['success'=>true,'response' =>'Sale Successfully Deleted!'], $this->successStatus);
         }else{
+            return response()->json(['success'=>false,'response'=>'Sale Not Deleted!'], $this->failStatus);
+        }
+    }
+
+    public function productWholeSaleSingleProductRemove(Request $request){
+        $check_exists_product_sale = DB::table("product_sales")->where('id',$request->product_sale_id)->pluck('id')->first();
+        if($check_exists_product_sale == null){
+            return response()->json(['success'=>false,'response'=>'No Product Sale Found!'], $this->failStatus);
+        }
+
+        $productSale = ProductSale::find($request->product_sale_id);
+        if($productSale) {
+
+            //$discount_amount = $productSale->discount_amount;
+            $paid_amount = $productSale->paid_amount;
+            //$due_amount = $productSale->due_amount;
+            $total_vat_amount = $productSale->total_vat_amount;
+            $total_amount = $productSale->total_amount;
+
+            $product_sale_detail = DB::table('product_sale_details')->where('id', $request->product_sale_detail_id)->first();
+            if ($product_sale_detail) {
+                //$remove_discount = $product_sale_detail->discount;
+                $remove_vat_amount = $product_sale_detail->vat_amount;
+                $remove_sub_total = $product_sale_detail->sub_total;
+
+
+                //$productSale->discount_amount = $discount_amount - $remove_discount;
+                $productSale->discount_amount = $total_vat_amount - $remove_vat_amount;
+                $productSale->discount_amount = $total_amount - $remove_sub_total;
+                $productSale->save();
+
+                // delete single product
+                $product_sale_detail->delete();
+            }
+
+            return response()->json(['success'=>true,'response' =>'Single Product Successfully Removed!'], $this->successStatus);
+        } else{
             return response()->json(['success'=>false,'response'=>'Sale Not Deleted!'], $this->failStatus);
         }
     }
@@ -953,6 +1447,7 @@ class ProductSaleController extends Controller
 
         // product purchase
         $productSale = ProductSale::find($request->product_sale_id);
+        $previous_paid_amount = $productSale ->paid_amount;
         $productSale ->user_id = $user_id;
         $productSale ->party_id = $request->party_id;
         $productSale ->warehouse_id = $warehouse_id;
@@ -1090,6 +1585,272 @@ class ProductSaleController extends Controller
             $payment_collection->due_amount = $request->due_amount;
             $payment_collection->current_collection_amount = $request->paid_amount;
             $payment_collection->update();
+
+
+            // posting update
+//            $month = date('m', strtotime($request->date));
+//            $year = date('Y', strtotime($request->date));
+//            $transaction_date_time = date('Y-m-d H:i:s');
+//
+//            $chart_of_account_transactions = ChartOfAccountTransaction::where('ref_id',$request->product_sale_id)->where('transaction_type','Sales')->first();
+//
+//            $chart_of_account_transactions_id = $chart_of_account_transactions->id;
+//
+//            $chart_of_account_transactions->user_id = $user_id;
+//            $chart_of_account_transactions->store_id = $store_id;
+//            $chart_of_account_transactions->transaction_date = $date;
+//            $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+//            $chart_of_account_transactions->update();
+//            $affectedRows = $chart_of_account_transactions->id;
+//
+//            if($affectedRows){
+//                // sales
+//                $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Sales')->first();
+//                $chart_of_account_transaction_details->credit = $request->paid_amount;
+//                $chart_of_account_transaction_details->year = $year;
+//                $chart_of_account_transaction_details->month = $month;
+//                $chart_of_account_transaction_details->transaction_date = $date;
+//                $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                $chart_of_account_transaction_details->save();
+//
+//                // cash
+//                if($request->payment_type == 'Cash'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Cash')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Check'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Check')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Card'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Card')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Bkash'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Bkash')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Nogod'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Nogod')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Rocket'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Rocket')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }elseif($request->payment_type == 'Upay'){
+//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Upay')->first();
+//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+//                    $chart_of_account_transaction_details->year = $year;
+//                    $chart_of_account_transaction_details->month = $month;
+//                    $chart_of_account_transaction_details->transaction_date = $date;
+//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+//                    $chart_of_account_transaction_details->save();
+//                }else{
+//
+//                }
+//            }
+
+            $new_paid_amount = $request->paid_amount - $previous_paid_amount;
+
+            if($request->paid_amount > 0 && $new_paid_amount){
+                // posting
+                $month = date('m', strtotime($request->date));
+                $year = date('Y', strtotime($request->date));
+                $transaction_date_time = date('Y-m-d H:i:s');
+
+                $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
+                $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
+                if(!empty($get_voucher_no)){
+                    $get_voucher_name_str = $get_voucher_name."-";
+                    $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+                    $voucher_no = $get_voucher+1;
+                }else{
+                    $voucher_no = 8000;
+                }
+                $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+                $chart_of_account_transactions = new ChartOfAccountTransaction();
+                $chart_of_account_transactions->ref_id = $request->product_sale_id;
+                $chart_of_account_transactions->transaction_type = 'Sales';
+                $chart_of_account_transactions->user_id = $user_id;
+                $chart_of_account_transactions->store_id = NULL;
+                $chart_of_account_transactions->voucher_type_id = 2;
+                $chart_of_account_transactions->voucher_no = $final_voucher_no;
+                $chart_of_account_transactions->is_approved = 'approved';
+                $chart_of_account_transactions->transaction_date = $date;
+                $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+                $chart_of_account_transactions->save();
+                $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
+
+                if($chart_of_account_transactions_insert_id){
+
+                    // sales
+                    $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
+                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                    $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
+                    $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
+                    $chart_of_account_transaction_details->chart_of_account_name = 'Sales';
+                    $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
+                    $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
+                    $chart_of_account_transaction_details->debit = NULL;
+                    $chart_of_account_transaction_details->credit = $new_paid_amount;
+                    $chart_of_account_transaction_details->description = 'Income From Sales';
+                    $chart_of_account_transaction_details->year = $year;
+                    $chart_of_account_transaction_details->month = $month;
+                    $chart_of_account_transaction_details->transaction_date = $date;
+                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                    $chart_of_account_transaction_details->save();
+
+                    // cash
+                    if($request->payment_type == 'Cash'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Cash In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Check'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Check';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Check In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Card'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Card';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Card In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Bkash'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Bkash In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Nogod'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Nogod In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Rocket'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Rocket In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }elseif($request->payment_type == 'Upay'){
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Upay In For Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }else{
+
+                    }
+                }
+            }
 
 
             return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
@@ -1372,7 +2133,16 @@ class ProductSaleController extends Controller
                 $purchase_sale_return_detail->sub_total = $data['qty']*$data['mrp_price'];
                 $purchase_sale_return_detail->save();
 
-                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest('id','desc')->pluck('current_stock')->first();
+                $sale_type = ProductSale::where('invoice_no',$request->sale_invoice_no)->pluck('sale_type')->first();
+
+                //$check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest('id','desc')->pluck('current_stock')->first();
+                if($sale_type == 'pos_sale') {
+                    $check_previous_stock = Stock::where('warehouse_id', $warehouse_id)->where('store_id', $store_id)->where('stock_where', 'store')->where('product_id', $product_id)->latest()->pluck('current_stock')->first();
+                }
+
+                if($sale_type == 'whole_sale') {
+                    $check_previous_stock = Stock::where('warehouse_id', $warehouse_id)->where('store_id', NULL)->where('stock_where', 'store')->where('product_id', $product_id)->latest()->pluck('current_stock')->first();
+                }
                 if(!empty($check_previous_stock)){
                     $previous_stock = $check_previous_stock;
                 }else{
@@ -1399,18 +2169,30 @@ class ProductSaleController extends Controller
                 $stock->stock_date_time = $date_time;
                 $stock->save();
 
+                if($sale_type == 'pos_sale'){
+                    // warehouse store current stock
+                    $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                        ->where('store_id',$store_id)
+                        ->where('product_id',$product_id)
+                        ->first();
 
+                    $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+                    $final_warehouse_store_current_stock = $exists_current_stock + $data['qty'];
+                    $update_warehouse_store_current_stock->current_stock=$final_warehouse_store_current_stock;
+                    $update_warehouse_store_current_stock->save();
+                }
 
-                // warehouse store current stock
-                $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
-                    ->where('store_id',$store_id)
-                    ->where('product_id',$product_id)
-                    ->first();
+                if($sale_type == 'whole_sale'){
+                    // warehouse current stock
+                    $update_warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)
+                        ->where('product_id',$product_id)
+                        ->first();
 
-                $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
-                $final_warehouse_current_stock = $exists_current_stock + $data['qty'];
-                $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
-                $update_warehouse_store_current_stock->save();
+                    $exists_current_stock = $update_warehouse_current_stock->current_stock;
+                    $final_warehouse_current_stock = $exists_current_stock + $data['qty'];
+                    $update_warehouse_current_stock->current_stock=$final_warehouse_current_stock;
+                    $update_warehouse_current_stock->save();
+                }
 
 
 
@@ -1452,9 +2234,8 @@ class ProductSaleController extends Controller
 
 
                     // posting
-                    $transaction_date = $request->date;
-                    $month = date('m', strtotime($request->date));
-                    $year = date('Y', strtotime($request->date));
+                    $month = date('m', strtotime($date));
+                    $year = date('Y', strtotime($date));
                     $transaction_date_time = date('Y-m-d H:i:s');
 
                     $get_voucher_name = VoucherType::where('id',7)->pluck('name')->first();
@@ -1475,7 +2256,7 @@ class ProductSaleController extends Controller
                     $chart_of_account_transactions->voucher_type_id = 7;
                     $chart_of_account_transactions->voucher_no = $final_voucher_no;
                     $chart_of_account_transactions->is_approved = 'approved';
-                    $chart_of_account_transactions->transaction_date = $transaction_date;
+                    $chart_of_account_transactions->transaction_date = $date;
                     $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
                     $chart_of_account_transactions->save();
                     $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
@@ -1485,18 +2266,18 @@ class ProductSaleController extends Controller
                         // sales Return
                         $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales Return')->first();
                         $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                         $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
                         $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
                         $chart_of_account_transaction_details->chart_of_account_name = 'Sales Return';
                         $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
                         $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
-                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+                        $chart_of_account_transaction_details->debit = $request->total_amount;
                         $chart_of_account_transaction_details->credit = NULL;
                         $chart_of_account_transaction_details->description = 'Expense For Sales Return';
                         $chart_of_account_transaction_details->year = $year;
                         $chart_of_account_transaction_details->month = $month;
-                        $chart_of_account_transaction_details->transaction_date = $transaction_date;
+                        $chart_of_account_transaction_details->transaction_date = $date;
                         $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
                         $chart_of_account_transaction_details->save();
 
@@ -1504,120 +2285,120 @@ class ProductSaleController extends Controller
                         if($request->payment_type == 'Cash'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                             $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
                             $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                             $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
                             $chart_of_account_transaction_details->debit = NULL;
-                            $chart_of_account_transaction_details->credit = $request->paid_amount;
+                            $chart_of_account_transaction_details->credit = $request->total_amount;
                             $chart_of_account_transaction_details->description = 'Cash Out For Sales Return';
                             $chart_of_account_transaction_details->year = $year;
                             $chart_of_account_transaction_details->month = $month;
-                            $chart_of_account_transaction_details->transaction_date = $transaction_date;
+                            $chart_of_account_transaction_details->transaction_date = $date;
                             $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
                             $chart_of_account_transaction_details->save();
                         }elseif($request->payment_type == 'Check'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                             $chart_of_account_transaction_details->chart_of_account_name = 'Check';
                             $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                             $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
                             $chart_of_account_transaction_details->debit = NULL;
-                            $chart_of_account_transaction_details->credit = $request->paid_amount;
+                            $chart_of_account_transaction_details->credit = $request->total_amount;
                             $chart_of_account_transaction_details->description = 'Check Out For Sales Return';
                             $chart_of_account_transaction_details->year = $year;
                             $chart_of_account_transaction_details->month = $month;
-                            $chart_of_account_transaction_details->transaction_date = $transaction_date;
+                            $chart_of_account_transaction_details->transaction_date = $date;
                             $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
                             $chart_of_account_transaction_details->save();
                         }elseif($request->payment_type == 'Card'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                             $chart_of_account_transaction_details->chart_of_account_name = 'Card';
                             $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                             $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
                             $chart_of_account_transaction_details->debit = NULL;
-                            $chart_of_account_transaction_details->credit = $request->paid_amount;
+                            $chart_of_account_transaction_details->credit = $request->total_amount;
                             $chart_of_account_transaction_details->description = 'Card Out For Sales Return';
                             $chart_of_account_transaction_details->year = $year;
                             $chart_of_account_transaction_details->month = $month;
-                            $chart_of_account_transaction_details->transaction_date = $transaction_date;
+                            $chart_of_account_transaction_details->transaction_date = $date;
                             $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
                             $chart_of_account_transaction_details->save();
                         }elseif($request->payment_type == 'Bkash'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                             $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
                             $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                             $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
                             $chart_of_account_transaction_details->debit = NULL;
-                            $chart_of_account_transaction_details->credit = $request->paid_amount;
+                            $chart_of_account_transaction_details->credit = $request->total_amount;
                             $chart_of_account_transaction_details->description = 'Bkash Out For Sales Return';
                             $chart_of_account_transaction_details->year = $year;
                             $chart_of_account_transaction_details->month = $month;
-                            $chart_of_account_transaction_details->transaction_date = $transaction_date;
+                            $chart_of_account_transaction_details->transaction_date = $date;
                             $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
                             $chart_of_account_transaction_details->save();
                         }elseif($request->payment_type == 'Nogod'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                             $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
                             $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                             $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
                             $chart_of_account_transaction_details->debit = NULL;
-                            $chart_of_account_transaction_details->credit = $request->paid_amount;
+                            $chart_of_account_transaction_details->credit = $request->total_amount;
                             $chart_of_account_transaction_details->description = 'Nogod Out For Sales Return';
                             $chart_of_account_transaction_details->year = $year;
                             $chart_of_account_transaction_details->month = $month;
-                            $chart_of_account_transaction_details->transaction_date = $transaction_date;
+                            $chart_of_account_transaction_details->transaction_date = $date;
                             $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
                             $chart_of_account_transaction_details->save();
                         }elseif($request->payment_type == 'Rocket'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                             $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
                             $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                             $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
                             $chart_of_account_transaction_details->debit = NULL;
-                            $chart_of_account_transaction_details->credit = $request->paid_amount;
+                            $chart_of_account_transaction_details->credit = $request->total_amount;
                             $chart_of_account_transaction_details->description = 'Rocket Out For Sales Return';
                             $chart_of_account_transaction_details->year = $year;
                             $chart_of_account_transaction_details->month = $month;
-                            $chart_of_account_transaction_details->transaction_date = $transaction_date;
+                            $chart_of_account_transaction_details->transaction_date = $date;
                             $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
                             $chart_of_account_transaction_details->save();
                         }elseif($request->payment_type == 'Upay'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                             $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
                             $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                             $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
                             $chart_of_account_transaction_details->debit = NULL;
-                            $chart_of_account_transaction_details->credit = $request->paid_amount;
+                            $chart_of_account_transaction_details->credit = $request->total_amount;
                             $chart_of_account_transaction_details->description = 'Upay Out For Sales Return';
                             $chart_of_account_transaction_details->year = $year;
                             $chart_of_account_transaction_details->month = $month;
-                            $chart_of_account_transaction_details->transaction_date = $transaction_date;
+                            $chart_of_account_transaction_details->transaction_date = $date;
                             $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
                             $chart_of_account_transaction_details->save();
                         }else{

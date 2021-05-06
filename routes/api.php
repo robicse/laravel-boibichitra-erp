@@ -237,11 +237,13 @@ Route::middleware('auth:api')->get('/stock_sync', 'API\StockController@stock_syn
 
 
 // product sale whole
+Route::middleware('auth:api')->get('/product_sale_invoice_no', 'API\ProductSaleController@productSaleInvoiceNo');
 Route::middleware('auth:api')->get('/product_whole_sale_list', 'API\ProductSaleController@productWholeSaleList');
 Route::middleware('auth:api')->post('/product_whole_sale_details', 'API\ProductSaleController@productWholeSaleDetails');
 Route::middleware('auth:api')->post('/product_whole_sale_create', 'API\ProductSaleController@productWholeSaleCreate');
 Route::middleware('auth:api')->post('/product_whole_sale_edit', 'API\ProductSaleController@productWholeSaleEdit');
 Route::middleware('auth:api')->post('/product_whole_sale_delete', 'API\ProductSaleController@productWholeSaleDelete');
+Route::middleware('auth:api')->post('/product_whole_sale_single_product_remove', 'API\ProductSaleController@productWholeSaleSingleProductRemove');
 
 
 // product sale pos
