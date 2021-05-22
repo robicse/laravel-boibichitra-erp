@@ -446,4 +446,138 @@ class ReportController extends Controller
             return response()->json(['success'=>false,'response'=>null], $this->successStatus);
         }
     }
+
+    public function dateWiseVatsReport(Request $request){
+
+        $vats = DB::table('product_sale_details')
+            ->join('product_sales','product_sale_details.product_sale_id','product_sales.id')
+            ->select('product_sales.invoice_no',DB::raw('SUM(product_sale_details.price) as total_price'),DB::raw('SUM(product_sale_details.vat_amount) as total_vat_amount'))
+            ->where('product_sale_details.vat_amount', '>', 0)
+            ->where('product_sales.sale_date','>=',$request->from_date)
+            ->where('product_sales.sale_date','<=',$request->to_date)
+            ->groupBy('product_sales.invoice_no')
+            ->get();
+
+        $sum_vats_amount = DB::table('product_sale_details')
+            ->join('product_sales','product_sale_details.product_sale_id','product_sales.id')
+            ->select(DB::raw('SUM(product_sale_details.price) as total_price'),DB::raw('SUM(product_sale_details.vat_amount) as total_vat_amount'))
+            ->where('product_sale_details.vat_amount', '>', 0)
+            ->where('product_sales.sale_date','>=',$request->from_date)
+            ->where('product_sales.sale_date','<=',$request->to_date)
+            ->first();
+
+        if($vats)
+        {
+            return response()->json(['success'=>true,'response' => $vats,'sum_vats_amount'=>$sum_vats_amount], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>null], $this->successStatus);
+        }
+    }
+
+    public function dateAndSupplierWisePurchaseReport(Request $request){
+        $from_date = $request->from_date;
+        $to_date = $request->to_date;
+        $purchases = DB::table('product_purchases')
+            ->select('purchase_date as transaction_date','invoice_no','paid_amount as debit','total_amount as credit')
+            ->where('party_id', $request->party_id)
+            ->where('product_purchases.purchase_date','>=',"$from_date")
+            ->where('product_purchases.purchase_date','<=',"$to_date")
+            //->groupBy('product_purchases.invoice_no')
+            ->get();
+
+
+        if($purchases)
+        {
+            $data = [];
+            foreach($purchases as $purchase){
+                $nested_data['transaction_date']=$purchase->transaction_date;
+                $nested_data['invoice_no']=$purchase->invoice_no;
+                $nested_data['vch_type']='Purchase Invoice';
+                $nested_data['debit']=$purchase->debit;
+                $nested_data['credit']=$purchase->credit;
+
+                array_push($data, $nested_data);
+            }
+
+            return response()->json(['success'=>true,'response' => $data], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>null], $this->successStatus);
+        }
+    }
+
+    public function dateWiseSalesLedger(Request $request){
+        $validator = Validator::make($request->all(), [
+            'party_id'=> 'required',
+            'from_date'=> 'required',
+            'to_date'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+
+
+
+
+
+
+
+        if($request->from_date && $request->to_date){
+            $chart_of_account_transaction = DB::table("chart_of_account_transaction_details")
+                ->join('chart_of_account_transactions','chart_of_account_transaction_details.chart_of_account_transaction_id','=','chart_of_account_transactions.id')
+                ->leftJoin('voucher_types','chart_of_account_transactions.voucher_type_id','=','voucher_types.id')
+                ->where('chart_of_account_transaction_details.chart_of_account_name',$request->chart_of_account_name)
+                ->where('chart_of_account_transaction_details.transaction_date','>=',$request->from_date)
+                ->where('chart_of_account_transaction_details.transaction_date','<=',$request->to_date)
+                ->where('chart_of_account_transaction_details.store_id','<=',$request->store_id)
+                ->select(
+                    'voucher_types.name as voucher_type_name',
+                    'chart_of_account_transactions.voucher_no',
+                    'chart_of_account_transaction_details.debit',
+                    'chart_of_account_transaction_details.credit',
+                    'chart_of_account_transaction_details.description',
+                    'chart_of_account_transaction_details.transaction_date_time'
+                )
+                ->get();
+        }else{
+            $chart_of_account_transaction = DB::table("chart_of_account_transaction_details")
+                ->join('chart_of_account_transactions','chart_of_account_transaction_details.chart_of_account_transaction_id','=','chart_of_account_transactions.id')
+                ->leftJoin('voucher_types','chart_of_account_transactions.voucher_type_id','=','voucher_types.id')
+                ->where('chart_of_account_transaction_details.chart_of_account_name',$request->chart_of_account_name)
+                ->where('chart_of_account_transaction_details.store_id','<=',$request->store_id)
+                ->select(
+                    'voucher_types.name as voucher_type_name',
+                    'chart_of_account_transactions.voucher_no',
+                    'chart_of_account_transaction_details.debit',
+                    'chart_of_account_transaction_details.debit',
+                    'chart_of_account_transaction_details.credit',
+                    'chart_of_account_transaction_details.description',
+                    'chart_of_account_transaction_details.transaction_date_time'
+                )
+                ->get();
+        }
+
+
+        if($chart_of_account_transaction)
+        {
+            $ledger_data = [
+                'chart_of_account_transaction' => $chart_of_account_transaction,
+                'party_id' => $request->party_id,
+                'party_name' => $request->party_name,
+                'from_date' => $request->from_date,
+                'to_date' => $request->to_date,
+            ];
+            return response()->json(['success'=>true,'response' => $ledger_data], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Chart Of Account Transaction Found!'], $this->failStatus);
+        }
+    }
 }
