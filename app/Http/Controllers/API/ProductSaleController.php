@@ -53,7 +53,7 @@ class ProductSaleController extends Controller
             //->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.sale_type','whole_sale')
             //->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address')
-            ->select('product_sales.id','product_sales.invoice_no','product_sales.sale_date','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','product_sales.miscellaneous_comment','product_sales.miscellaneous_charge','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.sale_date','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','product_sales.miscellaneous_comment','product_sales.miscellaneous_charge','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','parties.email as customer_email','parties.address as customer_address','warehouses.id as warehouse_id','warehouses.name as warehouse_name')
             ->orderBy('product_sales.id','desc')
             ->get();
 
@@ -102,7 +102,7 @@ class ProductSaleController extends Controller
             ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
             ->where('product_sales.id',$request->product_sale_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.vat_amount')
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as whole_sale_price','product_sale_details.vat_amount')
             ->get();
 
         if($product_sale_details)
