@@ -439,9 +439,14 @@ class ReportController extends Controller
             $grand_total_amount = $total_sale_history->total_sale;
         }
 
+        $store_info = DB::table('stores')
+            ->where('id',$request->store_id)
+            ->select('name','phone','email','address')
+            ->first();
+
         if($product_sales)
         {
-            return response()->json(['success'=>true,'response' => $product_sales,'grand_total_amount'=>$grand_total_amount,'profit_amount'=>$sum_profit_or_loss_amount], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $product_sales,'grand_total_amount'=>$grand_total_amount,'profit_amount'=>$sum_profit_or_loss_amount,'store_info'=>$store_info], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>null], $this->successStatus);
         }
