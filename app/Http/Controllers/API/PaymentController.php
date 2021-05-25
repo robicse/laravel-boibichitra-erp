@@ -132,13 +132,19 @@ class PaymentController extends Controller
         if($payment_paid_due_amount)
         {
             $total_payment_paid_due_amount = 0;
-            $sum_payment_paid_due_amount = DB::table('product_purchases')
-                ->where('product_purchases.due_amount','>',0)
-                ->where('product_purchases.party_id',$request->supplier_id)
-                ->select(DB::raw('SUM(due_amount) as total_payment_paid_due_amount'))
+//            $sum_payment_paid_due_amount = DB::table('product_purchases')
+//                ->where('product_purchases.due_amount','>',0)
+//                ->where('product_purchases.party_id',$request->supplier_id)
+//                ->select(DB::raw('SUM(due_amount) as total_payment_paid_due_amount'))
+//                ->first();
+
+            $sum_payment_paid_due_amount = DB::table('payment_paids')
+                //->where('product_purchases.due_amount','>',0)
+                ->where('party_id',$request->supplier_id)
+                ->select(DB::raw('SUM(due_amount) as total_payment_due_amount'),DB::raw('SUM(paid_amount) as total_payment_paid_amount'))
                 ->first();
             if($sum_payment_paid_due_amount){
-                $total_payment_paid_due_amount = $sum_payment_paid_due_amount->total_payment_paid_due_amount;
+                $total_payment_paid_due_amount = $sum_payment_paid_due_amount->total_payment_due_amount - $sum_payment_paid_due_amount->total_payment_paid_amount;
             }
 
             $success['payment_paid_due_amount'] =  $payment_paid_due_amount;
@@ -211,6 +217,74 @@ class PaymentController extends Controller
             }else{
                 return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
             }
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function getPaymentInvoiceNo(){
+        $payment_invoice_no = DB::table('payment_paids')
+            ->where('paid_type','Payment')
+            ->select('invoice_no')
+            ->first();
+
+
+
+        if($payment_invoice_no)
+        {
+            $payment_invoice_no =  $payment_invoice_no;
+        }else{
+            $payment_invoice_no =  'payment-1001';
+        }
+        return response()->json(['success'=>true,'response' => $payment_invoice_no], $this->successStatus);
+    }
+
+    public function SupplierDuePaymentCreate(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'supplier_id'=> 'required',
+            'paid_amount'=> 'required',
+            'current_due_amount'=> 'required',
+            'payment_type'=> 'required',
+            'invoice_no'=> 'required',
+        ]);
+
+        $date = $request->date;
+        $date_time = $date.' h:i:s';
+
+        $user_id = Auth::user()->id;
+
+        // payment paid
+        $payment_paid = new PaymentPaid();
+        $payment_paid->invoice_no = $request->invoice_no;
+        $payment_paid->product_purchase_id = NULL;
+        $payment_paid->product_purchase_return_id = NULL;
+        $payment_paid->user_id = $user_id;
+        $payment_paid->party_id = $request->supplier_id;
+        $payment_paid->paid_type = 'Payment';
+        $payment_paid->paid_amount = $request->paid_amount;
+        $payment_paid->due_amount = 0;
+        $payment_paid->current_paid_amount = NULL;
+        $payment_paid->paid_date = $date;
+        $payment_paid->paid_date_time = $date_time;
+        $insert_id = $payment_paid->save();
+        if($insert_id){
+            // transaction
+            $transaction = new Transaction();
+            $transaction->ref_id = $insert_id;
+            $transaction->invoice_no = $request->invoice_no;
+            $transaction->user_id = $user_id;
+            $transaction->warehouse_id = 6;
+            $transaction->party_id = $request->supplier_id;
+            $transaction->transaction_type = 'payment_paid';
+            $transaction->payment_type = $request->payment_type;
+            $transaction->amount = $request->paid_amount;
+            $transaction->transaction_date = $date;
+            $transaction->transaction_date_time = $date_time;
+            $transaction->save();
+
+            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+
         }else{
             return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
         }

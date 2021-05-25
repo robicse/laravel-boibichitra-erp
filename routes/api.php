@@ -282,6 +282,8 @@ Route::middleware('auth:api')->get('/pos_sale_customer_list', 'API\PaymentContro
 Route::middleware('auth:api')->get('/payment_paid_due_list', 'API\PaymentController@paymentPaidDueList');
 Route::middleware('auth:api')->post('/payment_paid_due_list_by_supplier', 'API\PaymentController@paymentPaidDueListBySupplier');
 Route::middleware('auth:api')->post('/payment_paid_due_create', 'API\PaymentController@paymentPaidDueCreate');
+Route::middleware('auth:api')->get('/payment_invoice_no', 'API\PaymentController@getPaymentInvoiceNo');
+Route::middleware('auth:api')->post('/supplier_due_payment_create', 'API\PaymentController@SupplierDuePaymentCreate');
 Route::middleware('auth:api')->get('/payment_collection_due_list', 'API\PaymentController@paymentCollectionDueList');
 Route::middleware('auth:api')->post('/payment_collection_due_list_by_customer', 'API\PaymentController@paymentCollectionDueListByCustomer');
 Route::middleware('auth:api')->post('/payment_collection_due_create', 'API\PaymentController@paymentCollectionDueCreate');
