@@ -223,20 +223,35 @@ class PaymentController extends Controller
     }
 
     public function getPaymentInvoiceNo(){
-        $payment_invoice_no = DB::table('payment_paids')
+        $get_invoice_no = DB::table('payment_paids')
             ->where('paid_type','Payment')
             ->select('invoice_no')
             ->first();
-
-
-
-        if($payment_invoice_no)
-        {
-            $payment_invoice_no =  $payment_invoice_no;
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("payment-","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
         }else{
-            $payment_invoice_no =  'payment-1001';
+            $invoice_no = 1000;
         }
-        return response()->json(['success'=>true,'response' => $payment_invoice_no], $this->successStatus);
+        $final_invoice = 'payment-'.$invoice_no;
+
+        return response()->json(['success'=>true,'response' => $final_invoice,'date' => date('Y-m-d')], $this->successStatus);
+    }
+
+    public function supplierDuePaymentList(){
+        $payment_paids = DB::table('payment_paids')
+            ->join('parties','payment_paids.party_id','parties.id')
+            ->where('payment_paids.paid_type','Payment')
+            ->select('payment_paids.id as payment_paid_id','payment_paids.invoice_no','parties.name','payment_paids.paid_amount','payment_paids.payment_type','payment_paids.paid_date')
+            ->get();
+
+        if($payment_paids)
+        {
+            return response()->json(['success'=>true,'response' => $payment_paids], $this->successStatus);
+        }else{
+            return response()->json(['success'=>true,'response' => 'No Data Found!'], $this->failStatus);
+        }
+
     }
 
     public function SupplierDuePaymentCreate(Request $request){
@@ -267,7 +282,8 @@ class PaymentController extends Controller
         $payment_paid->current_paid_amount = NULL;
         $payment_paid->paid_date = $date;
         $payment_paid->paid_date_time = $date_time;
-        $insert_id = $payment_paid->save();
+        $payment_paid->save();
+        $insert_id = $payment_paid->id;
         if($insert_id){
             // transaction
             $transaction = new Transaction();
@@ -287,6 +303,45 @@ class PaymentController extends Controller
 
         }else{
             return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function SupplierDuePaymentEdit(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'supplier_id'=> 'required',
+            'paid_amount'=> 'required',
+            'current_due_amount'=> 'required',
+            'payment_type'=> 'required',
+        ]);
+
+        $date = $request->date;
+        $date_time = $date.' h:i:s';
+
+        $user_id = Auth::user()->id;
+
+        // payment paid
+        $payment_paid = PaymentPaid::find($request->payment_paid_id);
+        $payment_paid->user_id = $user_id;
+        $payment_paid->party_id = $request->supplier_id;
+        $payment_paid->paid_amount = $request->paid_amount;
+        $payment_paid->paid_date = $date;
+        $payment_paid->paid_date_time = $date_time;
+        $affected_row = $payment_paid->save();
+        if($affected_row){
+            // transaction
+            $transaction = Transaction::where('transaction_type','payment_paid')->where('ref_id',$request->payment_paid_id)->first();
+            $transaction->party_id = $request->supplier_id;
+            $transaction->payment_type = $request->payment_type;
+            $transaction->amount = $request->paid_amount;
+            $transaction->transaction_date = $date;
+            $transaction->transaction_date_time = $date_time;
+            $transaction->update();
+
+            return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
+
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
         }
     }
 
