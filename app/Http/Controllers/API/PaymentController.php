@@ -226,9 +226,12 @@ class PaymentController extends Controller
         $get_invoice_no = DB::table('payment_paids')
             ->where('paid_type','Payment')
             ->select('invoice_no')
+            ->orderBy('id','desc')
             ->first();
+
         if(!empty($get_invoice_no)){
-            $get_invoice = str_replace("payment-","",$get_invoice_no);
+            $exists_invoice_no = $get_invoice_no->invoice_no;
+            $get_invoice = str_replace("payment-","",$exists_invoice_no);
             $invoice_no = $get_invoice+1;
         }else{
             $invoice_no = 1000;
@@ -243,6 +246,7 @@ class PaymentController extends Controller
             ->join('parties','payment_paids.party_id','parties.id')
             ->where('payment_paids.paid_type','Payment')
             ->select('payment_paids.id as payment_paid_id','payment_paids.invoice_no','parties.name','payment_paids.paid_amount','payment_paids.payment_type','payment_paids.paid_date')
+            ->orderBy('payment_paids.id','desc')
             ->get();
 
         if($payment_paids)
@@ -277,6 +281,7 @@ class PaymentController extends Controller
         $payment_paid->user_id = $user_id;
         $payment_paid->party_id = $request->supplier_id;
         $payment_paid->paid_type = 'Payment';
+        $payment_paid->payment_type = $request->payment_type;
         $payment_paid->paid_amount = $request->paid_amount;
         $payment_paid->due_amount = 0;
         $payment_paid->current_paid_amount = NULL;
@@ -325,6 +330,7 @@ class PaymentController extends Controller
         $payment_paid->user_id = $user_id;
         $payment_paid->party_id = $request->supplier_id;
         $payment_paid->paid_amount = $request->paid_amount;
+        $payment_paid->payment_type = $request->payment_type;
         $payment_paid->paid_date = $date;
         $payment_paid->paid_date_time = $date_time;
         $affected_row = $payment_paid->save();

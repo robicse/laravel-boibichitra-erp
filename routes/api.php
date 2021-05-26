@@ -248,6 +248,7 @@ Route::middleware('auth:api')->post('/product_whole_sale_single_product_remove',
 
 // product sale pos
 Route::middleware('auth:api')->get('/product_pos_sale_list', 'API\ProductSaleController@productPOSSaleList');
+Route::middleware('auth:api')->post('/product_pos_sale_list_search', 'API\ProductSaleController@productPOSSaleListSearch');
 Route::middleware('auth:api')->post('/product_pos_sale_details', 'API\ProductSaleController@productPOSSaleDetails');
 Route::middleware('auth:api')->post('/product_pos_sale_create', 'API\ProductSaleController@productPOSSaleCreate');
 Route::middleware('auth:api')->post('/product_pos_sale_edit', 'API\ProductSaleController@productPOSSaleEdit');
@@ -450,6 +451,7 @@ Route::middleware('auth:api')->post('/chart_of_account_transaction_delete', 'API
 
 // ledger
 Route::middleware('auth:api')->post('/ledger', 'API\AccountController@ledger');
+Route::middleware('auth:api')->post('/ledger_report', 'API\AccountController@ledgerReport');
 Route::middleware('auth:api')->post('/balance_sheet', 'API\AccountController@balanceSheet');
 
 // database backup

@@ -238,7 +238,7 @@ class PaginationController extends Controller
             ->where('warehouse_current_stocks.warehouse_id',$request->warehouse_id)
             ->where('products.name','like','%'.$request->name.'%')
             ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.whole_sale_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
-            ->paginate(1);
+            ->paginate(12);
 
         if($warehouse_stock_product)
         {
@@ -349,34 +349,34 @@ class PaginationController extends Controller
 
         if(count($product_pos_sales) > 0)
         {
-            $product_pos_sale_arr = [];
-            foreach ($product_pos_sales as $data){
-                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','pos_sale')->pluck('payment_type')->first();
+//            $product_pos_sale_arr = [];
+//            foreach ($product_pos_sales as $data){
+//                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','pos_sale')->pluck('payment_type')->first();
+//
+//                $nested_data['id']=$data->id;
+//                $nested_data['invoice_no']=$data->invoice_no;
+//                $nested_data['discount_type']=$data->discount_type;
+//                $nested_data['discount_amount']=$data->discount_amount;
+//                $nested_data['total_vat_amount']=$data->total_vat_amount;
+//                $nested_data['total_amount']=$data->total_amount;
+//                $nested_data['paid_amount']=$data->paid_amount;
+//                $nested_data['due_amount']=$data->due_amount;
+//                $nested_data['sale_date_time']=$data->sale_date_time;
+//                $nested_data['user_name']=$data->user_name;
+//                $nested_data['customer_id']=$data->customer_id;
+//                $nested_data['customer_name']=$data->customer_name;
+//                $nested_data['warehouse_id']=$data->warehouse_id;
+//                $nested_data['warehouse_name']=$data->warehouse_name;
+//                $nested_data['store_id']=$data->store_id;
+//                $nested_data['store_name']=$data->store_name;
+//                $nested_data['store_address']=$data->store_address;
+//                $nested_data['phone']=$data->phone;
+//                $nested_data['payment_type']=$payment_type;
+//
+//                array_push($product_pos_sale_arr,$nested_data);
+//            }
 
-                $nested_data['id']=$data->id;
-                $nested_data['invoice_no']=$data->invoice_no;
-                $nested_data['discount_type']=$data->discount_type;
-                $nested_data['discount_amount']=$data->discount_amount;
-                $nested_data['total_vat_amount']=$data->total_vat_amount;
-                $nested_data['total_amount']=$data->total_amount;
-                $nested_data['paid_amount']=$data->paid_amount;
-                $nested_data['due_amount']=$data->due_amount;
-                $nested_data['sale_date_time']=$data->sale_date_time;
-                $nested_data['user_name']=$data->user_name;
-                $nested_data['customer_id']=$data->customer_id;
-                $nested_data['customer_name']=$data->customer_name;
-                $nested_data['warehouse_id']=$data->warehouse_id;
-                $nested_data['warehouse_name']=$data->warehouse_name;
-                $nested_data['store_id']=$data->store_id;
-                $nested_data['store_name']=$data->store_name;
-                $nested_data['store_address']=$data->store_address;
-                $nested_data['phone']=$data->phone;
-                $nested_data['payment_type']=$payment_type;
-
-                array_push($product_pos_sale_arr,$nested_data);
-            }
-
-            $success['product_pos_sales'] =  $product_pos_sale_arr;
+            $success['product_pos_sales'] =  $product_pos_sales;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);
