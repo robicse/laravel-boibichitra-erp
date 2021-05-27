@@ -297,6 +297,7 @@ Route::middleware('auth:api')->post('/store_due_paid_list_by_store_date_differen
 Route::middleware('auth:api')->post('/date_wise_sales_report', 'API\ReportController@dateWiseSalesReport');
 Route::middleware('auth:api')->post('/date_wise_vats_report', 'API\ReportController@dateWiseVatsReport');
 Route::middleware('auth:api')->post('/date_and_supplier_wise_purchase_report', 'API\ReportController@dateAndSupplierWisePurchaseReport');
+Route::middleware('auth:api')->post('/date_and_customer_wise_whole_sale_report', 'API\ReportController@dateAndCustomerWiseWholeSaleReport');
 
 // dashboard history
 Route::middleware('auth:api')->get('/today_purchase', 'API\DashboardController@todayPurchase');

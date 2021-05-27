@@ -1791,15 +1791,57 @@ class AccountController extends Controller
         }
 
 
+//        $ledger_data = [
+//            'sale_info' => $sale_info,
+//            'sale_return_info' => $sale_return_info,
+//            'bkash_credit_info' => $bkash_credit_info,
+//            'card_credit_info' => $card_credit_info,
+//            'rocket_credit_info' => $rocket_credit_info,
+//            'upay_credit_info' => $upay_credit_info,
+//            'employee_salary_credit_info' => $employee_salary_credit_info,
+//            'boss_credit_info' => $boss_credit_info,
+//            'PreBalance' => $PreBalance,
+//            'preDebCre' => $preDebCre,
+//            'pre_debit' => $pre_debit,
+//            'pre_credit' => $pre_credit,
+//            'chart_of_account_name' => $chart_of_account_name,
+//            'from_date' => $from_date,
+//            'to_date' => $to_date,
+//        ];
+
         $ledger_data = [
-            'sale_info' => $sale_info,
-            'sale_return_info' => $sale_return_info,
-            'bkash_credit_info' => $bkash_credit_info,
-            'card_credit_info' => $card_credit_info,
-            'rocket_credit_info' => $rocket_credit_info,
-            'upay_credit_info' => $upay_credit_info,
-            'employee_salary_credit_info' => $employee_salary_credit_info,
-            'boss_credit_info' => $boss_credit_info,
+            'sale_info' => [
+                'debit' => $sale_info->debit,
+                'credit' => 0
+            ],
+            'sale_return_info' => [
+                'debit' => 0,
+                'credit' => $sale_return_info->credit ? $sale_return_info->credit : 0
+            ],
+            'bkash_credit_info' => [
+                'debit' => 0,
+                'credit' => $bkash_credit_info->credit ? $bkash_credit_info->credit :0
+            ],
+            'card_credit_info' => [
+                'debit' => 0,
+                'credit' => $card_credit_info->credit ? $card_credit_info->credit : 0
+            ],
+            'rocket_credit_info' => [
+                'debit' => 0,
+                'credit' => $rocket_credit_info->credit ? $rocket_credit_info->credit : 0
+            ],
+            'upay_credit_info' => [
+                'debit' => 0,
+                'credit' => $upay_credit_info->credit ? $upay_credit_info->credit : 0
+            ],
+            'employee_salary_credit_info' => [
+                'debit' => 0,
+                'credit' => $employee_salary_credit_info->credit ? $employee_salary_credit_info->credit : 0
+            ],
+            'boss_credit_info' => [
+                'debit' => 0,
+                'credit' => $boss_credit_info->credit ? $boss_credit_info->credit : 0
+            ],
             'PreBalance' => $PreBalance,
             'preDebCre' => $preDebCre,
             'pre_debit' => $pre_debit,

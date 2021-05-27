@@ -60,13 +60,41 @@ class PaymentController extends Controller
         $customer_lists = DB::table('parties')
             ->where('type','customer')
             ->where('customer_type','Whole Sale')
-            ->select('id','name')
+            ->select('id','type','customer_type','name','phone','address','virtual_balance','status')
             ->orderBy('id','desc')
             ->get();
 
         if(count($customer_lists) > 0)
         {
-            $success['customer_lists'] =  $customer_lists;
+            $party_customer_arr = [];
+            foreach($customer_lists as $party_customer){
+
+                $sale_total_amount = 0;
+
+                $total_amount = DB::table('transactions')
+                    ->select(DB::raw('SUM(amount) as sum_total_amount'))
+                    ->where('party_id',$party_customer->id)
+                    ->where('transaction_type','whole_sale')
+                    ->first();
+
+                if(!empty($total_amount)){
+                    $sale_total_amount = $total_amount->sum_total_amount;
+                }
+
+                $nested_data['id'] = $party_customer->id;
+                $nested_data['type'] = $party_customer->type;
+                $nested_data['customer_type'] = $party_customer->customer_type;
+                $nested_data['name'] = $party_customer->name;
+                $nested_data['phone'] = $party_customer->phone;
+                $nested_data['address'] = $party_customer->address;
+                $nested_data['sale_total_amount'] = $sale_total_amount;
+                $nested_data['virtual_balance'] = $party_customer->virtual_balance;
+                $nested_data['status'] = $party_customer->status;
+
+                array_push($party_customer_arr,$nested_data);
+            }
+
+            $success['customer_lists'] =  $party_customer_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Customer List Found!'], $this->failStatus);
@@ -77,13 +105,41 @@ class PaymentController extends Controller
         $customer_lists = DB::table('parties')
             ->where('type','customer')
             ->where('customer_type','POS Sale')
-            ->select('id','name','phone')
+            ->select('id','type','customer_type','name','phone','address','virtual_balance','status')
             ->orderBy('id','desc')
             ->get();
 
         if(count($customer_lists) > 0)
         {
-            $success['customer_lists'] =  $customer_lists;
+            $party_customer_arr = [];
+            foreach($customer_lists as $party_customer){
+
+                $sale_total_amount = 0;
+
+                $total_amount = DB::table('transactions')
+                    ->select(DB::raw('SUM(amount) as sum_total_amount'))
+                    ->where('party_id',$party_customer->id)
+                    ->Where('transaction_type','pos_sale')
+                    ->first();
+
+                if(!empty($total_amount)){
+                    $sale_total_amount = $total_amount->sum_total_amount;
+                }
+
+                $nested_data['id'] = $party_customer->id;
+                $nested_data['type'] = $party_customer->type;
+                $nested_data['customer_type'] = $party_customer->customer_type;
+                $nested_data['name'] = $party_customer->name;
+                $nested_data['phone'] = $party_customer->phone;
+                $nested_data['address'] = $party_customer->address;
+                $nested_data['sale_total_amount'] = $sale_total_amount;
+                $nested_data['virtual_balance'] = $party_customer->virtual_balance;
+                $nested_data['status'] = $party_customer->status;
+
+                array_push($party_customer_arr,$nested_data);
+            }
+
+            $success['customer_lists'] =  $party_customer_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Customer List Found!'], $this->failStatus);

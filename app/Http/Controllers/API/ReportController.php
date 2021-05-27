@@ -510,6 +510,43 @@ class ReportController extends Controller
         }
     }
 
+    public function dateAndCustomerWiseWholeSaleReport(Request $request){
+        $from_date = $request->from_date;
+        $to_date = $request->to_date;
+        $sales = DB::table('product_sales')
+            ->join('parties','product_sales.party_id','parties.id')
+            ->select('product_sales.sale_date as transaction_date','product_sales.invoice_no','product_sales.total_amount as debit','product_sales.paid_amount as credit')
+            ->where('product_sales.party_id', $request->party_id)
+            ->where('product_sales.sale_date','>=',"$from_date")
+            ->where('product_sales.sale_date','<=',"$to_date")
+            //->groupBy('invoice_no')
+            ->get();
+
+
+        if($sales)
+        {
+            $data = [];
+            foreach($sales as $sale){
+                $nested_data['transaction_date']=$sale->transaction_date;
+                $nested_data['invoice_no']=$sale->invoice_no;
+                $nested_data['vch_type']='Sale Invoice';
+                $nested_data['debit']=$sale->debit;
+                $nested_data['credit']=$sale->credit;
+
+                array_push($data, $nested_data);
+            }
+
+            $customer_info = DB::table('parties')
+                ->where('id',$request->party_id)
+                ->select('name','phone','email','address')
+                ->first();
+
+            return response()->json(['success'=>true,'response' => $data, 'customer_info' => $customer_info], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>null], $this->successStatus);
+        }
+    }
+
     public function dateWiseSalesLedger(Request $request){
         $validator = Validator::make($request->all(), [
             'party_id'=> 'required',
