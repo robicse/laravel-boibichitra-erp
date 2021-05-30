@@ -55,8 +55,12 @@ class PartyController extends Controller
                 $total_amount = DB::table('transactions')
                     ->select(DB::raw('SUM(amount) as sum_total_amount'))
                     ->where('party_id',$party_customer->id)
-                    ->where('transaction_type','whole_sale')
-                    ->orWhere('transaction_type','pos_sale')
+                    //->where('transaction_type','whole_sale')
+                    //->orWhere('transaction_type','pos_sale')
+                    ->where(function ($query) {
+                        $query->where('transaction_type','whole_sale')
+                        ->orWhere('transaction_type','pos_sale');
+                    })
                     ->first();
 
                 if(!empty($total_amount)){
@@ -100,8 +104,12 @@ class PartyController extends Controller
                 $total_amount = DB::table('transactions')
                     ->select(DB::raw('SUM(amount) as sum_total_amount'))
                     ->where('party_id',$party_supplier->id)
-                    ->where('transaction_type','whole_purchase')
-                    ->orWhere('transaction_type','pos_purchase')
+                    //->where('transaction_type','whole_purchase')
+                    //->orWhere('transaction_type','pos_purchase')
+                    ->where(function ($query) {
+                        $query->where('transaction_type','whole_purchase')
+                            ->orWhere('transaction_type','pos_purchase');
+                    })
                     ->first();
 
                 if(!empty($total_amount)){
