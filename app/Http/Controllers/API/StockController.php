@@ -26,8 +26,18 @@ class StockController extends Controller
     public $validationStatus = 404;
 
     public function warehouseStockList(){
-        $warehouse_stock_list = DB::table('stocks')
-            ->leftJoin('users','stocks.user_id','users.id')
+//        $warehouse_stock_list = DB::table('stocks')
+//            ->leftJoin('users','stocks.user_id','users.id')
+//            ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
+//            ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
+//            ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
+//            ->leftJoin('products','stocks.product_id','products.id')
+//            ->where('stocks.stock_where','warehouse')
+//            ->select('stocks.id as stock_id','users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.stock_in_out','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
+//            ->latest('stocks.id','desc')
+//            ->get();
+
+        $warehouse_stock_list = Stock::leftJoin('users','stocks.user_id', '=', 'users.id')
             ->leftJoin('warehouses','stocks.warehouse_id','warehouses.id')
             ->leftJoin('product_units','stocks.product_unit_id','product_units.id')
             ->leftJoin('product_brands','stocks.product_brand_id','product_brands.id')
@@ -35,7 +45,7 @@ class StockController extends Controller
             ->where('stocks.stock_where','warehouse')
             ->select('stocks.id as stock_id','users.name as stock_by_user','warehouses.name as warehouse_name','product_units.name as product_unit_name','product_brands.name as product_brand_name','products.name as product_name','stocks.stock_type','stocks.stock_where','stocks.stock_in_out','stocks.previous_stock','stocks.stock_in','stocks.stock_out','stocks.current_stock','stocks.stock_date','stocks.stock_date_time')
             ->latest('stocks.id','desc')
-            ->get();
+            ->paginate(10);
 
         if($warehouse_stock_list)
         {
