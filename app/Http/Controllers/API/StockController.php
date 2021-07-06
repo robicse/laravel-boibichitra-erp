@@ -11,6 +11,7 @@ use App\StockTransferRequest;
 use App\StockTransferRequestDetail;
 use App\StoreStockReturn;
 use App\StoreStockReturnDetail;
+use App\User;
 use App\warehouseCurrentStock;
 use App\WarehouseStoreCurrentStock;
 use Illuminate\Http\Request;
@@ -287,11 +288,37 @@ class StockController extends Controller
             ->leftJoin('warehouses','stock_transfer_requests.request_to_warehouse_id','warehouses.id')
             ->leftJoin('stores','stock_transfer_requests.request_from_store_id','stores.id')
             //->where('stock_transfers.sale_type','whole_sale')
-            ->select('stock_transfer_requests.id','stock_transfer_requests.invoice_no','stock_transfer_requests.request_date','stock_transfer_requests.request_remarks','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
+            ->select('stock_transfer_requests.id','stock_transfer_requests.invoice_no','stock_transfer_requests.request_date','stock_transfer_requests.request_remarks','stock_transfer_requests.view_by_user_id','stock_transfer_requests.view_status','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
             ->get();
 
         if($stock_transfer_request_lists)
         {
+            $data = [];
+            foreach($stock_transfer_request_lists as $stock_transfer_request_list){
+                $nested_data['id']=$stock_transfer_request_list->id;
+                $nested_data['invoice_no']=$stock_transfer_request_list->invoice_no;
+                $nested_data['request_date']=$stock_transfer_request_list->request_date;
+                $nested_data['request_remarks']=$stock_transfer_request_list->request_remarks;
+                $nested_data['user_name']=$stock_transfer_request_list->user_name;
+                $nested_data['warehouse_id']=$stock_transfer_request_list->warehouse_id;
+                $nested_data['warehouse_name']=$stock_transfer_request_list->warehouse_name;
+                $nested_data['store_id']=$stock_transfer_request_list->store_id;
+                $nested_data['store_name']=$stock_transfer_request_list->store_name;
+                $nested_data['store_phone']=$stock_transfer_request_list->store_phone;
+                $nested_data['store_email']=$stock_transfer_request_list->store_email;
+                $nested_data['store_address']=$stock_transfer_request_list->store_address;
+                $nested_data['view_status']=$stock_transfer_request_list->view_status;
+                //$nested_data['view_by_user_id']=$stock_transfer_request_list->view_by_user_id;
+
+                $view_by_user_id = $stock_transfer_request_list->view_by_user_id;
+                $nested_data['view_user']= '';
+                if($view_by_user_id != NULL){
+                    $nested_data['view_user']=User::where('id',$view_by_user_id)->pluck('name')->first();
+                }
+
+                array_push($data, $nested_data);
+            }
+
             $success['stock_transfer_request_list'] =  $stock_transfer_request_lists;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
@@ -334,6 +361,23 @@ class StockController extends Controller
             return response()->json(['success'=>true,'response' => 'Stock Transfer Successfully Deleted!'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Purchase Deleted!'], $this->failStatus);
+        }
+    }
+
+    public function storeToWarehouseStockRequestViewUpdate(Request $request){
+        $this->validate($request, [
+            'stock_transfer_request_id'=> 'required',
+        ]);
+
+        $stock_transfer_request = StockTransferRequest::find($request->stock_transfer_request_id);
+        $stock_transfer_request->view_by_user_id = Auth::user()->id;
+        $stock_transfer_request->view_status = $request->view_status;
+        $affectedRow = $stock_transfer_request->save();
+
+        if($affectedRow){
+            return response()->json(['success'=>true,'response' => 'Stock Transfer Request View Successfully Updated.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Stock Transfer Request View Successfully Updated.!'], $this->failStatus);
         }
     }
 

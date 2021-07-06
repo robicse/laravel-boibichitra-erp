@@ -215,6 +215,7 @@ Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_edit', 'A
 Route::middleware('auth:api')->get('/store_to_warehouse_stock_request_list', 'API\StockController@storeToWarehouseStockRequestList');
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_details', 'API\StockController@storeToWarehouseStockRequestDetails');
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_delete', 'API\StockController@storeToWarehouseStockRequestDelete');
+Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_view_update', 'API\StockController@storeToWarehouseStockRequestViewUpdate');
 
 // stock transfer
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\StockController@warehouseToStoreStockCreate');
