@@ -17,12 +17,38 @@ class AttendanceController extends Controller
     public $validationStatus = 404;
 
     // Attendance
-    public function attendanceList(){
-        $attendances = DB::table('attendances')
-            ->join('employees','attendances.employee_id','=','employees.id')
-            ->select('attendances.id','attendances.card_no','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.on_duty','attendances.off_duty','attendances.clock_in','attendances.clock_out','attendances.late','attendances.early','attendances.absent','attendances.work_time','attendances.att_time','attendances.note','attendances.id as employee_id','employees.name as employee_name')
-            ->orderBy('id','desc')
-            ->get();
+    public function attendanceList(Request $request){
+        if($request->from_date && $request->to_date && $request->store_id){
+            $attendances = DB::table('attendances')
+                ->join('employees','attendances.employee_id','=','employees.id')
+                ->where('attendances.date','>=',$request->from_date)
+                ->where('attendances.date','<=',$request->to_date)
+                ->where('employees.store_id',$request->store_id)
+                ->select('attendances.id','attendances.card_no','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.on_duty','attendances.off_duty','attendances.clock_in','attendances.clock_out','attendances.late','attendances.early','attendances.absent','attendances.work_time','attendances.att_time','attendances.note','attendances.id as employee_id','employees.name as employee_name')
+                ->orderBy('id','desc')
+                ->get();
+        }elseif($request->from_date && $request->to_date){
+            $attendances = DB::table('attendances')
+                ->join('employees','attendances.employee_id','=','employees.id')
+                ->where('attendances.date','>=',$request->from_date)
+                ->where('attendances.date','<=',$request->to_date)
+                ->select('attendances.id','attendances.card_no','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.on_duty','attendances.off_duty','attendances.clock_in','attendances.clock_out','attendances.late','attendances.early','attendances.absent','attendances.work_time','attendances.att_time','attendances.note','attendances.id as employee_id','employees.name as employee_name')
+                ->orderBy('id','desc')
+                ->get();
+        }elseif($request->store_id){
+            $attendances = DB::table('attendances')
+                ->join('employees','attendances.employee_id','=','employees.id')
+                ->where('employees.store_id',$request->store_id)
+                ->select('attendances.id','attendances.card_no','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.on_duty','attendances.off_duty','attendances.clock_in','attendances.clock_out','attendances.late','attendances.early','attendances.absent','attendances.work_time','attendances.att_time','attendances.note','attendances.id as employee_id','employees.name as employee_name')
+                ->orderBy('id','desc')
+                ->get();
+        }else{
+            $attendances = DB::table('attendances')
+                ->join('employees','attendances.employee_id','=','employees.id')
+                ->select('attendances.id','attendances.card_no','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.on_duty','attendances.off_duty','attendances.clock_in','attendances.clock_out','attendances.late','attendances.early','attendances.absent','attendances.work_time','attendances.att_time','attendances.note','attendances.id as employee_id','employees.name as employee_name')
+                ->orderBy('id','desc')
+                ->get();
+        }
 
         if($attendances)
         {

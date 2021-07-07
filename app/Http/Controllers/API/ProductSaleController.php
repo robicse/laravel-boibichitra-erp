@@ -1055,7 +1055,7 @@ class ProductSaleController extends Controller
 
                 //$productSale->discount_amount = $discount_amount - $remove_discount;
                 $productSale->discount_amount = $total_vat_amount - $remove_vat_amount;
-                $productSale->discount_amount = $total_amount - $remove_sub_total;
+                $productSale->total_amount = $total_amount - $remove_sub_total;
                 $productSale->save();
 
                 // delete single product

@@ -175,6 +175,7 @@ Route::middleware('auth:api')->post('/product_whole_purchase_details', 'API\Prod
 Route::middleware('auth:api')->post('/product_whole_purchase_create', 'API\ProductPurchaseController@productWholePurchaseCreate');
 Route::middleware('auth:api')->post('/product_whole_purchase_edit', 'API\ProductPurchaseController@productWholePurchaseEdit');
 Route::middleware('auth:api')->post('/product_whole_purchase_delete', 'API\ProductPurchaseController@productWholePurchaseDelete');
+Route::middleware('auth:api')->post('/product_whole_purchase_single_product_remove', 'API\ProductPurchaseController@productWholePurchaseSingleProductRemove');
 
 // product purchase pos
 Route::middleware('auth:api')->get('/product_pos_purchase_list', 'API\ProductPurchaseController@productPOSPurchaseList');

@@ -308,7 +308,7 @@ class StockController extends Controller
                 $nested_data['store_email']=$stock_transfer_request_list->store_email;
                 $nested_data['store_address']=$stock_transfer_request_list->store_address;
                 $nested_data['view_status']=$stock_transfer_request_list->view_status;
-                //$nested_data['view_by_user_id']=$stock_transfer_request_list->view_by_user_id;
+                $nested_data['view_by_user_id']=$stock_transfer_request_list->view_by_user_id;
 
                 $view_by_user_id = $stock_transfer_request_list->view_by_user_id;
                 $nested_data['view_user']= '';
@@ -319,7 +319,7 @@ class StockController extends Controller
                 array_push($data, $nested_data);
             }
 
-            $success['stock_transfer_request_list'] =  $stock_transfer_request_lists;
+            $success['stock_transfer_request_list'] =  $data;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Stock Transfer Request List Found!'], $this->failStatus);

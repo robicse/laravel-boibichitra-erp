@@ -9,6 +9,7 @@ use App\ProductPurchase;
 use App\ProductPurchaseDetail;
 use App\ProductPurchaseReturn;
 use App\ProductPurchaseReturnDetail;
+use App\ProductSale;
 use App\Stock;
 use App\Transaction;
 use App\WarehouseCurrentStock;
@@ -575,6 +576,86 @@ class ProductPurchaseController extends Controller
         }
     }
 
+    public function productWholePurchaseSingleProductRemove(Request $request){
+        $check_exists_product_purchase = DB::table("product_purchases")->where('id',$request->product_purchase_id)->pluck('id')->first();
+        if($check_exists_product_purchase == null){
+            return response()->json(['success'=>false,'response'=>'No Product Purchase Found!'], $this->failStatus);
+        }
+
+        $productPurchase = ProductPurchase::find($request->product_purchase_id);
+        if($productPurchase) {
+
+            //$discount_amount = $productPurchase->discount_amount;
+            $paid_amount = $productPurchase->paid_amount;
+            $due_amount = $productPurchase->due_amount;
+            //$total_vat_amount = $productPurchase->total_vat_amount;
+            $total_amount = $productPurchase->total_amount;
+
+            $product_purchase_detail = DB::table('product_purchase_details')->where('id', $request->product_purchase_detail_id)->first();
+            $product_unit_id = $product_purchase_detail->product_unit_id;
+            $product_brand_id = $product_purchase_detail->product_brand_id;
+            $product_id = $product_purchase_detail->product_id;
+            $qty = $product_purchase_detail->qty;
+            //return response()->json(['success'=>true,'response' =>$product_sale_detail], $this->successStatus);
+            if ($product_purchase_detail) {
+
+                //$remove_discount = $product_sale_detail->discount;
+                //$remove_vat_amount = $product_purchase_detail->vat_amount;
+                $remove_sub_total = $product_purchase_detail->sub_total;
+
+
+                //$productSale->discount_amount = $discount_amount - $remove_discount;
+                //$productPurchase->discount_amount = $total_vat_amount - $remove_vat_amount;
+                $productPurchase->due_amount = $due_amount - $remove_sub_total;
+                $productPurchase->total_amount = $total_amount - $remove_sub_total;
+                $productPurchase->save();
+
+                // delete single product
+                //$product_sale_detail->delete();
+                DB::table('product_purchase_details')->delete($product_purchase_detail->id);
+            }
+
+
+
+            $user_id = Auth::user()->id;
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d H:i:s');
+            // current stock
+            $stock_row = Stock::where('stock_where','warehouse')->where('warehouse_id',$productPurchase->warehouse_id)->where('product_id',$product_id)->latest('id')->first();
+            $current_stock = $stock_row->current_stock;
+
+            $stock = new Stock();
+            $stock->ref_id=$productPurchase->id;
+            $stock->user_id=$user_id;
+            $stock->product_unit_id= $product_unit_id;
+            $stock->product_brand_id= $product_brand_id;
+            $stock->product_id= $product_id;
+            $stock->stock_type='whole_purchase_delete';
+            $stock->warehouse_id= $productPurchase->warehouse_id;
+            $stock->store_id=NULL;
+            $stock->stock_where='warehouse';
+            $stock->stock_in_out='stock_out';
+            $stock->previous_stock=$current_stock;
+            $stock->stock_in=0;
+            $stock->stock_out=$qty;
+            $stock->current_stock=$current_stock - $qty;
+            $stock->stock_date=$date;
+            $stock->stock_date_time=$date_time;
+            $stock->save();
+
+            $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$productPurchase->warehouse_id)->where('product_id',$product_id)->first();
+            $exists_current_stock = $warehouse_current_stock->current_stock;
+            $warehouse_current_stock->current_stock=$exists_current_stock - $qty;
+            $warehouse_current_stock->update();
+
+            return response()->json(['success'=>true,'response' =>'Single Product Purchase Remove Successfully Removed!'], $this->successStatus);
+        } else{
+            return response()->json(['success'=>false,'response'=>'Single Product Purchase Remove Not Deleted!'], $this->failStatus);
+        }
+    }
+
+
+    // not working now
     public function productPurchaseRemove(Request $request){
 
         $this->validate($request, [
