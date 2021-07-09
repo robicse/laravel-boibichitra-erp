@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Product;
+use App\ProductPurchase;
 use App\Stock;
 use App\StockTransfer;
 use App\StockTransferDetail;
@@ -14,6 +15,7 @@ use App\StoreStockReturnDetail;
 use App\User;
 use App\warehouseCurrentStock;
 use App\WarehouseStoreCurrentStock;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -889,6 +891,133 @@ class StockController extends Controller
             return response()->json(['success'=>false,'response'=>'No Warehouse To Store Stock Removed Successfully!'], $this->failStatus);
         }
     }
+
+    public function stockTransferSingleProductRemove(Request $request){
+        $this->validate($request, [
+            'stock_transfer_id'=> 'required',
+            'stock_transfer_detail_id'=> 'required',
+        ]);
+
+
+        $check_exists_stock_transfers = DB::table("stock_transfers")->where('id',$request->stock_transfer_id)->pluck('id')->first();
+        if($check_exists_stock_transfers == null){
+            return response()->json(['success'=>false,'response'=>'No Product Purchase Found!'], $this->failStatus);
+        }
+
+        $stockTransfer = StockTransfer::find($request->stock_transfer_id);
+        if($stockTransfer) {
+            //$discount_amount = $stockTransfer->miscellaneous_charge;
+            //$paid_amount = $stockTransfer->paid_amount;
+            $due_amount = $stockTransfer->due_amount;
+            //$total_vat_amount = $stockTransfer->total_vat_amount;
+            $total_amount = $stockTransfer->total_amount;
+
+            $stock_transfer_detail = DB::table('stock_transfer_details')->where('id', $request->stock_transfer_detail_id)->first();
+            $product_unit_id = $stock_transfer_detail->product_unit_id;
+            $product_brand_id = $stock_transfer_detail->product_brand_id;
+            $product_id = $stock_transfer_detail->product_id;
+            $qty = $stock_transfer_detail->qty;
+
+            if ($stock_transfer_detail) {
+
+                //$remove_discount = $stock_transfer_detail->discount;
+                //$remove_vat_amount = $stock_transfer_detail->vat_amount;
+                $remove_sub_total = $stock_transfer_detail->sub_total;
+
+
+                //$productSale->discount_amount = $discount_amount - $remove_discount;
+                //$productPurchase->discount_amount = $total_vat_amount - $remove_vat_amount;
+                $stockTransfer->due_amount = $due_amount - $remove_sub_total;
+                $stockTransfer->total_amount = $total_amount - $remove_sub_total;
+                $stockTransfer->save();
+
+                // delete single product
+                //$product_sale_detail->delete();
+                DB::table('stock_transfer_details')->delete($stock_transfer_detail->id);
+            }
+
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d h:i:s');
+            $user_id = Auth::user()->id;
+
+
+
+            // product stock
+            $stock_row = Stock::where('warehouse_id',$stockTransfer->warehouse_id)->where('product_id',$product_id)->latest()->first();
+            $current_stock = $stock_row->current_stock;
+
+            // warehouse current stock
+            $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$stockTransfer->warehouse_id)
+                ->where('product_id',$product_id)
+                ->first();
+            $exists_current_stock = $warehouse_current_stock_update->current_stock;
+
+
+            // warehouse store current stock
+            $warehouse_store_current_stock_update = WarehouseStoreCurrentStock::where('warehouse_id',$stockTransfer->warehouse_id)
+                ->where('store_id',$stockTransfer->store_id)
+                ->where('product_id',$product_id)
+                ->first();
+            $exists_warehouse_store_current_stock = $warehouse_store_current_stock_update->current_stock;
+
+            // stock out warehouse product
+            $stock = new Stock();
+            $stock->ref_id = $request->stock_transfer_id;
+            $stock->user_id = $user_id;
+            $stock->warehouse_id = $stockTransfer->warehouse_id;
+            $stock->store_id = $stockTransfer->store_id;
+            $stock->product_id = $product_id;
+            $stock->product_unit_id = $product_unit_id;
+            $stock->product_brand_id = $product_brand_id ? $product_brand_id : NULL;
+            $stock->stock_type = 'warehouse_to_store_stock_delete';
+            $stock->stock_where = 'warehouse';
+            $stock->stock_in_out = 'stock_in';
+            $stock->previous_stock = $current_stock;
+            $stock->stock_in = $qty;
+            $stock->stock_out = 0;
+            $stock->current_stock = $current_stock + $qty;
+            $stock->stock_date = $date;
+            $stock->stock_date_time = $date_time;
+            $stock->save();
+
+            // warehouse current stock
+            $warehouse_current_stock_update->current_stock=$exists_current_stock + $qty;
+            $warehouse_current_stock_update->save();
+
+
+            // stock in store product
+            $stock = new Stock();
+            $stock->ref_id = $request->stock_transfer_id;
+            $stock->user_id = $user_id;
+            $stock->warehouse_id = $stockTransfer->warehouse_id;
+            $stock->store_id = $stockTransfer->store_id;
+            $stock->product_id = $product_id;
+            $stock->product_unit_id = $product_unit_id;
+            $stock->product_brand_id = $product_brand_id ? $product_brand_id : NULL;
+            $stock->stock_type = 'warehouse_to_store_stock_delete';
+            $stock->stock_where = 'store';
+            $stock->stock_in_out = 'stock_out';
+            $stock->previous_stock = $exists_warehouse_store_current_stock;
+            $stock->stock_in = 0;
+            $stock->stock_out = $qty;
+            $stock->current_stock = $exists_warehouse_store_current_stock - $qty;
+            $stock->stock_date = $date;
+            $stock->stock_date_time = $date_time;
+            $stock->save();
+
+            // warehouse store current stock
+            $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock - $qty;
+            $affected_row = $warehouse_store_current_stock_update->save();
+            if($affected_row){
+                return response()->json(['success'=>true,'response' => 'Warehouse To Store Stock Removed Successfully.'], $this->successStatus);
+            }else{
+                return response()->json(['success'=>false,'response'=>'No Warehouse To Store Stock Removed Successfully!'], $this->failStatus);
+            }
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse To Store Stock Removed Successfully!'], $this->failStatus);
+        }
+    }
+
 
     public function storeCurrentStockList(Request $request){
 

@@ -422,72 +422,181 @@ class ProductPurchaseController extends Controller
                 $purchase_purchase_detail->barcode = $barcode;
                 $purchase_purchase_detail->update();
 
+                if($request->product_type == 'new'){
+                    $check_previous_stock = Stock::where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                    if(!empty($check_previous_stock)){
+                        $previous_stock = $check_previous_stock;
+                    }else{
+                        $previous_stock = 0;
+                    }
 
-                // product stock
-                $stock_row = Stock::where('warehouse_id',$request->warehouse_id)->where('product_id',$product_id)->latest()->first();
-                $current_stock = $stock_row->current_stock;
+                    // product stock
+                    $stock = new Stock();
+                    $stock->ref_id = $request->product_purchase_id;
+                    $stock->user_id = $user_id;
+                    $stock->warehouse_id = $request->warehouse_id;
+                    $stock->product_id = $product_id;
+                    $stock->product_unit_id = $data['product_unit_id'];
+                    $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                    $stock->stock_type = 'whole_purchase';
+                    $stock->stock_where = 'warehouse';
+                    $stock->stock_in_out = 'stock_in';
+                    $stock->previous_stock = $previous_stock;
+                    $stock->stock_in = $data['qty'];
+                    $stock->stock_out = 0;
+                    $stock->current_stock = $previous_stock + $data['qty'];
+                    $stock->stock_date = $date;
+                    $stock->stock_date_time = $date_time;
+                    $stock->save();
 
-                // warehouse current stock
-                $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
-                    ->where('product_id',$product_id)
-                    ->first();
-                $exists_current_stock = $warehouse_current_stock_update->current_stock;
-
-                if($stock_row->stock_in != $data['qty']){
-
-                    if($data['qty'] > $stock_row->stock_in){
-                        $new_stock_in = $data['qty'] - $previous_purchase_qty;
-
-                        $stock = new Stock();
-                        $stock->ref_id=$request->product_purchase_id;
-                        $stock->user_id=$user_id;
-                        $stock->product_unit_id= $data['product_unit_id'];
-                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                        $stock->product_id= $product_id;
-                        $stock->stock_type='whole_purchase_increase';
-                        $stock->warehouse_id= $productPurchase->warehouse_id;
-                        $stock->store_id=NULL;
-                        $stock->stock_where='warehouse';
-                        $stock->stock_in_out='stock_in';
-                        $stock->previous_stock=$current_stock;
-                        $stock->stock_in=$new_stock_in;
-                        $stock->stock_out=0;
-                        $stock->current_stock=$current_stock + $new_stock_in;
-                        $stock->stock_date=$date;
-                        $stock->stock_date_time=$date_time;
-                        $stock->save();
-
-                        // warehouse current stock
-                        $warehouse_current_stock_update->current_stock=$exists_current_stock + $new_stock_in;
+                    // warehouse current stock
+                    $check_exists_warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
+                        ->where('product_id',$product_id)
+                        ->first();
+                    if($check_exists_warehouse_current_stock){
+                        $warehouse_current_stock_update = WarehouseCurrentStock::find($check_exists_warehouse_current_stock->id);
+                        $warehouse_current_stock_update->current_stock=$check_exists_warehouse_current_stock->current_stock + $data['qty'];
                         $warehouse_current_stock_update->save();
                     }else{
-                        $new_stock_out = $previous_purchase_qty - $data['qty'];
+                        $warehouse_current_stock = new WarehouseCurrentStock();
+                        $warehouse_current_stock->warehouse_id=$request->warehouse_id;
+                        $warehouse_current_stock->product_id=$product_id;
+                        $warehouse_current_stock->current_stock=$data['qty'];
+                        $warehouse_current_stock->save();
+                    }
+                }else{
+                    // product stock
+                    $stock_row = Stock::where('warehouse_id',$request->warehouse_id)->where('product_id',$product_id)->latest()->first();
+                    $current_stock = $stock_row->current_stock;
 
-                        $stock = new Stock();
-                        $stock->ref_id=$request->product_purchase_id;
-                        $stock->user_id=$user_id;
-                        $stock->product_unit_id= $data['product_unit_id'];
-                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                        $stock->product_id= $product_id;
-                        $stock->stock_type='whole_purchase_decrease';
-                        $stock->warehouse_id= $productPurchase->warehouse_id;
-                        $stock->store_id=NULL;
-                        $stock->stock_where='warehouse';
-                        $stock->stock_in_out='stock_in';
-                        $stock->previous_stock=$current_stock;
-                        $stock->stock_in=$new_stock_out;
-                        $stock->stock_out=0;
-                        $stock->current_stock=$current_stock - $new_stock_out;
-                        $stock->stock_date=$date;
-                        $stock->stock_date_time=$date_time;
-                        $stock->save();
+                    // warehouse current stock
+                    $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
+                        ->where('product_id',$product_id)
+                        ->first();
+                    $exists_current_stock = $warehouse_current_stock_update->current_stock;
 
-                        // warehouse current stock
-                        $warehouse_current_stock_update->current_stock=$exists_current_stock - $new_stock_out;
-                        $warehouse_current_stock_update->save();
+                    if($stock_row->stock_in != $data['qty']){
+
+                        if($data['qty'] > $stock_row->stock_in){
+                            $new_stock_in = $data['qty'] - $previous_purchase_qty;
+
+                            $stock = new Stock();
+                            $stock->ref_id=$request->product_purchase_id;
+                            $stock->user_id=$user_id;
+                            $stock->product_unit_id= $data['product_unit_id'];
+                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                            $stock->product_id= $product_id;
+                            $stock->stock_type='whole_purchase_increase';
+                            $stock->warehouse_id= $productPurchase->warehouse_id;
+                            $stock->store_id=NULL;
+                            $stock->stock_where='warehouse';
+                            $stock->stock_in_out='stock_in';
+                            $stock->previous_stock=$current_stock;
+                            $stock->stock_in=$new_stock_in;
+                            $stock->stock_out=0;
+                            $stock->current_stock=$current_stock + $new_stock_in;
+                            $stock->stock_date=$date;
+                            $stock->stock_date_time=$date_time;
+                            $stock->save();
+
+                            // warehouse current stock
+                            $warehouse_current_stock_update->current_stock=$exists_current_stock + $new_stock_in;
+                            $warehouse_current_stock_update->save();
+                        }else{
+                            $new_stock_out = $previous_purchase_qty - $data['qty'];
+
+                            $stock = new Stock();
+                            $stock->ref_id=$request->product_purchase_id;
+                            $stock->user_id=$user_id;
+                            $stock->product_unit_id= $data['product_unit_id'];
+                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                            $stock->product_id= $product_id;
+                            $stock->stock_type='whole_purchase_decrease';
+                            $stock->warehouse_id= $productPurchase->warehouse_id;
+                            $stock->store_id=NULL;
+                            $stock->stock_where='warehouse';
+                            $stock->stock_in_out='stock_in';
+                            $stock->previous_stock=$current_stock;
+                            $stock->stock_in=$new_stock_out;
+                            $stock->stock_out=0;
+                            $stock->current_stock=$current_stock - $new_stock_out;
+                            $stock->stock_date=$date;
+                            $stock->stock_date_time=$date_time;
+                            $stock->save();
+
+                            // warehouse current stock
+                            $warehouse_current_stock_update->current_stock=$exists_current_stock - $new_stock_out;
+                            $warehouse_current_stock_update->save();
+                        }
                     }
                 }
+
             }
+
+            // product stock
+//            $stock_row = Stock::where('warehouse_id',$request->warehouse_id)->where('product_id',$product_id)->latest()->first();
+//            $current_stock = $stock_row->current_stock;
+//
+//            // warehouse current stock
+//            $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
+//                ->where('product_id',$product_id)
+//                ->first();
+//            $exists_current_stock = $warehouse_current_stock_update->current_stock;
+//
+//            if($stock_row->stock_in != $data['qty']){
+//
+//                if($data['qty'] > $stock_row->stock_in){
+//                    $new_stock_in = $data['qty'] - $previous_purchase_qty;
+//
+//                    $stock = new Stock();
+//                    $stock->ref_id=$request->product_purchase_id;
+//                    $stock->user_id=$user_id;
+//                    $stock->product_unit_id= $data['product_unit_id'];
+//                    $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+//                    $stock->product_id= $product_id;
+//                    $stock->stock_type='whole_purchase_increase';
+//                    $stock->warehouse_id= $productPurchase->warehouse_id;
+//                    $stock->store_id=NULL;
+//                    $stock->stock_where='warehouse';
+//                    $stock->stock_in_out='stock_in';
+//                    $stock->previous_stock=$current_stock;
+//                    $stock->stock_in=$new_stock_in;
+//                    $stock->stock_out=0;
+//                    $stock->current_stock=$current_stock + $new_stock_in;
+//                    $stock->stock_date=$date;
+//                    $stock->stock_date_time=$date_time;
+//                    $stock->save();
+//
+//                    // warehouse current stock
+//                    $warehouse_current_stock_update->current_stock=$exists_current_stock + $new_stock_in;
+//                    $warehouse_current_stock_update->save();
+//                }else{
+//                    $new_stock_out = $previous_purchase_qty - $data['qty'];
+//
+//                    $stock = new Stock();
+//                    $stock->ref_id=$request->product_purchase_id;
+//                    $stock->user_id=$user_id;
+//                    $stock->product_unit_id= $data['product_unit_id'];
+//                    $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+//                    $stock->product_id= $product_id;
+//                    $stock->stock_type='whole_purchase_decrease';
+//                    $stock->warehouse_id= $productPurchase->warehouse_id;
+//                    $stock->store_id=NULL;
+//                    $stock->stock_where='warehouse';
+//                    $stock->stock_in_out='stock_in';
+//                    $stock->previous_stock=$current_stock;
+//                    $stock->stock_in=$new_stock_out;
+//                    $stock->stock_out=0;
+//                    $stock->current_stock=$current_stock - $new_stock_out;
+//                    $stock->stock_date=$date;
+//                    $stock->stock_date_time=$date_time;
+//                    $stock->save();
+//
+//                    // warehouse current stock
+//                    $warehouse_current_stock_update->current_stock=$exists_current_stock - $new_stock_out;
+//                    $warehouse_current_stock_update->save();
+//                }
+//            }
 
             // transaction
             $transaction = Transaction::where('ref_id',$request->product_purchase_id)->first();

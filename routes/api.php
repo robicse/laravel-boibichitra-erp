@@ -227,6 +227,7 @@ Route::middleware('auth:api')->post('/store_current_product_stock', 'API\StockCo
 Route::middleware('auth:api')->post('/store_current_stock_list_without_zero', 'API\StockController@storeCurrentStockListWithoutZero');
 Route::middleware('auth:api')->get('/stock_transfer_list', 'API\StockController@stockTransferList');
 Route::middleware('auth:api')->post('/stock_transfer_details', 'API\StockController@stockTransferDetails');
+Route::middleware('auth:api')->post('/stock_transfer_single_product_remove', 'API\StockController@stockTransferSingleProductRemove');
 
 // stock to warehouse stock return
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_return_create', 'API\StockController@storeToWarehouseStockReturnCreate');
