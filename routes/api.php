@@ -195,6 +195,8 @@ Route::middleware('auth:api')->post('/product_purchase_return_details', 'API\Pro
 Route::middleware('auth:api')->post('/product_purchase_return_create', 'API\ProductPurchaseController@productPurchaseReturnCreate');
 Route::middleware('auth:api')->post('/product_whole_purchase_create_with_low_product', 'API\ProductPurchaseController@productWholePurchaseCreateWithLowProduct');
 
+Route::middleware('auth:api')->post('/product_purchase_return_single_product_remove', 'API\ProductPurchaseController@productPurchaseReturnSingleProductRemove');
+
 
 // warehouse stock list
 Route::middleware('auth:api')->get('/warehouse_stock_list', 'API\StockController@warehouseStockList');
@@ -256,6 +258,7 @@ Route::middleware('auth:api')->post('/product_pos_sale_details', 'API\ProductSal
 Route::middleware('auth:api')->post('/product_pos_sale_create', 'API\ProductSaleController@productPOSSaleCreate');
 Route::middleware('auth:api')->post('/product_pos_sale_edit', 'API\ProductSaleController@productPOSSaleEdit');
 Route::middleware('auth:api')->post('/product_pos_sale_delete', 'API\ProductSaleController@productPOSSaleDelete');
+Route::middleware('auth:api')->post('/product_pos_sale_single_product_remove', 'API\ProductSaleController@productPOSSaleSingleProductRemove');
 
 // product sale return
 Route::middleware('auth:api')->get('/product_sale_invoice_list', 'API\ProductSaleController@productSaleInvoiceList');
@@ -263,6 +266,8 @@ Route::middleware('auth:api')->post('/product_sale_details', 'API\ProductSaleCon
 Route::middleware('auth:api')->get('/product_sale_return_list', 'API\ProductSaleController@productSaleReturnList');
 Route::middleware('auth:api')->post('/product_sale_return_details', 'API\ProductSaleController@productSaleReturnDetails');
 Route::middleware('auth:api')->post('/product_sale_return_create', 'API\ProductSaleController@productSaleReturnCreate');
+
+Route::middleware('auth:api')->post('/product_sale_return_single_product_remove', 'API\ProductSaleController@productSaleReturnSingleProductRemove');
 
 // product sale exchange
 Route::middleware('auth:api')->get('/product_sale_exchange_list', 'API\ProductSaleExchangeController@productSaleExchangeList');

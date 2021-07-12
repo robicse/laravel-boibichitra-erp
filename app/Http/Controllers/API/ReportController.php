@@ -736,127 +736,253 @@ class ReportController extends Controller
 //    }
 
     public function dateWiseVatsReport(Request $request){
+        $validator = Validator::make($request->all(), [
+            'search_type'=> 'required',
+            'sale_type'=> 'required',
+        ]);
 
-        //How to calculate date different between two dates in larevel
-        // METHOD-1
-//        $date1 = new \DateTime($request->from_date." 00:00:00");
-//        $date2 = new \DateTime($request->to_date." 01:23:45");
-//        $difference = $date1->diff($date2);
-//        $diffInSeconds = $difference->s; //45
-//        $diffInMinutes = $difference->i; //23
-//        $diffInHours   = $difference->h; //8
-//        $diffInDays    = $difference->d; //21
-//        $diffInMonths  = $difference->m; //4
-//        $diffInYears   = $difference->y; //1
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
 
-        //return response()->json(['success'=>true,'response' => $diffInYears], $this->successStatus);
-        //return response()->json(['success'=>true,'response' => $diffInMonths], $this->successStatus);
-        //return response()->json(['success'=>true,'response' => $diffInDays], $this->successStatus);
-        //return response()->json(['success'=>true,'response' => $sale_type], $this->successStatus);
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $from_date = $request->from_date ? $request->from_date : '';
+        $to_date = $request->to_date ? $request->to_date : '';
+        $sale_type = $request->sale_type ? $request->sale_type : '';
+        $warehouse_id = $request->warehouse_id ? $request->warehouse_id : '';
+        $store_id = $request->store_id ? $request->store_id : '';
 
 
-        $vat_infos = [
+        $sale_infos = [
             'date_wise' => '',
             'month_wise' => '',
             'year_wise' => '',
         ];
 
-        if($request->search_type == 'date'){
-//            $vats = DB::table('product_sale_details')
-//                ->join('product_sales','product_sale_details.product_sale_id','product_sales.id')
-//                ->select('product_sales.sale_date',DB::raw('SUM(product_sale_details.price) as total_price'),DB::raw('SUM(product_sale_details.vat_amount) as total_vat_amount'))
-//                ->where('product_sale_details.vat_amount', '>', 0)
-//                ->where('product_sales.sale_date','>=',$request->from_date)
-//                ->where('product_sales.sale_date','<=',$request->to_date)
-//                ->groupBy('product_sales.sale_date')
-//                ->get();
-//
-//            $sum_vats_amount = DB::table('product_sale_details')
-//                ->join('product_sales','product_sale_details.product_sale_id','product_sales.id')
-//                ->select(DB::raw('SUM(product_sale_details.price) as total_price'),DB::raw('SUM(product_sale_details.vat_amount) as total_vat_amount'))
-//                ->where('product_sale_details.vat_amount', '>', 0)
-//                ->where('product_sales.sale_date','>=',$request->from_date)
-//                ->where('product_sales.sale_date','<=',$request->to_date)
-//                ->first();
+        $grand_total_amount = 0;
+        $grand_total_vat_amount = 0;
 
-            $vats = DB::table('product_sales')
-                ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('DATE(created_at) date'))
-                ->where('product_sales.sale_date','>=',$request->from_date)
-                ->where('product_sales.sale_date','<=',$request->to_date)
-                ->groupBy(DB::raw('DATE(created_at)'))
-                ->get();
-
-            $sum_vats_amount = 0;
-            if(count($vats) > 0){
-                foreach ($vats as $vat){
-                    $sum_vats_amount += $vat->sum_total_amount;
+        if($sale_type == 'pos_sale'){
+            if($request->search_type == 'date'){
+                if($store_id != ''){
+                    $product_sales = DB::table('product_sales')
+                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('DATE(created_at) date'))
+                        ->where('sale_date','>=',$from_date)
+                        ->where('sale_date','<=',$to_date)
+                        ->where('sale_type',$sale_type)
+                        ->where('store_id',$store_id)
+                        ->groupBy(DB::raw('DATE(created_at)'))
+                        ->get();
+                }else{
+                    $product_sales = DB::table('product_sales')
+                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('DATE(created_at) date'))
+                        ->where('sale_date','>=',$from_date)
+                        ->where('sale_date','<=',$to_date)
+                        ->where('sale_type',$sale_type)
+                        ->groupBy(DB::raw('DATE(created_at)'))
+                        ->get();
                 }
+
+                if(count($product_sales) > 0){
+                    foreach ($product_sales as $product_sale){
+                        $grand_total_amount += $product_sale->sum_total_amount;
+                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+                    }
+                }
+
+                $sale_infos['date_wise'] = [
+                    'product_sales' => $product_sales,
+                    'grand_total_amount' => $grand_total_amount,
+                    'grand_total_vat_amount' => $grand_total_vat_amount,
+                ];
             }
 
-            $vat_infos['date_wise'] = [
-                'vats' => $vats,
-                'sum_vats_amount' => $sum_vats_amount,
-            ];
-        }
+            if($request->search_type == 'month'){
+                $from_year = $request->from_year;
+                $to_year = $request->to_year;
+                $from_month = $request->from_month;
+                $to_month = $request->to_month;
 
+                $from = $from_year.'-'.$from_month.'-01';
+                $to = $to_year.'-'.$to_month.'-31';
 
-        if($request->search_type == 'month'){
-            $from_year = $request->from_year;
-            $to_year = $request->to_year;
-            $from_month = $request->from_month;
-            $to_month = $request->to_month;
-
-            $from = $from_year.'-'.$from_month.'-01';
-            $to = $to_year.'-'.$to_month.'-31';
-
-            $vats = DB::table('product_sales')
-                ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('YEAR(created_at) year'),DB::raw('MONTH(created_at) month'))
-                ->where('sale_date','>=',$from)
-                ->where('sale_date','<=',$to)
-                ->groupBy(DB::raw('YEAR(created_at)'), DB::raw('MONTH(created_at)'))
-                ->get();
-
-            $sum_vats_amount = 0;
-            if(count($vats) > 0){
-                foreach ($vats as $vat){
-                    $sum_vats_amount += $vat->sum_total_amount;
+                if($store_id != ''){
+                    $product_sales = DB::table('product_sales')
+                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'),DB::raw('MONTH(created_at) month'))
+                        ->where('sale_date','>=',$from)
+                        ->where('sale_date','<=',$to)
+                        ->where('sale_type',$sale_type)
+                        ->where('store_id',$store_id)
+                        ->groupBy(DB::raw('YEAR(created_at)'), DB::raw('MONTH(created_at)'))
+                        ->get();
+                }else{
+                    $product_sales = DB::table('product_sales')
+                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'),DB::raw('MONTH(created_at) month'))
+                        ->where('sale_date','>=',$from)
+                        ->where('sale_date','<=',$to)
+                        ->where('sale_type',$sale_type)
+                        ->groupBy(DB::raw('YEAR(created_at)'), DB::raw('MONTH(created_at)'))
+                        ->get();
                 }
+
+                if(count($product_sales) > 0){
+                    foreach ($product_sales as $product_sale){
+                        $grand_total_amount += $product_sale->sum_total_amount;
+                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+                    }
+                }
+
+                $sale_infos['month_wise'] = [
+                    'product_sales' => $product_sales,
+                    'grand_total_amount' => $grand_total_amount,
+                    'grand_total_vat_amount' => $grand_total_vat_amount,
+                ];
             }
 
-            $vat_infos['month_wise'] = [
-                'vats' => $vats,
-                'sum_vats_amount' => $sum_vats_amount,
-            ];
-        }
+            if($request->search_type == 'year'){
+                $from_year = $request->from_year;
+                $to_year = $request->to_year;
 
-        if($request->search_type == 'year'){
-            $from_year = $request->from_year;
-            $to_year = $request->to_year;
+                $from = $from_year.'-01-01';
+                $to = $to_year.'-12-31';
 
-            $from = $from_year.'-01-01';
-            $to = $to_year.'-12-31';
-
-            $vats = DB::table('product_sales')
-                ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('YEAR(created_at) year'))
-                ->where('sale_date','>=',$from)
-                ->where('sale_date','<=',$to)
-                ->groupBy(DB::raw('YEAR(created_at)'))
-                ->get();
-
-            $sum_vats_amount = 0;
-            if(count($vats) > 0){
-                foreach ($vats as $vat){
-                    $sum_vats_amount += $vat->sum_total_amount;
+                if($store_id != ''){
+                    $product_sales = DB::table('product_sales')
+                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+                        ->where('sale_date','>=',$from)
+                        ->where('sale_date','<=',$to)
+                        ->where('sale_type',$sale_type)
+                        ->where('store_id',$store_id)
+                        ->groupBy(DB::raw('YEAR(created_at)'))
+                        ->get();
+                }else{
+                    $product_sales = DB::table('product_sales')
+                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+                        ->where('sale_date','>=',$from)
+                        ->where('sale_date','<=',$to)
+                        ->where('sale_type',$sale_type)
+                        ->groupBy(DB::raw('YEAR(created_at)'))
+                        ->get();
                 }
+
+                $grand_total_amount = 0;
+                $grand_total_vat_amount = 0;
+                if(count($product_sales) > 0){
+                    foreach ($product_sales as $product_sale){
+                        $grand_total_amount += $product_sale->sum_total_amount;
+                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+                    }
+                }
+
+                $sale_infos['year_wise'] = [
+                    'product_sales' => $product_sales,
+                    'grand_total_amount' => $grand_total_amount,
+                    'grand_total_vat_amount' => $grand_total_vat_amount,
+                ];
             }
 
-            $vat_infos['year_wise'] = [
-                'vats' => $vats,
-                'sum_vats_amount' => $sum_vats_amount,
-            ];
+        }elseif($sale_type == 'whole_sale'){
+            if($request->search_type == 'date'){
+
+                $product_sales = DB::table('product_sales')
+                    ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('DATE(created_at) date'))
+                    ->where('sale_date','>=',$from_date)
+                    ->where('sale_date','<=',$to_date)
+                    ->where('sale_type',$sale_type)
+                    ->groupBy(DB::raw('DATE(created_at)'))
+                    ->get();
+
+                if(count($product_sales) > 0){
+                    foreach ($product_sales as $product_sale){
+                        $grand_total_amount += $product_sale->sum_total_amount;
+                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+                    }
+                }
+
+                $sale_infos['date_wise'] = [
+                    'product_sales' => $product_sales,
+                    'grand_total_amount' => $grand_total_amount,
+                    'grand_total_vat_amount' => $grand_total_vat_amount,
+                ];
+            }
+
+            if($request->search_type == 'month'){
+                $from_year = $request->from_year;
+                $to_year = $request->to_year;
+                $from_month = $request->from_month;
+                $to_month = $request->to_month;
+
+                $from = $from_year.'-'.$from_month.'-01';
+                $to = $to_year.'-'.$to_month.'-31';
+
+                $product_sales = DB::table('product_sales')
+                    ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'),DB::raw('MONTH(created_at) month'))
+                    ->where('sale_date','>=',$from)
+                    ->where('sale_date','<=',$to)
+                    ->where('sale_type',$sale_type)
+                    ->groupBy(DB::raw('YEAR(created_at)'), DB::raw('MONTH(created_at)'))
+                    ->get();
+
+                if(count($product_sales) > 0){
+                    foreach ($product_sales as $product_sale){
+                        $grand_total_amount += $product_sale->sum_total_amount;
+                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+                    }
+                }
+
+                $sale_infos['month_wise'] = [
+                    'product_sales' => $product_sales,
+                    'grand_total_amount' => $grand_total_amount,
+                    'grand_total_vat_amount' => $grand_total_vat_amount,
+                ];
+            }
+
+            if($request->search_type == 'year'){
+                $from_year = $request->from_year;
+                $to_year = $request->to_year;
+
+                $from = $from_year.'-01-01';
+                $to = $to_year.'-12-31';
+
+                $product_sales = DB::table('product_sales')
+                    ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+                    ->where('sale_date','>=',$from)
+                    ->where('sale_date','<=',$to)
+                    ->where('sale_type',$sale_type)
+                    ->groupBy(DB::raw('YEAR(created_at)'))
+                    ->get();
+
+                $grand_total_amount = 0;
+                $grand_total_vat_amount = 0;
+                if(count($product_sales) > 0){
+                    foreach ($product_sales as $product_sale){
+                        $grand_total_amount += $product_sale->sum_total_amount;
+                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+                    }
+                }
+
+                $sale_infos['year_wise'] = [
+                    'product_sales' => $product_sales,
+                    'grand_total_amount' => $grand_total_amount,
+                    'grand_total_vat_amount' => $grand_total_vat_amount,
+                ];
+            }
         }
 
-        return response()->json(['success'=>true,'response' => $vat_infos], $this->successStatus);
+        $store_info = '';
+        if($request->store_id){
+            $store_info = DB::table('stores')
+                ->where('id',$request->store_id)
+                ->select('name','phone','email','address')
+                ->first();
+        }
+
+        return response()->json(['success'=>true,'response' => $sale_infos,'store_info'=>$store_info], $this->successStatus);
 
     }
 

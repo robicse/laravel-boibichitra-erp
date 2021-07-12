@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Party;
 use App\PaymentCollection;
 use App\Product;
+use App\ProductPurchaseReturn;
 use App\ProductSale;
 use App\ProductSaleDetail;
 use App\ProductSaleReturn;
@@ -2104,6 +2105,82 @@ class ProductSaleController extends Controller
         }
     }
 
+    public function productPOSSaleSingleProductRemove(Request $request){
+        $check_exists_product_sale = DB::table("product_sales")->where('id',$request->product_sale_id)->pluck('id')->first();
+        if($check_exists_product_sale == null){
+            return response()->json(['success'=>false,'response'=>'No Product Sale Found!'], $this->failStatus);
+        }
+
+        $productSale = ProductSale::find($request->product_sale_id);
+        if($productSale) {
+
+            //$discount_amount = $productSale->discount_amount;
+            $paid_amount = $productSale->paid_amount;
+            //$due_amount = $productSale->due_amount;
+            $total_vat_amount = $productSale->total_vat_amount;
+            $total_amount = $productSale->total_amount;
+
+            $product_sale_detail = DB::table('product_sale_details')->where('id', $request->product_sale_detail_id)->first();
+            $product_unit_id = $product_sale_detail->product_unit_id;
+            $product_brand_id = $product_sale_detail->product_brand_id;
+            $product_id = $product_sale_detail->product_id;
+            $qty = $product_sale_detail->qty;
+
+            if ($product_sale_detail) {
+
+                //$remove_discount = $product_sale_detail->discount;
+                $remove_vat_amount = $product_sale_detail->vat_amount;
+                $remove_sub_total = $product_sale_detail->sub_total;
+
+                //$productSale->discount_amount = $discount_amount - $remove_discount;
+                $productSale->discount_amount = $total_vat_amount - $remove_vat_amount;
+                $productSale->total_amount = $total_amount - $remove_sub_total;
+                $productSale->save();
+
+                // delete single product
+                //$product_sale_detail->delete();
+                DB::table('product_sale_details')->delete($product_sale_detail->id);
+            }
+
+
+
+            $user_id = Auth::user()->id;
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d H:i:s');
+            // current stock
+            $stock_row = Stock::where('stock_where','warehouse')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_id)->latest('id')->first();
+            $current_stock = $stock_row->current_stock;
+
+            $stock = new Stock();
+            $stock->ref_id=$productSale->id;
+            $stock->user_id=$user_id;
+            $stock->product_unit_id= $product_unit_id;
+            $stock->product_brand_id= $product_brand_id;
+            $stock->product_id= $product_id;
+            $stock->stock_type='pos_sale_delete';
+            $stock->warehouse_id= $productSale->warehouse_id;
+            $stock->store_id=NULL;
+            $stock->stock_where='warehouse';
+            $stock->stock_in_out='stock_in';
+            $stock->previous_stock=$current_stock;
+            $stock->stock_in=$qty;
+            $stock->stock_out=0;
+            $stock->current_stock=$current_stock + $qty;
+            $stock->stock_date=$date;
+            $stock->stock_date_time=$date_time;
+            $stock->save();
+
+            $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_id)->first();
+            $exists_current_stock = $warehouse_current_stock->current_stock;
+            $warehouse_current_stock->current_stock=$exists_current_stock + $qty;
+            $warehouse_current_stock->update();
+
+            return response()->json(['success'=>true,'response' =>'Single Product Successfully Removed!'], $this->successStatus);
+        } else{
+            return response()->json(['success'=>false,'response'=>'Sale Not Deleted!'], $this->failStatus);
+        }
+    }
+
     // product sale invoice list
     public function productSaleInvoiceList(){
         $product_sale_invoices = DB::table('product_sales')
@@ -2641,6 +2718,100 @@ class ProductSaleController extends Controller
             return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
+        }
+    }
+
+
+    public function productSaleReturnSingleProductRemove(Request $request){
+        $check_exists_product_sale_return = DB::table("product_sale_returns")->where('id',$request->product_sale_return_id)->pluck('id')->first();
+        if($check_exists_product_sale_return == null){
+            return response()->json(['success'=>false,'response'=>'No Product Sale Return Found!'], $this->failStatus);
+        }
+
+        $productSaleReturn = ProductSaleReturn::find($request->product_sale_return_id);
+        if($productSaleReturn) {
+
+            //$discount_amount = $productSaleReturn->discount_amount;
+            $paid_amount = $productSaleReturn->paid_amount;
+            $due_amount = $productSaleReturn->due_amount;
+            //$total_vat_amount = $productSaleReturn->total_vat_amount;
+            $total_amount = $productSaleReturn->total_amount;
+
+            $product_sale_return_detail = DB::table('product_sale_return_details')->where('id', $request->product_sale_return_detail_id)->first();
+            $product_unit_id = $product_sale_return_detail->product_unit_id;
+            $product_brand_id = $product_sale_return_detail->product_brand_id;
+            $product_id = $product_sale_return_detail->product_id;
+            $qty = $product_sale_return_detail->qty;
+
+            if ($product_sale_return_detail) {
+
+                //$remove_discount = $product_sale_detail->discount;
+                //$remove_vat_amount = $product_purchase_detail->vat_amount;
+                $remove_sub_total = $product_sale_return_detail->sub_total;
+
+
+                //$productSale->discount_amount = $discount_amount - $remove_discount;
+                //$productPurchase->discount_amount = $total_vat_amount - $remove_vat_amount;
+                $productSaleReturn->paid_amount = $paid_amount - $remove_sub_total;
+                $productSaleReturn->due_amount = $due_amount - $remove_sub_total;
+                $productSaleReturn->total_amount = $total_amount - $remove_sub_total;
+                $productSaleReturn->save();
+
+                $transaction = Transaction::where('invoice_no',$productSaleReturn->invoice_no)->first();
+                if($transaction){
+                    $transaction->amount=$total_amount - $remove_sub_total;
+                    $transaction->save();
+                }
+
+                $payment_paid = PaymentPaid::where('invoice_no',$productSaleReturn->invoice_no)->first();
+                if($payment_paid){
+                    $payment_paid->paid_amount=$total_amount - $remove_sub_total;
+                    $payment_paid->due_amount=$total_amount - $remove_sub_total;
+                    $payment_paid->current_paid_amount=$total_amount - $remove_sub_total;
+                    $payment_paid->save();
+                }
+
+                // delete single product
+                //$product_sale_detail->delete();
+                DB::table('product_sale_return_details')->delete($product_sale_return_detail->id);
+            }
+
+
+
+            $user_id = Auth::user()->id;
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d H:i:s');
+            // current stock
+            $stock_row = Stock::where('stock_where','warehouse')->where('warehouse_id',$productSaleReturn->warehouse_id)->where('product_id',$product_id)->latest('id')->first();
+            $current_stock = $stock_row->current_stock;
+
+            $stock = new Stock();
+            $stock->ref_id=$productSaleReturn->id;
+            $stock->user_id=$user_id;
+            $stock->product_unit_id= $product_unit_id;
+            $stock->product_brand_id= $product_brand_id;
+            $stock->product_id= $product_id;
+            $stock->stock_type='whole_purchase_delete';
+            $stock->warehouse_id= $productSaleReturn->warehouse_id;
+            $stock->store_id=NULL;
+            $stock->stock_where='warehouse';
+            $stock->stock_in_out='stock_in';
+            $stock->previous_stock=$current_stock;
+            $stock->stock_in=$qty;
+            $stock->stock_out=0;
+            $stock->current_stock=$current_stock + $qty;
+            $stock->stock_date=$date;
+            $stock->stock_date_time=$date_time;
+            $stock->save();
+
+            $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$productSaleReturn->warehouse_id)->where('product_id',$product_id)->first();
+            $exists_current_stock = $warehouse_current_stock->current_stock;
+            $warehouse_current_stock->current_stock=$exists_current_stock + $qty;
+            $warehouse_current_stock->update();
+
+            return response()->json(['success'=>true,'response' =>'Single Product Purchase Return Remove Successfully Removed!'], $this->successStatus);
+        } else{
+            return response()->json(['success'=>false,'response'=>'Single Product Purchase Return Remove Not Deleted!'], $this->failStatus);
         }
     }
 }

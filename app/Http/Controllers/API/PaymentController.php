@@ -301,7 +301,7 @@ class PaymentController extends Controller
         $payment_paids = DB::table('payment_paids')
             ->join('parties','payment_paids.party_id','parties.id')
             ->where('payment_paids.paid_type','Payment')
-            ->select('payment_paids.id as payment_paid_id','payment_paids.invoice_no','parties.name','payment_paids.paid_amount','payment_paids.payment_type','payment_paids.paid_date')
+            ->select('payment_paids.id as payment_paid_id','payment_paids.invoice_no','parties.name','payment_paids.paid_amount','payment_paids.due_amount','payment_paids.payment_type','payment_paids.paid_date')
             ->orderBy('payment_paids.id','desc')
             ->get();
 
