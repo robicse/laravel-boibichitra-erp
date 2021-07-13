@@ -8,6 +8,7 @@ use App\Helpers\UserInfo;
 use App\Http\Controllers\Controller;
 use App\Party;
 use App\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -87,6 +88,8 @@ class PartyController extends Controller
         }
     }
 
+
+    // supplier
     public function partySupplierList(){
         $party_suppliers = DB::table('parties')
             ->select('id','type','customer_type','name','phone','address','virtual_balance','status')
@@ -135,6 +138,418 @@ class PartyController extends Controller
             return response()->json(['success'=>false,'response'=>'No Party Supplier List Found!'], $this->failStatus);
         }
     }
+
+    public function supplierCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'email' => 'unique:parties',
+            'name' => 'required',
+            'phone'=> 'required',
+            'status' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+
+        $parties = new Party();
+        $parties->type = 'supplier';
+        $parties->customer_type = NULL;
+        $parties->name = $request->name;
+        $parties->slug = Str::slug($request->name);
+        $parties->phone = $request->phone;
+        $parties->email = $request->email;
+        $parties->address = $request->address;
+        $parties->status = $request->status;
+        $parties->save();
+        $insert_id = $parties->id;
+
+        if($insert_id){
+            $account = DB::table('chart_of_accounts')
+                ->where('head_level',3)
+                ->where('head_code', 'like', '50101%')
+                ->Orderby('created_at', 'desc')
+                ->limit(1)
+                ->first();
+            //dd($account);
+            if(!empty($account)){
+                $head_code=$account->head_code+1;
+                //$p_acc = $headcode ."-".$request->name;
+            }else{
+                $head_code="5010100001";
+                //$p_acc = $headcode ."-".$request->name;
+            }
+            $head_name = $request->name;
+
+            $parent_head_name = 'Account Payable';
+            $head_level = 3;
+            $head_type = 'L';
+
+
+            $coa = new ChartOfAccount();
+            $coa->head_code             = $head_code;
+            $coa->head_name             = $head_name;
+            $coa->parent_head_name      = $parent_head_name;
+            $coa->head_type             = $head_type;
+            $coa->head_level            = $head_level;
+            $coa->is_active             = '1';
+            $coa->is_transaction        = '1';
+            $coa->is_general_ledger     = '1';
+            $coa->ref_id                = $insert_id;
+            $coa->user_bank_account_no  = NULL;
+            $coa->created_by              = Auth::User()->id;
+            $coa->updated_by              = Auth::User()->id;
+            $coa->save();
+
+            return response()->json(['success'=>true,'response' => $parties,'exist'=>0], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Supplier Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function supplierDetails(Request $request){
+        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+        if($check_exists_party == null){
+            return response()->json(['success'=>false,'response'=>'No Supplier Found, using this id!'], $this->failStatus);
+        }
+
+        $party = DB::table("parties")->where('id',$request->party_id)->latest()->first();
+        if($party)
+        {
+            return response()->json(['success'=>true,'response' => $party], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Supplier Found!'], $this->failStatus);
+        }
+    }
+
+    public function supplierUpdate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'party_id'=> 'required',
+            'name' => 'required',
+            'phone'=> 'required',
+            'status' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+        if($check_exists_party == null){
+            return response()->json(['success'=>false,'response'=>'No Supplier Found!'], $this->failStatus);
+        }
+
+        $parties = Party::find($request->party_id);
+        $parties->name = $request->name;
+        $parties->slug = Str::slug($request->name);
+        $parties->phone = $request->phone;
+        $parties->email = $request->email;
+        $parties->address = $request->address;
+        $parties->status = $request->status;
+        $update_party = $parties->save();
+
+        if($update_party){
+            return response()->json(['success'=>true,'response' => $parties], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Supplier Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function supplierDelete(Request $request){
+        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+        if($check_exists_party == null){
+            return response()->json(['success'=>false,'response'=>'No Supplier Found!'], $this->failStatus);
+        }
+
+        $delete_party = DB::table("parties")->where('id',$request->party_id)->delete();
+        if($delete_party)
+        {
+            return response()->json(['success'=>true,'response' => 'Supplier Successfully Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Supplier Deleted!'], $this->failStatus);
+        }
+    }
+
+
+
+
+
+    // pos customer
+    public function posCustomerCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'email' => 'unique:parties',
+            'name' => 'required',
+            'phone'=> 'required',
+            'status' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $parties = Party::where('phone',$request->phone)->first();
+        if($parties){
+            return response()->json(['success'=>true,'response' => $parties,'exist'=>1], $this->successStatus);
+        }
+
+        $parties = new Party();
+        $parties->type = 'customer';
+        $parties->customer_type = 'POS Sale';
+        $parties->name = $request->name;
+        $parties->slug = Str::slug($request->name);
+        $parties->phone = $request->phone;
+        $parties->email = $request->email;
+        $parties->address = $request->address;
+        $parties->status = $request->status;
+        $parties->save();
+        $insert_id = $parties->id;
+
+        if($insert_id){
+            $user_data['name'] = $request->name;
+            $user_data['email'] = $request->email;
+            $user_data['phone'] = $request->phone;
+            $user_data['password'] = Hash::make(123456);
+            $user_data['party_id'] = $insert_id;
+            $user = User::create($user_data);
+            // first create customer role, then bellow code enable
+            $user->assignRole('customer');
+
+            $text = "Dear ".$request->name." Sir, Your Username is ".$request->phone." and password is: 123456";
+            UserInfo::smsAPI("88".$request->phone,$text);
+
+            $account = DB::table('chart_of_accounts')
+                ->where('head_level',3)
+                ->where('head_code', 'like', '10203%')
+                ->Orderby('created_at', 'desc')
+                ->limit(1)
+                ->first();
+            //dd($account);
+            if(!empty($account)){
+                $head_code=$account->head_code+1;
+                //$p_acc = $headcode ."-".$request->name;
+            }else{
+                $head_code="1020300001";
+                //$p_acc = $headcode ."-".$request->name;
+            }
+            $head_name = $request->name;
+
+            $parent_head_name = 'Account Receivable';
+            $head_level = 3;
+            $head_type = 'A';
+
+            $coa = new ChartOfAccount();
+            $coa->head_code             = $head_code;
+            $coa->head_name             = $head_name;
+            $coa->parent_head_name      = $parent_head_name;
+            $coa->head_type             = $head_type;
+            $coa->head_level            = $head_level;
+            $coa->is_active             = '1';
+            $coa->is_transaction        = '1';
+            $coa->is_general_ledger     = '1';
+            $coa->ref_id                = $insert_id;
+            $coa->user_bank_account_no  = NULL;
+            $coa->created_by              = Auth::User()->id;
+            $coa->updated_by              = Auth::User()->id;
+            $coa->save();
+
+            return response()->json(['success'=>true,'response' => $parties,'exist'=>0], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Party Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function customerDetails(Request $request){
+        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+        if($check_exists_party == null){
+            return response()->json(['success'=>false,'response'=>'No Party Found, using this id!'], $this->failStatus);
+        }
+
+        $party = DB::table("parties")->where('id',$request->party_id)->latest()->first();
+        if($party)
+        {
+            return response()->json(['success'=>true,'response' => $party], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Party Found!'], $this->failStatus);
+        }
+    }
+
+    public function customerUpdate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'party_id'=> 'required',
+            'name' => 'required',
+            'phone'=> 'required',
+            'status' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+        if($check_exists_party == null){
+            return response()->json(['success'=>false,'response'=>'No Customer Found!'], $this->failStatus);
+        }
+
+        $parties = Party::find($request->party_id);
+        $parties->customer_type = $request->customer_type;
+        $parties->name = $request->name;
+        $parties->slug = Str::slug($request->name);
+        $parties->phone = $request->phone;
+        $parties->email = $request->email;
+        $parties->address = $request->address;
+        $parties->status = $request->status;
+        $update_party = $parties->save();
+
+        if($update_party){
+            return response()->json(['success'=>true,'response' => $parties], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Customer Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+    public function customerDelete(Request $request){
+        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+        if($check_exists_party == null){
+            return response()->json(['success'=>false,'response'=>'No Customer Found!'], $this->failStatus);
+        }
+
+        $delete_party = DB::table("parties")->where('id',$request->party_id)->delete();
+        if($delete_party)
+        {
+            return response()->json(['success'=>true,'response' => 'Customer Successfully Deleted!'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Customer Deleted!'], $this->failStatus);
+        }
+    }
+
+
+
+    // whole customer
+    // customer
+    public function wholeCustomerCreate(Request $request){
+
+        $validator = Validator::make($request->all(), [
+            'email' => 'unique:parties',
+            'name' => 'required',
+            'phone'=> 'required',
+            'status' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this-> validationStatus);
+        }
+
+        $parties = Party::where('phone',$request->phone)->first();
+        if($parties){
+            return response()->json(['success'=>true,'response' => $parties,'exist'=>1], $this->successStatus);
+        }
+
+        $parties = new Party();
+        $parties->type = 'customer';
+        $parties->customer_type = 'Whole Sale';
+        $parties->name = $request->name;
+        $parties->slug = Str::slug($request->name);
+        $parties->phone = $request->phone;
+        $parties->email = $request->email;
+        $parties->address = $request->address;
+        $parties->status = $request->status;
+        $parties->save();
+        $insert_id = $parties->id;
+
+        if($insert_id){
+            $user_data['name'] = $request->name;
+            $user_data['email'] = $request->email;
+            $user_data['phone'] = $request->phone;
+            $user_data['password'] = Hash::make(123456);
+            $user_data['party_id'] = $insert_id;
+            $user = User::create($user_data);
+            // first create customer role, then bellow code enable
+            $user->assignRole('customer');
+
+            $text = "Dear ".$request->name." Sir, Your Username is ".$request->phone." and password is: 123456";
+            UserInfo::smsAPI("88".$request->phone,$text);
+
+            $account = DB::table('chart_of_accounts')
+                ->where('head_level',3)
+                ->where('head_code', 'like', '10203%')
+                ->Orderby('created_at', 'desc')
+                ->limit(1)
+                ->first();
+            //dd($account);
+            if(!empty($account)){
+                $head_code=$account->head_code+1;
+                //$p_acc = $headcode ."-".$request->name;
+            }else{
+                $head_code="1020300001";
+                //$p_acc = $headcode ."-".$request->name;
+            }
+            $head_name = $request->name;
+
+            $parent_head_name = 'Account Receivable';
+            $head_level = 3;
+            $head_type = 'A';
+
+            $coa = new ChartOfAccount();
+            $coa->head_code             = $head_code;
+            $coa->head_name             = $head_name;
+            $coa->parent_head_name      = $parent_head_name;
+            $coa->head_type             = $head_type;
+            $coa->head_level            = $head_level;
+            $coa->is_active             = '1';
+            $coa->is_transaction        = '1';
+            $coa->is_general_ledger     = '1';
+            $coa->ref_id                = $insert_id;
+            $coa->user_bank_account_no  = NULL;
+            $coa->created_by              = Auth::User()->id;
+            $coa->updated_by              = Auth::User()->id;
+            $coa->save();
+
+            return response()->json(['success'=>true,'response' => $parties,'exist'=>0], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'Party Not Created Successfully!'], $this->failStatus);
+        }
+    }
+
+
+
+
+
+
+
 
     public function partyCreate(Request $request){
 
@@ -360,6 +775,14 @@ class PartyController extends Controller
             return response()->json(['success'=>false,'response'=>'No Party Deleted!'], $this->failStatus);
         }
     }
+
+
+
+
+
+
+
+
 
     public function customerVirtualBalance(Request $request){
         $check_exists_user = DB::table("users")->where('id',$request->user_id)->pluck('id')->first();

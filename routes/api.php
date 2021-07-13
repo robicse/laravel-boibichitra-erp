@@ -93,12 +93,29 @@ Route::middleware('auth:api')->post('/password_reset', 'API\UserController@passw
 
 // party
 Route::middleware('auth:api')->get('/party_list', 'API\PartyController@partyList');
-Route::middleware('auth:api')->get('/party_customer_list', 'API\PartyController@partyCustomerList');
-Route::middleware('auth:api')->get('/party_supplier_list', 'API\PartyController@partySupplierList');
+//Route::middleware('auth:api')->get('/party_customer_list', 'API\PartyController@partyCustomerList');
+//Route::middleware('auth:api')->get('/party_supplier_list', 'API\PartyController@partySupplierList');
 Route::middleware('auth:api')->post('/party_create', 'API\PartyController@partyCreate');
 Route::middleware('auth:api')->post('/party_details', 'API\PartyController@partyDetails');
 Route::middleware('auth:api')->post('/party_update', 'API\PartyController@partyUpdate');
 Route::middleware('auth:api')->post('/party_delete', 'API\PartyController@partyDelete');
+
+//supplier
+Route::middleware('auth:api')->get('/party_supplier_list', 'API\PartyController@partySupplierList');
+Route::middleware('auth:api')->post('/supplier_create', 'API\PartyController@supplierCreate');
+Route::middleware('auth:api')->post('/supplier_details', 'API\PartyController@supplierDetails');
+Route::middleware('auth:api')->post('/supplier_update', 'API\PartyController@supplierUpdate');
+Route::middleware('auth:api')->post('/supplier_delete', 'API\PartyController@supplierDelete');
+
+// pos customer
+Route::middleware('auth:api')->get('/party_customer_list', 'API\PartyController@partyCustomerList');
+Route::middleware('auth:api')->post('/pos_customer_create', 'API\PartyController@posCustomerCreate');
+Route::middleware('auth:api')->post('/customer_details', 'API\PartyController@customerDetails');
+Route::middleware('auth:api')->post('/customer_update', 'API\PartyController@customerUpdate');
+Route::middleware('auth:api')->post('/customer_delete', 'API\PartyController@customerDelete');
+
+// whole customer
+Route::middleware('auth:api')->post('/whole_customer_create', 'API\PartyController@wholeCustomerCreate');
 
 // customer panel
 Route::middleware('auth:api')->post('/customer_virtual_balance', 'API\PartyController@customerVirtualBalance');
