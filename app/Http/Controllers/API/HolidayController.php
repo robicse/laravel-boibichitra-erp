@@ -54,6 +54,9 @@ class HolidayController extends Controller
         $holiday = new Holiday();
         $holiday->name = $request->name;
         $holiday->date = $request->date;
+        $holiday->year = $year;
+        $holiday->month = $month;
+        $holiday->day = $day;
         $holiday->details = $request->details;
         $holiday->status = $request->status;
         $holiday->save();
