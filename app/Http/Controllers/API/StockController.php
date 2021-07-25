@@ -366,6 +366,20 @@ class StockController extends Controller
         }
     }
 
+    public function storeToWarehouseStockRequestSingleProductRemove(Request $request){
+        $check_exists_stock_transfer_request = DB::table("stock_transfer_requests")->where('id',$request->stock_transfer_request_id)->pluck('id')->first();
+        if($check_exists_stock_transfer_request == null){
+            return response()->json(['success'=>false,'response'=>'No Stock Transfer Request Found!'], $this->failStatus);
+        }
+
+        $affected_row = DB::table('stock_transfer_request_details')->delete($request->stock_transfer_request_detail_id);
+        if($affected_row) {
+            return response()->json(['success'=>true,'response' =>'Single Product Successfully Removed!'], $this->successStatus);
+        } else{
+            return response()->json(['success'=>false,'response'=>'Single Product Not Deleted!'], $this->failStatus);
+        }
+    }
+
     public function storeToWarehouseStockRequestViewUpdate(Request $request){
         $this->validate($request, [
             'stock_transfer_request_id'=> 'required',

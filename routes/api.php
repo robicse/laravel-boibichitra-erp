@@ -236,6 +236,7 @@ Route::middleware('auth:api')->get('/store_to_warehouse_stock_request_list', 'AP
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_details', 'API\StockController@storeToWarehouseStockRequestDetails');
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_delete', 'API\StockController@storeToWarehouseStockRequestDelete');
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_view_update', 'API\StockController@storeToWarehouseStockRequestViewUpdate');
+Route::middleware('auth:api')->post('/store_to_warehouse_stock_request_single_product_remove', 'API\StockController@storeToWarehouseStockRequestSingleProductRemove');
 
 // stock transfer
 Route::middleware('auth:api')->post('/warehouse_to_store_stock_create', 'API\StockController@warehouseToStoreStockCreate');
@@ -283,8 +284,9 @@ Route::middleware('auth:api')->post('/product_sale_details', 'API\ProductSaleCon
 Route::middleware('auth:api')->get('/product_sale_return_list', 'API\ProductSaleController@productSaleReturnList');
 Route::middleware('auth:api')->post('/product_sale_return_details', 'API\ProductSaleController@productSaleReturnDetails');
 Route::middleware('auth:api')->post('/product_sale_return_create', 'API\ProductSaleController@productSaleReturnCreate');
+Route::middleware('auth:api')->post('/product_sale_return_edit', 'API\ProductSaleController@productSaleReturnEdit');
 
-Route::middleware('auth:api')->post('/product_sale_return_single_product_remove', 'API\ProductSaleController@productSaleReturnSingleProductRemove');
+//Route::middleware('auth:api')->post('/product_sale_return_single_product_remove', 'API\ProductSaleController@productSaleReturnSingleProductRemove');
 
 // product sale exchange
 Route::middleware('auth:api')->get('/product_sale_exchange_list', 'API\ProductSaleExchangeController@productSaleExchangeList');
