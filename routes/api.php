@@ -249,6 +249,8 @@ Route::middleware('auth:api')->get('/stock_transfer_list', 'API\StockController@
 Route::middleware('auth:api')->post('/stock_transfer_details', 'API\StockController@stockTransferDetails');
 Route::middleware('auth:api')->post('/stock_transfer_single_product_remove', 'API\StockController@stockTransferSingleProductRemove');
 
+Route::middleware('auth:api')->post('/universal_search_store_current_product_stock', 'API\StockController@universalSearchStoreCurrentProductStock');
+
 // stock to warehouse stock return
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_return_create', 'API\StockController@storeToWarehouseStockReturnCreate');
 Route::middleware('auth:api')->post('/store_to_warehouse_stock_return_edit', 'API\StockController@storeToWarehouseStockReturnEdit');

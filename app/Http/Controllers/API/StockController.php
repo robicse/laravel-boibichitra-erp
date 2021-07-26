@@ -1588,6 +1588,45 @@ class StockController extends Controller
         }
     }
 
+    function universalSearchStoreCurrentProductStock(Request $request){
+
+        $store_stocks = '';
+        if($request->name){
+            $store_stocks = DB::table('products')
+                ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+                ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+                //->where('products.name','like','%'.$request->name.'%')
+                ->where('products.name',$request->name)
+                ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
+                ->get();
+        }
+
+        if($request->barcode){
+            $store_stocks = DB::table('products')
+                ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+                ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+                ->orWhere('products.barcode',$request->barcode)
+                ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
+                ->get();
+        }
+
+        if($request->item_code){
+            $store_stocks = DB::table('products')
+                ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+                ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+                ->orWhere('products.item_code',$request->item_code)
+                ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
+                ->get();
+        }
+
+        if($store_stocks){
+            $success['store_stock_details'] =  $store_stocks;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Data Found!'], $this->failStatus);
+        }
+    }
+
     function stock_sync(){
         $stock_data = Stock::whereIn('id', function($query) {
             $query->from('stocks')->groupBy('warehouse_id')->groupBy('store_id')->groupBy('product_id')->selectRaw('MIN(id)');
