@@ -29,7 +29,8 @@ class CreateProductSaleExchangesTable extends Migration
             $table->float('total_vat_amount', 8,2);
             $table->float('total_amount', 8,2);
             $table->float('previous_paid_amount', 8,2);
-            $table->float('paid_amount', 8,2);
+            $table->float('paid_amount', 8,2)->nullable();
+            $table->float('back_amount', 8,2)->nullable();
             $table->float('due_amount', 8,2);
             $table->string('sale_exchange_date');
             $table->string('sale_exchange_date_time');

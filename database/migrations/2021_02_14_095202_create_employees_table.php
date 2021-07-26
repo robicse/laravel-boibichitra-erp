@@ -27,6 +27,8 @@ class CreateEmployeesTable extends Migration
             $table->text('permanent_address')->nullable();
             $table->string('image')->nullable();
             $table->integer('status')->default(1);
+            $table->integer('warehouse_id');
+            $table->integer('store_id')->nullable();
             $table->timestamps();
         });
     }

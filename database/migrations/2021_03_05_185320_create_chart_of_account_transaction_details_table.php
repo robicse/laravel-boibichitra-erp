@@ -15,6 +15,7 @@ class CreateChartOfAccountTransactionDetailsTable extends Migration
     {
         Schema::create('chart_of_account_transaction_details', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->integer('store_id')->nullable();
             $table->bigInteger('chart_of_account_transaction_id')->unsigned();
             $table->bigInteger('chart_of_account_id')->unsigned();
             $table->string('chart_of_account_number');

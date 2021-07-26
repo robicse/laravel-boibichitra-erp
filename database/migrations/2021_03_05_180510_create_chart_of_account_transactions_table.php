@@ -16,6 +16,7 @@ class CreateChartOfAccountTransactionsTable extends Migration
         Schema::create('chart_of_account_transactions', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->integer('user_id');
+            $table->integer('store_id')->nullable();
             $table->bigInteger('voucher_type_id')->unsigned();
             $table->string('voucher_no');
             $table->enum('is_approved',['pending','canceled','approved'])->default('approved');

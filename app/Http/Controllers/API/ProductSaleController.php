@@ -8,7 +8,13 @@ use App\ChartOfAccountTransactionDetail;
 use App\Http\Controllers\Controller;
 use App\Party;
 use App\PaymentCollection;
+<<<<<<< HEAD
 use App\Product;
+=======
+use App\PaymentPaid;
+use App\Product;
+use App\ProductPurchaseReturn;
+>>>>>>> 9103a488edf3bbeb4a6ffb4e953ddfa2201e852f
 use App\ProductSale;
 use App\ProductSaleDetail;
 use App\ProductSaleReturn;
@@ -2719,4 +2725,510 @@ class ProductSaleController extends Controller
             return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
         }
     }
+<<<<<<< HEAD
+=======
+
+    public function productSaleReturnEdit(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'product_sale_return_id'=> 'required',
+            'party_id'=> 'required',
+            'paid_amount'=> 'required',
+            'due_amount'=> 'required',
+            'total_amount'=> 'required',
+            'payment_type'=> 'required',
+        ]);
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+
+        // product sale return
+        $productSaleReturn = ProductSaleReturn::where('id',$request->product_sale_return_id)->first();;
+        $productSaleReturn->user_id = $user_id;
+        $productSaleReturn->party_id = $request->party_id;
+        $productSaleReturn->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSaleReturn->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+        $productSaleReturn->paid_amount = $request->total_amount;
+        $productSaleReturn->due_amount = $request->due_amount;
+        $productSaleReturn->total_amount = $request->total_amount;
+        $productSaleReturn->product_sale_return_date = $date;
+        $productSaleReturn->product_sale_return_date_time = $date_time;
+        $affected_row = $productSaleReturn->save();
+
+        $productSale = ProductSale::where('invoice_no',$productSaleReturn->product_sale_invoice_no)->first();
+        $warehouse_id = $productSale->warehouse_id;
+
+        if($affected_row)
+        {
+            // for live testing
+            foreach ($request->products as $data) {
+
+                $product_id =  $data['product_id'];
+
+                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+
+                // product purchase detail
+                $productSaleReturnDetail = ProductSaleReturnDetail::find($data['product_sale_return_detail_id']);
+                $product_sale_detail_id = $productSaleReturnDetail->pro_sale_detail_id;
+                $previous_sale_return_qty = $productSaleReturnDetail->qty;
+                $productSaleReturnDetail->pro_sale_detail_id = $data['product_sale_detail_id'];
+                $productSaleReturnDetail->product_unit_id = $data['product_unit_id'];
+                $productSaleReturnDetail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $productSaleReturnDetail->product_id = $product_id;
+                $productSaleReturnDetail->barcode = $barcode;
+                $productSaleReturnDetail->qty = $data['qty'];
+                $productSaleReturnDetail->price = $data['mrp_price'];
+                $productSaleReturnDetail->sub_total = $data['qty']*$data['mrp_price'];
+                $productSaleReturnDetail->save();
+
+                $sale_type = $productSale->sale_type;
+                // product stock
+                if($sale_type == 'pos_sale') {
+                    $store_id = $productSale->store_id;
+                    $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest()->first();
+                }else{
+                    $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
+                }
+
+                $current_stock = $stock_row->current_stock;
+
+                if($stock_row->stock_out != $data['qty']){
+
+                    if($sale_type == 'pos_sale') {
+                        $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id', $warehouse_id)
+                            ->where('store_id', $store_id)
+                            ->where('product_id', $product_id)
+                            ->first();
+                        $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+
+                        if($data['qty'] > $stock_row->stock_in){
+                            $new_stock_out = $data['qty'] - $previous_sale_return_qty;
+
+                            $stock = new Stock();
+                            $stock->ref_id=$request->product_sale_id;
+                            $stock->user_id=$user_id;
+                            $stock->product_unit_id= $data['product_unit_id'];
+                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                            $stock->product_id= $product_id;
+                            $stock->stock_type='sale_return_increase';
+                            $stock->warehouse_id= $warehouse_id;
+                            $stock->store_id=$store_id;
+                            $stock->stock_where='store';
+                            $stock->stock_in_out='stock_out';
+                            $stock->previous_stock=$current_stock;
+                            $stock->stock_in=0;
+                            $stock->stock_out=$new_stock_out;
+                            $stock->current_stock=$current_stock - $new_stock_out;
+                            $stock->stock_date=$date;
+                            $stock->stock_date_time=$date_time;
+                            $stock->save();
+
+                            // warehouse current stock
+                            $update_warehouse_store_current_stock->current_stock=$exists_current_stock - $new_stock_out;
+                            $update_warehouse_store_current_stock->save();
+                        }else{
+                            $new_stock_in = $previous_sale_return_qty - $data['qty'];
+
+                            $stock = new Stock();
+                            $stock->ref_id=$request->product_sale_id;
+                            $stock->user_id=$user_id;
+                            $stock->product_unit_id= $data['product_unit_id'];
+                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                            $stock->product_id= $product_id;
+                            $stock->stock_type='sale_return_decrease';
+                            $stock->warehouse_id= $warehouse_id;
+                            $stock->store_id=$store_id;
+                            $stock->stock_where='store';
+                            $stock->stock_in_out='stock_in';
+                            $stock->previous_stock=$current_stock;
+                            $stock->stock_in=$new_stock_in;
+                            $stock->stock_out=0;
+                            $stock->current_stock=$current_stock + $new_stock_in;
+                            $stock->stock_date=$date;
+                            $stock->stock_date_time=$date_time;
+                            $stock->save();
+
+                            // warehouse current stock
+                            $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $new_stock_in;
+                            $update_warehouse_store_current_stock->save();
+                        }
+                    }
+
+                    if($sale_type == 'whole_sale') {
+                        $update_warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id', $warehouse_id)
+                            ->where('product_id', $product_id)
+                            ->first();
+                        $exists_current_stock = $update_warehouse_current_stock->current_stock;
+
+                        if($data['qty'] > $stock_row->stock_in){
+                            $new_stock_out = $data['qty'] - $previous_sale_return_qty;
+
+                            $stock = new Stock();
+                            $stock->ref_id=$request->product_sale_id;
+                            $stock->user_id=$user_id;
+                            $stock->product_unit_id= $data['product_unit_id'];
+                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                            $stock->product_id= $product_id;
+                            $stock->stock_type='sale_return_increase';
+                            $stock->warehouse_id= $warehouse_id;
+                            $stock->store_id=NULL;
+                            $stock->stock_where='store';
+                            $stock->stock_in_out='stock_out';
+                            $stock->previous_stock=$current_stock;
+                            $stock->stock_in=0;
+                            $stock->stock_out=$new_stock_out;
+                            $stock->current_stock=$current_stock - $new_stock_out;
+                            $stock->stock_date=$date;
+                            $stock->stock_date_time=$date_time;
+                            $stock->save();
+
+                            // warehouse current stock
+                            $update_warehouse_current_stock->current_stock=$exists_current_stock - $new_stock_out;
+                            $update_warehouse_current_stock->save();
+                        }else{
+                            $new_stock_in = $previous_sale_return_qty - $data['qty'];
+
+                            $stock = new Stock();
+                            $stock->ref_id=$request->product_sale_id;
+                            $stock->user_id=$user_id;
+                            $stock->product_unit_id= $data['product_unit_id'];
+                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                            $stock->product_id= $product_id;
+                            $stock->stock_type='sale_return_decrease';
+                            $stock->warehouse_id= $warehouse_id;
+                            $stock->store_id=NULL;
+                            $stock->stock_where='store';
+                            $stock->stock_in_out='stock_in';
+                            $stock->previous_stock=$current_stock;
+                            $stock->stock_in=$new_stock_in;
+                            $stock->stock_out=0;
+                            $stock->current_stock=$current_stock + $new_stock_in;
+                            $stock->stock_date=$date;
+                            $stock->stock_date_time=$date_time;
+                            $stock->save();
+
+                            // warehouse current stock
+                            $update_warehouse_current_stock->current_stock=$exists_current_stock + $new_stock_in;
+                            $update_warehouse_current_stock->save();
+                        }
+                    }
+                }
+
+                $check_return_last_date = ProductSaleDetail::where('id',$product_sale_detail_id)->pluck('return_last_date')->first();
+                $today_date = date('Y-m-d');
+
+                if($check_return_last_date >= $today_date){
+                    // for sale return cash back among 2 days
+                    // transaction
+                    $transaction = Transaction::where('ref_id',$productSale->id)->where('transaction_type','sale_return_cash')->first();
+                    $transaction->user_id = $user_id;
+                    $transaction->party_id = $request->party_id;
+                    $transaction->payment_type = $request->payment_type;
+                    $transaction->amount = $data['qty']*$data['mrp_price'];
+                    $transaction->transaction_date = $date;
+                    $transaction->transaction_date_time = $date_time;
+                    $transaction->save();
+
+                    // payment paid
+                    $payment_collection = PaymentCollection::where('ref_id',$productSale->id)->where('collection_type','Return Cash')->first();
+                    $payment_collection->user_id = $user_id;
+                    $payment_collection->party_id = $request->party_id;
+                    $payment_collection->collection_amount = $data['qty']*$data['mrp_price'];
+                    $payment_collection->current_collection_amount = $data['qty']*$data['mrp_price'];
+                    $payment_collection->collection_date = $date;
+                    $payment_collection->collection_date_time = $date_time;
+                    $payment_collection->save();
+
+                    // posting
+                    $month = date('m', strtotime($date));
+                    $year = date('Y', strtotime($date));
+                    $transaction_date_time = date('Y-m-d H:i:s');
+
+                    $chart_of_account_transactions = ChartOfAccountTransaction::where('ref_id',$productSale->id)->where('transaction_type','Sales Return')->first();;
+                    $chart_of_account_transaction_id =$chart_of_account_transactions->id;
+                    $chart_of_account_transactions->transaction_type = 'Sales Return';
+                    $chart_of_account_transactions->user_id = $user_id;
+                    $chart_of_account_transactions->transaction_date = $date;
+                    $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+                    $aff_row = $chart_of_account_transactions->save();
+
+                    if($aff_row){
+                        // sales Return
+                        $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transaction_id)->where('debit','>',0)->first();
+                        $chart_of_account_transaction_details->debit = $request->total_amount;
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+
+                        // cash
+                        $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transaction_id)->where('credit','>',0)->first();
+                        $chart_of_account_transaction_details->credit = $request->total_amount;
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+                    }
+                }else{
+                    // for sale return balance add after 2 days
+                    // transaction
+                    $transaction = Transaction::where('ref_id',$productSale->id)->where('transaction_type','sale_return_balance')->first();;
+                    $transaction->user_id = $user_id;
+                    $transaction->party_id = $request->party_id;
+                    $transaction->payment_type = $request->payment_type;
+                    $transaction->amount = $data['qty']*$data['mrp_price'];
+                    $transaction->transaction_date = $date;
+                    $transaction->transaction_date_time = $date_time;
+                    $transaction->save();
+
+                    // payment paid
+                    $payment_collection = PaymentCollection::where('ref_id',$productSale->id)->where('collection_type','Return Balance')->first();;
+                    $payment_collection->user_id = $user_id;
+                    $payment_collection->party_id = $request->party_id;
+                    $payment_collection->collection_amount = $data['qty']*$data['mrp_price'];
+                    $payment_collection->current_collection_amount = $data['qty']*$data['mrp_price'];
+                    $payment_collection->collection_date = $date;
+                    $payment_collection->collection_date_time = $date_time;
+                    $payment_collection->save();
+
+                    // add balance
+                    $party_previous_virtual_balance = Party::where('id',$request->party_id)->pluck('virtual_balance')->first();
+
+                    $party = Party::find($request->party_id);
+                    if($previous_sale_return_qty != $data['qty']){
+                        if($data['qty'] > $previous_sale_return_qty) {
+                            $new_qty = $data['qty'] - $previous_sale_return_qty;
+                            $party->virtual_balance = $party_previous_virtual_balance + ($new_qty*$data['mrp_price']);
+                        }else{
+                            $new_qty = $previous_sale_return_qty - $data['qty'];
+                            $party->virtual_balance = $party_previous_virtual_balance - ($new_qty*$data['mrp_price']);
+                        }
+                    }
+                    $party->update();
+                }
+            }
+
+            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
+        }
+    }
+
+
+    public function productSaleReturnSingleProductRemove(Request $request){
+        //dd($request->all());
+        $this->validate($request, [
+            'product_sale_return_id'=> 'required',
+            'product_sale_return_detail_id'=> 'required',
+        ]);
+
+        $date = date('Y-m-d');
+        $date_time = date('Y-m-d h:i:s');
+
+        $user_id = Auth::user()->id;
+
+        // product sale return
+        $productSaleReturn = ProductSaleReturn::where('id',$request->product_sale_return_id)->first();
+
+        $productSaleReturnDetail = ProductSaleReturnDetail::where('id',$request->product_sale_return_detail_id)->first();
+        $product_sale_detail_id = $productSaleReturnDetail->pro_sale_detail_id;
+        $product_id = $productSaleReturnDetail->product_id;
+        $qty = $productSaleReturnDetail->qty;
+        $product_unit_id = $productSaleReturnDetail->product_unit_id;
+        $product_brand_id = $productSaleReturnDetail->product_brand_id;
+
+        $sub_total = $productSaleReturnDetail->sub_total;
+
+
+
+
+
+
+
+
+        $productSale = ProductSale::where('invoice_no',$productSaleReturn->product_sale_invoice_no)->first();
+        $warehouse_id = $productSale->warehouse_id;
+        $final_paid_amount = $productSale->paid_amount - $sub_total;
+        $final_due_amount = $productSale->due_amount - $sub_total;
+        $final_total_amount = $productSale->total_amount - $sub_total;
+
+
+
+
+        $sale_type = $productSale->sale_type;
+        // product stock
+        $store_id = NULL;
+        if($sale_type == 'pos_sale') {
+            $store_id = $productSale->store_id;
+            $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest()->first();
+        }else{
+            $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
+        }
+
+        $current_stock = $stock_row->current_stock;
+
+        if($sale_type == 'pos_sale') {
+            $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id', $warehouse_id)
+                ->where('store_id', $store_id)
+                ->where('product_id', $product_id)
+                ->first();
+            $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+
+            $stock = new Stock();
+            $stock->ref_id=$request->product_sale_id;
+            $stock->user_id=$user_id;
+            $stock->product_unit_id= $product_unit_id;
+            $stock->product_brand_id= $product_brand_id ? $product_brand_id : NULL;
+            $stock->product_id= $product_id;
+            $stock->stock_type='sale_return_remove';
+            $stock->warehouse_id= $warehouse_id;
+            $stock->store_id=$store_id;
+            $stock->stock_where='store';
+            $stock->stock_in_out='stock_in';
+            $stock->previous_stock=$current_stock;
+            $stock->stock_in=$qty;
+            $stock->stock_out=0;
+            $stock->current_stock=$current_stock + $qty;
+            $stock->stock_date=$date;
+            $stock->stock_date_time=$date_time;
+            $stock->save();
+
+            // warehouse current stock
+            $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $qty;
+            $update_warehouse_store_current_stock->save();
+
+        }
+
+        if($sale_type == 'whole_sale') {
+            $update_warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id', $warehouse_id)
+                ->where('product_id', $product_id)
+                ->first();
+            $exists_current_stock = $update_warehouse_current_stock->current_stock;
+
+            $stock = new Stock();
+            $stock->ref_id=$request->product_sale_id;
+            $stock->user_id=$user_id;
+            $stock->product_unit_id= $product_unit_id;
+            $stock->product_brand_id= $product_brand_id ? $product_brand_id : NULL;
+            $stock->product_id= $product_id;
+            $stock->stock_type='sale_return_remove';
+            $stock->warehouse_id= $warehouse_id;
+            $stock->store_id=NULL;
+            $stock->stock_where='store';
+            $stock->stock_in_out='stock_in';
+            $stock->previous_stock=$current_stock;
+            $stock->stock_in=$qty;
+            $stock->stock_out=0;
+            $stock->current_stock=$current_stock + $qty;
+            $stock->stock_date=$date;
+            $stock->stock_date_time=$date_time;
+            $stock->save();
+
+            // warehouse current stock
+            $update_warehouse_current_stock->current_stock=$exists_current_stock + $qty;
+            $update_warehouse_current_stock->save();
+        }
+
+        $check_return_last_date = ProductSaleDetail::where('id',$product_sale_detail_id)->pluck('return_last_date')->first();
+        $today_date = date('Y-m-d');
+
+        if($check_return_last_date >= $today_date){
+            // for sale return cash back among 2 days
+            // transaction
+            $transaction = Transaction::where('ref_id',$productSale->id)->where('transaction_type','sale_return_cash')->first();
+            $previous_amount = $transaction->amount;
+            $transaction->user_id = $user_id;
+            $transaction->amount = $previous_amount - $sub_total;
+            $transaction->transaction_date = $date;
+            $transaction->transaction_date_time = $date_time;
+            $transaction->save();
+
+            // payment paid
+            $payment_collection = PaymentCollection::where('ref_id',$productSale->id)->where('collection_type','Return Cash')->first();
+            $payment_collection->user_id = $user_id;
+            $payment_collection->collection_amount = $previous_amount - $sub_total;
+            $payment_collection->current_collection_amount = $previous_amount - $sub_total;
+            $payment_collection->collection_date = $date;
+            $payment_collection->collection_date_time = $date_time;
+            $payment_collection->save();
+
+            // posting
+            $month = date('m', strtotime($date));
+            $year = date('Y', strtotime($date));
+            $transaction_date_time = date('Y-m-d H:i:s');
+
+            $chart_of_account_transactions = ChartOfAccountTransaction::where('ref_id',$productSale->id)->where('transaction_type','Sales Return')->first();;
+            $chart_of_account_transactions->user_id = $user_id;
+            $chart_of_account_transactions->transaction_date = $date;
+            $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+            $aff_row = $chart_of_account_transactions->save();
+
+            if($aff_row){
+                // sales Return
+                $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions->chart_of_account_transaction_id)->where('debit','>',0)->where('chart_of_account_name','=','Sales Return')->first();
+                $previous_chart_of_account_transaction_amount = $chart_of_account_transaction_details->amount;
+                $chart_of_account_transaction_details->debit = $previous_chart_of_account_transaction_amount - $sub_total;
+                $chart_of_account_transaction_details->year = $year;
+                $chart_of_account_transaction_details->month = $month;
+                $chart_of_account_transaction_details->transaction_date = $date;
+                $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                $chart_of_account_transaction_details->save();
+
+                // cash
+                $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions->chart_of_account_transaction_id)->where('credit','>',0)->where('chart_of_account_name','!=','Sales Return')->first();
+                $previous_chart_of_account_transaction_amount = $chart_of_account_transaction_details->amount;
+                $chart_of_account_transaction_details->credit = $previous_chart_of_account_transaction_amount - $sub_total;
+                $chart_of_account_transaction_details->year = $year;
+                $chart_of_account_transaction_details->month = $month;
+                $chart_of_account_transaction_details->transaction_date = $date;
+                $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                $chart_of_account_transaction_details->save();
+            }
+        }else{
+            // for sale return balance add after 2 days
+            // transaction
+            $transaction = Transaction::where('ref_id',$productSale->id)->where('transaction_type','sale_return_cash')->first();
+            $previous_amount = $transaction->amount;
+            $transaction->user_id = $user_id;
+            $transaction->amount = $previous_amount - $sub_total;
+            $transaction->transaction_date = $date;
+            $transaction->transaction_date_time = $date_time;
+
+            // payment paid
+            $payment_collection = PaymentCollection::where('ref_id',$productSale->id)->where('collection_type','Return Cash')->first();
+            $payment_collection->user_id = $user_id;
+            $payment_collection->collection_amount = $previous_amount - $sub_total;
+            $payment_collection->current_collection_amount = $previous_amount - $sub_total;
+            $payment_collection->collection_date = $date;
+            $payment_collection->collection_date_time = $date_time;
+            $payment_collection->save();
+
+            // add balance
+            $party_previous_virtual_balance = Party::where('id',$productSaleReturn->party_id)->pluck('virtual_balance')->first();
+            $party = Party::find($request->party_id);
+            $party->virtual_balance = $party_previous_virtual_balance - $sub_total;
+            $party->update();
+        }
+
+
+
+
+        $productSaleReturn->user_id = $user_id;
+        $productSaleReturn->paid_amount = $final_paid_amount ;
+        $productSaleReturn->due_amount = $final_due_amount;
+        $productSaleReturn->total_amount = $final_total_amount;
+        $productSaleReturn->product_sale_return_date = $date;
+        $productSaleReturn->product_sale_return_date_time = $date_time;
+        $productSaleReturn->save();
+
+        DB::table('product_sale_return_details')->delete($request->product_sale_return_detail_id);
+
+        return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+
+    }
+>>>>>>> 9103a488edf3bbeb4a6ffb4e953ddfa2201e852f
 }
