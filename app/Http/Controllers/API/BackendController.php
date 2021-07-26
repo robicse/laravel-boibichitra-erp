@@ -220,11 +220,7 @@ class BackendController extends Controller
         $customer_lists = DB::table('parties')
             ->where('type','customer')
             ->where('customer_type','Whole Sale')
-<<<<<<< HEAD
-            ->select('id','name','phone','address')
-=======
             ->select('id','name')
->>>>>>> 9103a488edf3bbeb4a6ffb4e953ddfa2201e852f
             ->orderBy('id','desc')
             ->get();
 
@@ -241,11 +237,7 @@ class BackendController extends Controller
         $customer_lists = DB::table('parties')
             ->where('type','customer')
             ->where('customer_type','POS Sale')
-<<<<<<< HEAD
-            ->select('id','name','phone','address')
-=======
             ->select('id','name','phone')
->>>>>>> 9103a488edf3bbeb4a6ffb4e953ddfa2201e852f
             ->orderBy('id','desc')
             ->get();
 

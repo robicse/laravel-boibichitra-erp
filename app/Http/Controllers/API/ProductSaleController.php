@@ -8,13 +8,9 @@ use App\ChartOfAccountTransactionDetail;
 use App\Http\Controllers\Controller;
 use App\Party;
 use App\PaymentCollection;
-<<<<<<< HEAD
-use App\Product;
-=======
 use App\PaymentPaid;
 use App\Product;
 use App\ProductPurchaseReturn;
->>>>>>> 9103a488edf3bbeb4a6ffb4e953ddfa2201e852f
 use App\ProductSale;
 use App\ProductSaleDetail;
 use App\ProductSaleReturn;
@@ -2725,8 +2721,6 @@ class ProductSaleController extends Controller
             return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
         }
     }
-<<<<<<< HEAD
-=======
 
     public function productSaleReturnEdit(Request $request){
         //dd($request->all());
@@ -3230,5 +3224,4 @@ class ProductSaleController extends Controller
         return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
 
     }
->>>>>>> 9103a488edf3bbeb4a6ffb4e953ddfa2201e852f
 }
