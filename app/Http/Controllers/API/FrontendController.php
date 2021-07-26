@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 
 use App\Http\Controllers\Controller;
+use App\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -159,6 +160,12 @@ class FrontendController extends Controller
 
             //$user = Auth::user();
             $user = Auth::guard('web')->user();
+
+            if($user['store_id'] != NULL){
+                $user['store_name'] = Store::where('id',$user['store_id'])->pluck('name')->first();
+            }else{
+                $user['store_name'] = NULL;
+            }
 
             // create token
             $user['token'] = $user->createToken('BoiBichitra')->accessToken;

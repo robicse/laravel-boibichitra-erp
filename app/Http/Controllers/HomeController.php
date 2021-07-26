@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\PaymentCollection;
 use App\ProductSale;
+use App\ProductSaleDetail;
 use App\StockTransfer;
 use App\StockTransferDetail;
 use App\Transaction;
@@ -181,6 +182,53 @@ class HomeController extends Controller
 //            }
 //        }
         die();
+    }
+
+    public function manually_discount_update(){
+        // manually product sale discount add
+        //$productPosSales = ProductSale::where('sale_type','pos')->get();
+        $productPosSales = ProductSale::all();
+        if(count($productPosSales)){
+            foreach ($productPosSales as $productPosSale){
+                //echo $productPosSale->id.'<br/>';
+                if($productPosSale->discount_amount > 0){
+                    //echo $productPosSale->id.'<br/>';
+                    $discount_amount = $productPosSale->discount_amount;
+                    $total_amount = $productPosSale->total_amount;
+                    $discount_type = $productPosSale->discount_type;
+                    //echo '<br/>';
+
+                    $productSaleDetails = ProductSaleDetail::where('product_sale_id',$productPosSale->id)->get();
+                    foreach ($productSaleDetails as $productSaleDetail){
+
+                        //echo $discount_amount;
+                        //echo $total_amount;
+                        $price = $productSaleDetail->price;
+                        $final_discount_amount = (float)$discount_amount * (float)$price;
+                        $final_total_amount = (float)$discount_amount + (float)$total_amount;
+                        //echo '<br/>';
+                        //echo '<br/>';
+
+
+
+                        $discount = (float)$final_discount_amount/(float)$final_total_amount;
+                        if($discount_type == 'Flat'){
+                            $discount = round($discount);
+                        }
+
+                        $updateProductSaleDetailDiscount = ProductSaleDetail::find($productSaleDetail->id);
+                        $updateProductSaleDetailDiscount->discount=$discount;
+                        $affectedRow = $updateProductSaleDetailDiscount->update();
+                        if($affectedRow){
+                            echo 'updated id = '.$productSaleDetail->id;
+                            echo 'updated discount = '.$discount;
+                            echo '<br/>';
+                        }
+                    }
+                }
+            }
+        }
+        dd('ops');
     }
 
     public function backup_database()
