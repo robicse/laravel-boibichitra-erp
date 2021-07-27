@@ -1140,6 +1140,11 @@ class StockController extends Controller
 
         if($store_stock_product)
         {
+            $store_info = DB::table('stores')
+                ->where('id',$request->store_id)
+                ->select('name','phone','email','address')
+                ->first();
+            $success['store_info'] =  $store_info;
             $success['store_current_stock_list'] =  $store_stock_product;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
