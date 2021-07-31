@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Intervention\Image\Facades\Image;
 
 class EmployeeController extends Controller
 {
@@ -46,6 +47,7 @@ class EmployeeController extends Controller
                 'employees.present_address',
                 'employees.permanent_address',
                 'employees.status',
+                'employees.image',
                 'warehouses.id as warehouse_id',
                 'warehouses.name as warehouse_name',
                 'stores.id as store_id',
@@ -200,23 +202,59 @@ class EmployeeController extends Controller
         }
     }
 
+//    public function employeeImage(Request $request)
+//    {
+//        $employee=Employee::find($request->employee_id);
+//        $base64_image_propic = $request->employee_img;
+//        //return response()->json(['response' => $base64_image_propic], $this-> successStatus);
+//
+//        $data = $request->employee_img;
+//        $pos = strpos($data, ';');
+//        $type = explode(':', substr($data, 0, $pos))[1];
+//        $type1 = explode('/', $type)[1];
+//
+//        if (preg_match('/^data:image\/(\w+);base64,/', $base64_image_propic)) {
+//            $data = substr($base64_image_propic, strpos($base64_image_propic, ',') + 1);
+//            $data = base64_decode($data);
+//
+//            $currentDate = Carbon::now()->toDateString();
+//            $imagename = $currentDate . '-' . uniqid() . 'employee_pic.'.$type1 ;
+//
+//            // delete old image.....
+//            if(Storage::disk('public')->exists('uploads/employees/'.$employee->image))
+//            {
+//                Storage::disk('public')->delete('uploads/employees/'.$employee->image);
+//
+//            }
+//
+//            // resize image for service category and upload
+//            //$data = Image::make($data)->resize(100, 100)->save($data->getClientOriginalExtension());
+//
+//            // store image
+//            Storage::disk('public')->put("uploads/employees/". $imagename, $data);
+//
+//
+//            // update image db
+//            $employee->image = $imagename;
+//            $employee->update();
+//
+//            $success['employee'] = $employee;
+//            return response()->json(['response' => $success], $this-> successStatus);
+//
+//        }else{
+//            return response()->json(['response'=>'failed'], $this-> failStatus);
+//        }
+//
+//    }
+
     public function employeeImage(Request $request)
     {
         $employee=Employee::find($request->employee_id);
-        $base64_image_propic = $request->employee_img;
-        //return response()->json(['response' => $base64_image_propic], $this-> successStatus);
-
-        $data = $request->employee_img;
-        $pos = strpos($data, ';');
-        $type = explode(':', substr($data, 0, $pos))[1];
-        $type1 = explode('/', $type)[1];
-
-        if (preg_match('/^data:image\/(\w+);base64,/', $base64_image_propic)) {
-            $data = substr($base64_image_propic, strpos($base64_image_propic, ',') + 1);
-            $data = base64_decode($data);
-
+        $image = $request->file('employee_img');
+        if (isset($image)) {
+            //make unique name for image
             $currentDate = Carbon::now()->toDateString();
-            $imagename = $currentDate . '-' . uniqid() . 'employee_pic.'.$type1 ;
+            $imagename = $currentDate.'-'.uniqid().'.'.$image->getClientOriginalExtension();
 
             // delete old image.....
             if(Storage::disk('public')->exists('uploads/employees/'.$employee->image))
@@ -225,12 +263,9 @@ class EmployeeController extends Controller
 
             }
 
-            // resize image for service category and upload
-            //$data = Image::make($data)->resize(100, 100)->save($data->getClientOriginalExtension());
-
-            // store image
-            Storage::disk('public')->put("uploads/employees/". $imagename, $data);
-
+//            resize image for hospital and upload
+            $proImage = Image::make($image)->resize(100, 100)->save($image->getClientOriginalExtension());
+            Storage::disk('public')->put('uploads/employees/'. $imagename, $proImage);
 
             // update image db
             $employee->image = $imagename;

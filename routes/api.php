@@ -58,6 +58,7 @@ Route::post('login', 'API\FrontendController@login');
 
 Route::middleware('auth:api')->get('/get_firebase_token', 'API\FrontendController@getFirebaseToken');
 Route::middleware('auth:api')->get('/get_chat_user_list', 'API\FrontendController@getChatUserList');
+Route::middleware('auth:api')->post('/get_chat_user_identity_list', 'API\FrontendController@getChatUserIdentityList');
 
 // warehouse
 Route::middleware('auth:api')->get('/warehouse_list', 'API\WarehouseController@warehouseList');

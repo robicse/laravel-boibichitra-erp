@@ -241,4 +241,24 @@ class FrontendController extends Controller
             return response()->json(['success'=>false,'response'=>'No User Found!'], $this->failStatus);
         }
     }
+
+    public function getChatUserIdentityList(Request $request){
+        $users = DB::table("users")
+            ->join('model_has_roles','model_has_roles.model_id','users.id')
+            ->join('roles','model_has_roles.role_id','roles.id')
+            ->leftJoin('warehouses','users.warehouse_id','warehouses.id')
+            ->leftJoin('stores','users.store_id','stores.id')
+            //->whereIn('users.id',[1,3,5,6])
+            ->whereIn('users.id',json_decode($request->user_ids))
+            ->select('users.id','users.name','users.phone','users.email','users.status','roles.name as role','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
+            ->get();
+
+
+        if($users)
+        {
+            return response()->json(['success'=>true,'response' => $users], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No User Found!'], $this->failStatus);
+        }
+    }
 }
