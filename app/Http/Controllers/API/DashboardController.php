@@ -362,7 +362,12 @@ class DashboardController extends Controller
                     $sale_return_total_qty = $productSaleReturnDetails->qty;
                     $sale_return_total_amount = $productSaleReturnDetails->price;
                     $sum_sale_return_price += $productSaleReturnDetails->price;
-                    $sale_return_average_price = $sale_return_total_amount/$productSaleReturnDetails->qty;
+                    //$sale_return_average_price = $sale_return_total_amount/$productSaleReturnDetails->qty;
+
+                    if($productSaleReturnDetails->qty != 0)
+                        $sale_return_average_price = $sale_return_total_amount / $productSaleReturnDetails->qty;
+                    else
+                        $sale_return_average_price = 0;
 
                     if($sale_return_total_qty > 0){
                         $sale_return_amount = $sale_return_average_price - ($purchase_average_price*$sale_return_total_qty);
