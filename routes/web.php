@@ -50,6 +50,7 @@ Route::get('/test', 'HomeController@test')->name('test');
 Route::get('/manually_pos_sale_update', 'HomeController@manually_pos_sale_update')->name('manually_pos_sale_update');
 Route::get('/manually_stock_transfer_vat_update', 'HomeController@manually_stock_transfer_vat_update')->name('manually_stock_transfer_vat_update');
 Route::get('/manually_discount_update', 'HomeController@manually_discount_update')->name('manually_discount_update');
+Route::get('/manually_purchase_price_update', 'HomeController@manually_purchase_price_update')->name('manually_purchase_price_update');
 Route::get('/backup_database', 'HomeController@backup_database')->name('backup_database');
 
 

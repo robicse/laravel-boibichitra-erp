@@ -67,7 +67,7 @@ class ProductSaleExchangeController extends Controller
                 $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','sale_exchange')->pluck('payment_type')->first();
 
                 $nested_data['id']=$data->id;
-                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['invoice_no']=ucfirst($data->invoice_no);
                 $nested_data['sale_invoice_no']=$data->sale_invoice_no;
                 $nested_data['discount_type']=$data->discount_type;
                 $nested_data['discount_amount']=$data->discount_amount;

@@ -906,7 +906,7 @@ class BackendController extends Controller
                 $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','sale_return_balance')->pluck('payment_type')->first();
 
                 $nested_data['id']=$data->id;
-                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['invoice_no']=ucfirst($data->invoice_no);
                 $nested_data['product_sale_invoice_no']=$data->product_sale_invoice_no;
                 $nested_data['discount_type']=$data->discount_type;
                 $nested_data['discount_amount']=$data->discount_amount;

@@ -66,7 +66,7 @@ class ProductSaleController extends Controller
                 $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','whole_sale')->pluck('payment_type')->first();
 
                 $nested_data['id']=$data->id;
-                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['invoice_no']=ucfirst($data->invoice_no);
                 $nested_data['sale_date']=$data->sale_date;
                 $nested_data['miscellaneous_comment']=$data->miscellaneous_comment;
                 $nested_data['miscellaneous_charge']=$data->miscellaneous_charge;
@@ -181,6 +181,7 @@ class ProductSaleController extends Controller
                 $product_id =  $data['product_id'];
 
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+                $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
 
                 // product sale detail
                 $product_sale_detail = new ProductSaleDetail();
@@ -188,6 +189,7 @@ class ProductSaleController extends Controller
                 $product_sale_detail->product_unit_id = $data['product_unit_id'];
                 $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $product_sale_detail->product_id = $product_id;
+                $product_sale_detail->purchase_price = $get_purchase_price;
                 $product_sale_detail->qty = $data['qty'];
                 $product_sale_detail->price = $data['mrp_price'];
                 $product_sale_detail->vat_amount = $data['vat_amount'];
@@ -597,6 +599,7 @@ class ProductSaleController extends Controller
                 if($data['new_status'] == 0){
                     $product_id = $data['product_id'];
                     $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+                    $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
 
                     $product_sale_detail_id = $data['product_sale_detail_id'];
                     // product purchase detail
@@ -605,6 +608,7 @@ class ProductSaleController extends Controller
                     $product_sale_detail->product_unit_id = $data['product_unit_id'];
                     $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                     $product_sale_detail->product_id = $product_id;
+                    $product_sale_detail->purchase_price = $get_purchase_price;
                     $product_sale_detail->qty = $data['qty'];
                     $product_sale_detail->vat_amount = $data['vat_amount'];
                     $product_sale_detail->price = $data['mrp_price'];
@@ -1128,7 +1132,7 @@ class ProductSaleController extends Controller
                 $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','pos_sale')->pluck('payment_type')->first();
 
                 $nested_data['id']=$data->id;
-                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['invoice_no']=ucfirst($data->invoice_no);
                 $nested_data['discount_type']=$data->discount_type;
                 $nested_data['discount_amount']=$data->discount_amount;
                 $nested_data['total_vat_amount']=$data->total_vat_amount;
@@ -1286,7 +1290,7 @@ class ProductSaleController extends Controller
                 $product_id =  $data['product_id'];
 
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
-
+                $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
 
 
 
@@ -1315,6 +1319,7 @@ class ProductSaleController extends Controller
                 $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $product_sale_detail->product_id = $product_id;
                 $product_sale_detail->barcode = $barcode;
+                $product_sale_detail->purchase_price = $get_purchase_price;
                 $product_sale_detail->qty = $data['qty'];
                 $product_sale_detail->discount = $discount;
                 $product_sale_detail->price = $data['mrp_price'];
@@ -1650,6 +1655,7 @@ class ProductSaleController extends Controller
             foreach ($request->products as $data) {
                 $product_id = $data['product_id'];
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+                $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
 
                 // discount start
                 $price = $data['mrp_price'];
@@ -1674,6 +1680,7 @@ class ProductSaleController extends Controller
                 $purchase_sale_detail->product_unit_id = $data['product_unit_id'];
                 $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_sale_detail->product_id = $product_id;
+                $product_sale_detail->purchase_price = $get_purchase_price;
                 $purchase_sale_detail->qty = $data['qty'];
                 $purchase_sale_detail->discount = $discount;
                 $purchase_sale_detail->price = $data['mrp_price'];
@@ -2267,7 +2274,7 @@ class ProductSaleController extends Controller
                 $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','sale_return_balance')->pluck('payment_type')->first();
 
                 $nested_data['id']=$data->id;
-                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['invoice_no']=ucfirst($data->invoice_no);
                 $nested_data['product_sale_invoice_no']=$data->product_sale_invoice_no;
                 $nested_data['discount_type']=$data->discount_type;
                 $nested_data['discount_amount']=$data->discount_amount;
@@ -2380,6 +2387,7 @@ class ProductSaleController extends Controller
                 $product_id =  $data['product_id'];
 
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+                $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
 
                 // product purchase detail
                 $purchase_sale_return_detail = new ProductSaleReturnDetail();
@@ -2388,6 +2396,7 @@ class ProductSaleController extends Controller
                 $purchase_sale_return_detail->product_unit_id = $data['product_unit_id'];
                 $purchase_sale_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_sale_return_detail->product_id = $product_id;
+                $purchase_sale_return_detail->purchase_price = $get_purchase_price;
                 $purchase_sale_return_detail->barcode = $barcode;
                 $purchase_sale_return_detail->qty = $data['qty'];
                 $purchase_sale_return_detail->price = $data['mrp_price'];
@@ -2762,6 +2771,7 @@ class ProductSaleController extends Controller
                 $product_id =  $data['product_id'];
 
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+                $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
 
                 // product purchase detail
                 $productSaleReturnDetail = ProductSaleReturnDetail::find($data['product_sale_return_detail_id']);
@@ -2771,6 +2781,7 @@ class ProductSaleController extends Controller
                 $productSaleReturnDetail->product_unit_id = $data['product_unit_id'];
                 $productSaleReturnDetail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $productSaleReturnDetail->product_id = $product_id;
+                $productSaleReturnDetail->purchase_price = $get_purchase_price;
                 $productSaleReturnDetail->barcode = $barcode;
                 $productSaleReturnDetail->qty = $data['qty'];
                 $productSaleReturnDetail->price = $data['mrp_price'];

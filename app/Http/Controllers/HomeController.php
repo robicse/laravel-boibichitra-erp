@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\PaymentCollection;
+use App\Product;
 use App\ProductSale;
 use App\ProductSaleDetail;
 use App\StockTransfer;
@@ -33,6 +34,11 @@ class HomeController extends Controller
     public function index()
     {
         return view('home');
+    }
+
+    public function test_helper()
+    {
+        return test_helper();
     }
 
     public function test()
@@ -225,6 +231,28 @@ class HomeController extends Controller
                             echo '<br/>';
                         }
                     }
+                }
+            }
+        }
+        dd('ops');
+    }
+
+    public function manually_purchase_price_update(){
+        // manually product sale discount add
+        //$productPosSales = ProductSale::where('sale_type','pos')->get();
+        $productSaleDetails = ProductSaleDetail::all();
+        if(count($productSaleDetails)){
+            foreach ($productSaleDetails as $productSaleDetail){
+                $product_sale_detail_id = $productSaleDetail->id;
+                $product_id = $productSaleDetail->product_id;
+                $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
+                $productSaleDetail = ProductSaleDetail::find($product_sale_detail_id);
+                $productSaleDetail->purchase_price = $get_purchase_price;
+                $affectedRow = $productSaleDetail->update();
+                if($affectedRow){
+                    echo 'updated id = '.$productSaleDetail->id;
+                    echo 'updated discount = '.$get_purchase_price;
+                    echo '<br/>';
                 }
             }
         }

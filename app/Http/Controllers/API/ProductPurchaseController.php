@@ -60,7 +60,7 @@ class ProductPurchaseController extends Controller
                 $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','whole_purchase')->pluck('payment_type')->first();
 
                 $nested_data['id']=$data->id;
-                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['invoice_no']=ucfirst($data->invoice_no);
                 $nested_data['discount_type']=$data->discount_type;
                 $nested_data['discount_amount']=$data->discount_amount;
                 //$nested_data['total_vat_amount']=$data->total_vat_amount;
@@ -854,7 +854,7 @@ class ProductPurchaseController extends Controller
                 $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','pos_purchase')->pluck('payment_type')->first();
 
                 $nested_data['id']=$data->id;
-                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['invoice_no']=ucfirst($data->invoice_no);
                 $nested_data['discount_type']=$data->discount_type;
                 $nested_data['discount_amount']=$data->discount_amount;
                 $nested_data['total_amount']=$data->total_amount;
@@ -1559,7 +1559,7 @@ class ProductPurchaseController extends Controller
                 $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','whole_purchase')->pluck('payment_type')->first();
 
                 $nested_data['id']=$data->id;
-                $nested_data['invoice_no']=$data->invoice_no;
+                $nested_data['invoice_no']=ucfirst($data->invoice_no);
                 $nested_data['product_purchase_invoice_no']=$data->product_purchase_invoice_no;
                 $nested_data['discount_type']=$data->discount_type;
                 $nested_data['discount_amount']=$data->discount_amount;
