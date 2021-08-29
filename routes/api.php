@@ -469,6 +469,7 @@ Route::middleware('auth:api')->post('/chart_of_account_list_by_head_name', 'API\
 //Route::middleware('auth:api')->get('/chart_of_account_recursive_list', 'API\AccountController@chartOfAccountRecursiveList');
 Route::middleware('auth:api')->get('/chart_of_account_active_list', 'API\AccountController@chartOfAccountActiveList');
 Route::middleware('auth:api')->get('/chart_of_account_is_transaction_list', 'API\AccountController@chartOfAccountIsTransactionList');
+Route::middleware('auth:api')->get('/chart_of_account_is_cash_book_list', 'API\AccountController@chartOfAccountIsCashBookList');
 Route::middleware('auth:api')->get('/chart_of_account_is_general_ledger_list', 'API\AccountController@chartOfAccountIsGeneralLedgerList');
 Route::middleware('auth:api')->post('/chart_of_account_details', 'API\AccountController@chartOfAccountDetails');
 Route::middleware('auth:api')->post('/chart_of_account_generate_head_code', 'API\AccountController@chartOfAccountGenerateHeadCode');
@@ -486,6 +487,7 @@ Route::middleware('auth:api')->post('/chart_of_account_transaction_delete', 'API
 
 // ledger
 Route::middleware('auth:api')->post('/ledger', 'API\AccountController@ledger');
+Route::middleware('auth:api')->post('/cash_book_report', 'API\AccountController@cashBookReport');
 Route::middleware('auth:api')->post('/ledger_report', 'API\AccountController@ledgerReport');
 Route::middleware('auth:api')->post('/balance_sheet', 'API\AccountController@balanceSheet');
 

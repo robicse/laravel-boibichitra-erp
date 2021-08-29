@@ -107,7 +107,7 @@ class ProductSaleController extends Controller
             ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
             ->where('product_sales.id',$request->product_sale_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as whole_sale_price','product_sale_details.vat_amount')
+            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sales.paid_amount','product_sales.due_amount','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as whole_sale_price','product_sale_details.vat_amount')
             ->get();
 
         if($product_sale_details)
@@ -758,7 +758,7 @@ class ProductSaleController extends Controller
 
 
 
-
+            // posting deyer somoi porbe
 
             // product whole sale e kono paid amount hobe na
             // transaction
@@ -1426,6 +1426,7 @@ class ProductSaleController extends Controller
             $chart_of_account_transactions->ref_id = $insert_id;
             $chart_of_account_transactions->transaction_type = 'Sales';
             $chart_of_account_transactions->user_id = $user_id;
+            $chart_of_account_transactions->warehouse_id = $warehouse_id;
             $chart_of_account_transactions->store_id = $store_id;
             $chart_of_account_transactions->voucher_type_id = 2;
             $chart_of_account_transactions->voucher_no = $final_voucher_no;
@@ -1440,6 +1441,8 @@ class ProductSaleController extends Controller
                 // sales
                 $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
                 $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                $chart_of_account_transactions->warehouse_id = $warehouse_id;
+                $chart_of_account_transaction_details->store_id = $store_id;
                 $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                 $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
                 $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;

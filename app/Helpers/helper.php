@@ -130,6 +130,22 @@ if (! function_exists('totalProfit')) {
     }
 }
 
+// warehouse current stock
+if (! function_exists('warehouseCurrentStock')) {
+    function warehouseCurrentStock($product_id) {
+        $warehouse_current_stock = DB::table('warehouse_current_stocks')
+            ->where('product_id',$product_id)
+            ->latest('id')
+            ->pluck('current_stock')
+            ->first();
+
+        if($warehouse_current_stock == NULL){
+            $warehouse_current_stock = 0;
+        }
+        return $warehouse_current_stock;
+    }
+}
+
 
 
 
