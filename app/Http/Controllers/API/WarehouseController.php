@@ -210,8 +210,8 @@ class WarehouseController extends Controller
         $warehouse_product_damage->warehouse_id = $warehouse_id;
         $warehouse_product_damage->damage_date = $date;
         $warehouse_product_damage->damage_date_time = $date_time;
-        $insert_id = $warehouse_product_damage->save();
-
+        $warehouse_product_damage->save();
+        $insert_id = $warehouse_product_damage->id;
 
         if($insert_id){
             foreach ($request->products as $data) {

@@ -309,6 +309,13 @@ Route::middleware('auth:api')->post('/warehouse_product_damage_create', 'API\War
 Route::middleware('auth:api')->post('/warehouse_product_damage_edit', 'API\WarehouseController@warehouseProductDamageEdit');
 Route::middleware('auth:api')->post('/warehouse_product_damage_delete', 'API\WarehouseController@warehouseProductDamageDelete');
 
+// store product damages
+Route::middleware('auth:api')->get('/store_product_damage_list', 'API\StoreController@storeProductDamageList');
+Route::middleware('auth:api')->post('/store_product_damage_details', 'API\StoreController@storeProductDamageDetails');
+Route::middleware('auth:api')->post('/store_product_damage_create', 'API\StoreController@storeProductDamageCreate');
+Route::middleware('auth:api')->post('/store_product_damage_edit', 'API\StoreController@storeProductDamageEdit');
+Route::middleware('auth:api')->post('/store_product_damage_delete', 'API\StoreController@storeProductDamageDelete');
+
 // payment
 Route::middleware('auth:api')->get('/supplier_list', 'API\PaymentController@supplierList');
 Route::middleware('auth:api')->get('/customer_list', 'API\PaymentController@customerList');
