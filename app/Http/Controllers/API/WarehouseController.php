@@ -141,7 +141,7 @@ class WarehouseController extends Controller
                 'warehouses.id as warehouse_id',
                 'warehouses.name as warehouse_name'
             )
-            ->get();
+            ->paginate(12);
 
         if($warehouse_product_damage_lists)
         {

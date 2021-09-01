@@ -139,7 +139,7 @@ class StoreController extends Controller
     public function storeProductDamageList(){
         $store_product_damage_lists = DB::table('store_product_damages')
             ->leftJoin('users','store_product_damages.user_id','users.id')
-            ->leftJoin('warehouses','store_product_damages.warehouse_id','warehouses.id')
+            ->leftJoin('stores','store_product_damages.store_id','stores.id')
             ->select(
                 'store_product_damages.id',
                 'store_product_damages.invoice_no',
@@ -147,7 +147,7 @@ class StoreController extends Controller
                 'stores.id as store_id',
                 'stores.name as store_name'
             )
-            ->get();
+            ->paginate(12);
 
         if($store_product_damage_lists)
         {
@@ -275,7 +275,7 @@ class StoreController extends Controller
         }
     }
 
-    public function warehouseProductDamageEdit(Request $request){
+    public function storeProductDamageEdit(Request $request){
         //dd($request->all());
         $this->validate($request, [
             'store_product_damage_id'=> 'required',
@@ -317,8 +317,8 @@ class StoreController extends Controller
                     $stock_row = Stock::where('stock_where','store')->where('store_id',$store_id)->where('product_id',$product_id)->latest('id')->first();
                     $current_stock = $stock_row->current_stock;
 
-                    $store_current_stock = WarehouseCurrentStock::where('store_id',$store_id)->where('product_id',$product_id)->first();
-                    $exists_current_stock = $store_current_stock->current_stock;
+                    $warehouse_store_current_stock = WarehouseStoreCurrentStock::where('store_id',$store_id)->where('product_id',$product_id)->first();
+                    $exists_current_stock = $warehouse_store_current_stock->current_stock;
 
                     if($stock_row->stock_in != $data['qty']){
 
@@ -326,14 +326,14 @@ class StoreController extends Controller
                             $new_stock_out = $data['qty'] - $previous_store_product_damage_qty;
 
                             $stock = new Stock();
-                            $stock->ref_id=$request->warehouse_product_damage_id;
+                            $stock->ref_id=$request->store_product_damage_id;
                             $stock->user_id=$user_id;
                             $stock->product_unit_id= $data['product_unit_id'];
                             $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                             $stock->product_id= $product_id;
                             $stock->stock_type='store_product_damage_increase';
-                            $stock->store_id= $store_id;
-                            $stock->store_id=NULL;
+                            $stock->warehouse_id= 6;
+                            $stock->store_id=$store_id;
                             $stock->stock_where='store';
                             $stock->stock_in_out='stock_out';
                             $stock->previous_stock=$current_stock;
@@ -345,13 +345,13 @@ class StoreController extends Controller
                             $stock->save();
 
                             // warehouse current stock
-                            $store_current_stock->current_stock=$exists_current_stock - $new_stock_out;
-                            $store_current_stock->save();
+                            $warehouse_store_current_stock->current_stock=$exists_current_stock - $new_stock_out;
+                            $warehouse_store_current_stock->save();
                         }else{
                             $new_stock_in =  $previous_store_product_damage_qty - $data['qty'];
 
                             $stock = new Stock();
-                            $stock->ref_id=$request->warehouse_product_damage_id;
+                            $stock->ref_id=$request->store_product_damage_id;
                             $stock->user_id=$user_id;
                             $stock->product_unit_id= $data['product_unit_id'];
                             $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
@@ -370,8 +370,8 @@ class StoreController extends Controller
                             $stock->save();
 
                             // warehouse current stock
-                            $store_current_stock->current_stock=$exists_current_stock + $new_stock_in;
-                            $store_current_stock->save();
+                            $warehouse_store_current_stock->current_stock=$exists_current_stock + $new_stock_in;
+                            $warehouse_store_current_stock->save();
                         }
                     }
 
