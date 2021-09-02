@@ -5,6 +5,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 
+use App\Http\Resources\CustomerCollection;
+use App\Party;
 use App\PaymentCollection;
 use App\PaymentPaid;
 use App\ProductPurchase;
@@ -101,6 +103,10 @@ class PaymentController extends Controller
         }
     }
 
+    public function wholeSaleCustomerListPagination(){
+        return new CustomerCollection(Party::where('type','customer')->where('customer_type','Whole Sale')->latest()->paginate(12));
+    }
+
     public function posSaleCustomerList(){
         $customer_lists = DB::table('parties')
             ->where('type','customer')
@@ -144,6 +150,10 @@ class PaymentController extends Controller
         }else{
             return response()->json(['success'=>false,'response'=>'No Customer List Found!'], $this->failStatus);
         }
+    }
+
+    public function posSaleCustomerListPagination(){
+        return new CustomerCollection(Party::where('type','customer')->where('customer_type','POS Sale')->latest()->paginate(12));
     }
 
     public function paymentPaidDueList(){

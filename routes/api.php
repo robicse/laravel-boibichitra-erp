@@ -168,6 +168,7 @@ Route::post('/product_list_pagination_item_code', 'API\PaginationController@prod
 Route::post('/product_list_pagination_product_name', 'API\PaginationController@productListPaginationProductname');
 
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination', 'API\PaginationController@warehouseCurrentStockListPagination');
+Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_two', 'API\PaginationController@warehouseCurrentStockListPaginationTwo');
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_barcode', 'API\PaginationController@warehouseCurrentStockListPaginationBarcode');
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_item_code', 'API\PaginationController@warehouseCurrentStockListPaginationItemcode');
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_product_name', 'API\PaginationController@warehouseCurrentStockListPaginationProductName');
@@ -193,6 +194,7 @@ Route::middleware('auth:api')->post('/store_current_stock_list_without_zero_pagi
 // product purchase whole
 Route::middleware('auth:api')->post('/product_unit_and_brand', 'API\ProductPurchaseController@productUnitAndBrand');
 Route::middleware('auth:api')->get('/product_whole_purchase_list', 'API\ProductPurchaseController@productWholePurchaseList');
+Route::middleware('auth:api')->get('/product_whole_purchase_list_pagination', 'API\ProductPurchaseController@productWholePurchaseListPagination');
 Route::middleware('auth:api')->post('/product_whole_purchase_details', 'API\ProductPurchaseController@productWholePurchaseDetails');
 Route::middleware('auth:api')->post('/product_whole_purchase_create', 'API\ProductPurchaseController@productWholePurchaseCreate');
 Route::middleware('auth:api')->post('/product_whole_purchase_edit', 'API\ProductPurchaseController@productWholePurchaseEdit');
@@ -211,6 +213,7 @@ Route::middleware('auth:api')->post('/product_purchase_remove', 'API\ProductPurc
 
 // product purchase return
 Route::middleware('auth:api')->get('/product_purchase_invoice_list', 'API\ProductPurchaseController@productPurchaseInvoiceList');
+Route::middleware('auth:api')->get('/product_purchase_invoice_list_pagination', 'API\ProductPurchaseController@productPurchaseInvoiceListPagination');
 Route::middleware('auth:api')->post('/product_purchase_details', 'API\ProductPurchaseController@productPurchaseDetails');
 Route::middleware('auth:api')->get('/product_purchase_return_list', 'API\ProductPurchaseController@productPurchaseReturnList');
 Route::middleware('auth:api')->post('/product_purchase_return_details', 'API\ProductPurchaseController@productPurchaseReturnDetails');
@@ -287,6 +290,7 @@ Route::middleware('auth:api')->post('/product_pos_sale_single_product_remove', '
 
 // product sale return
 Route::middleware('auth:api')->get('/product_sale_invoice_list', 'API\ProductSaleController@productSaleInvoiceList');
+Route::middleware('auth:api')->get('/product_sale_invoice_list_pagination', 'API\ProductSaleController@productSaleInvoiceListPagination');
 Route::middleware('auth:api')->post('/product_sale_details', 'API\ProductSaleController@productSaleDetails');
 Route::middleware('auth:api')->get('/product_sale_return_list', 'API\ProductSaleController@productSaleReturnList');
 Route::middleware('auth:api')->post('/product_sale_return_details', 'API\ProductSaleController@productSaleReturnDetails');
@@ -320,7 +324,9 @@ Route::middleware('auth:api')->post('/store_product_damage_delete', 'API\StoreCo
 Route::middleware('auth:api')->get('/supplier_list', 'API\PaymentController@supplierList');
 Route::middleware('auth:api')->get('/customer_list', 'API\PaymentController@customerList');
 Route::middleware('auth:api')->get('/whole_sale_customer_list', 'API\PaymentController@wholeSaleCustomerList');
+Route::middleware('auth:api')->get('/whole_sale_customer_list_pagination', 'API\PaymentController@wholeSaleCustomerListPagination');
 Route::middleware('auth:api')->get('/pos_sale_customer_list', 'API\PaymentController@posSaleCustomerList');
+Route::middleware('auth:api')->get('/pos_sale_customer_list_pagination', 'API\PaymentController@posSaleCustomerListPagination');
 Route::middleware('auth:api')->get('/payment_paid_due_list', 'API\PaymentController@paymentPaidDueList');
 Route::middleware('auth:api')->post('/payment_paid_due_list_by_supplier', 'API\PaymentController@paymentPaidDueListBySupplier');
 Route::middleware('auth:api')->post('/payment_paid_due_create', 'API\PaymentController@paymentPaidDueCreate');

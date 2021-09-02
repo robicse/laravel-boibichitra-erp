@@ -450,7 +450,7 @@ class ProductSaleController extends Controller
 
 
             if($request->payment_type == 'SSL Commerz'){
-                return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => $request->payment_type], $this->successStatus);
+                return response()->json(['success'=>true,'transaction_id' => '','payment_type' => $request->payment_type], $this->successStatus);
             }else{
                 return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
             }
@@ -2207,6 +2207,21 @@ class ProductSaleController extends Controller
         }
     }
 
+    // product sale invoice list pagination
+    public function productSaleInvoiceListPagination(){
+        $product_sale_invoices = DB::table('product_sales')
+            ->select('id','invoice_no','total_amount')
+            ->paginate(12);
+
+        if($product_sale_invoices)
+        {
+            $success['product_sale_invoices'] =  $product_sale_invoices;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Sale List Found!'], $this->failStatus);
+        }
+    }
+
     public function productSaleDetails(Request $request){
         //dd($request->all());
         $this->validate($request, [
@@ -2949,37 +2964,39 @@ class ProductSaleController extends Controller
                     $payment_collection->collection_date_time = $date_time;
                     $payment_collection->save();
 
-                    // posting
-                    $month = date('m', strtotime($date));
-                    $year = date('Y', strtotime($date));
-                    $transaction_date_time = date('Y-m-d H:i:s');
+                    if($sale_type == 'pos_sale') {
+                        // posting
+                        $month = date('m', strtotime($date));
+                        $year = date('Y', strtotime($date));
+                        $transaction_date_time = date('Y-m-d H:i:s');
 
-                    $chart_of_account_transactions = ChartOfAccountTransaction::where('ref_id',$productSale->id)->where('transaction_type','Sales Return')->first();;
-                    $chart_of_account_transaction_id =$chart_of_account_transactions->id;
-                    $chart_of_account_transactions->transaction_type = 'Sales Return';
-                    $chart_of_account_transactions->user_id = $user_id;
-                    $chart_of_account_transactions->transaction_date = $date;
-                    $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
-                    $aff_row = $chart_of_account_transactions->save();
+                        $chart_of_account_transactions = ChartOfAccountTransaction::where('ref_id', $productSale->id)->where('transaction_type', 'Sales Return')->first();;
+                        $chart_of_account_transaction_id = $chart_of_account_transactions->id;
+                        $chart_of_account_transactions->transaction_type = 'Sales Return';
+                        $chart_of_account_transactions->user_id = $user_id;
+                        $chart_of_account_transactions->transaction_date = $date;
+                        $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+                        $aff_row = $chart_of_account_transactions->save();
 
-                    if($aff_row){
-                        // sales Return
-                        $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transaction_id)->where('debit','>',0)->first();
-                        $chart_of_account_transaction_details->debit = $request->total_amount;
-                        $chart_of_account_transaction_details->year = $year;
-                        $chart_of_account_transaction_details->month = $month;
-                        $chart_of_account_transaction_details->transaction_date = $date;
-                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-                        $chart_of_account_transaction_details->save();
+                        if ($aff_row) {
+                            // sales Return
+                            $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id', $chart_of_account_transaction_id)->where('debit', '>', 0)->first();
+                            $chart_of_account_transaction_details->debit = $request->total_amount;
+                            $chart_of_account_transaction_details->year = $year;
+                            $chart_of_account_transaction_details->month = $month;
+                            $chart_of_account_transaction_details->transaction_date = $date;
+                            $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                            $chart_of_account_transaction_details->save();
 
-                        // cash
-                        $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transaction_id)->where('credit','>',0)->first();
-                        $chart_of_account_transaction_details->credit = $request->total_amount;
-                        $chart_of_account_transaction_details->year = $year;
-                        $chart_of_account_transaction_details->month = $month;
-                        $chart_of_account_transaction_details->transaction_date = $date;
-                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-                        $chart_of_account_transaction_details->save();
+                            // cash
+                            $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id', $chart_of_account_transaction_id)->where('credit', '>', 0)->first();
+                            $chart_of_account_transaction_details->credit = $request->total_amount;
+                            $chart_of_account_transaction_details->year = $year;
+                            $chart_of_account_transaction_details->month = $month;
+                            $chart_of_account_transaction_details->transaction_date = $date;
+                            $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                            $chart_of_account_transaction_details->save();
+                        }
                     }
                 }else{
                     // for sale return balance add after 2 days
@@ -3003,20 +3020,22 @@ class ProductSaleController extends Controller
                     $payment_collection->collection_date_time = $date_time;
                     $payment_collection->save();
 
-                    // add balance
-                    $party_previous_virtual_balance = Party::where('id',$request->party_id)->pluck('virtual_balance')->first();
+                    if($sale_type == 'pos_sale') {
+                        // add balance
+                        $party_previous_virtual_balance = Party::where('id', $request->party_id)->pluck('virtual_balance')->first();
 
-                    $party = Party::find($request->party_id);
-                    if($previous_sale_return_qty != $data['qty']){
-                        if($data['qty'] > $previous_sale_return_qty) {
-                            $new_qty = $data['qty'] - $previous_sale_return_qty;
-                            $party->virtual_balance = $party_previous_virtual_balance + ($new_qty*$data['mrp_price']);
-                        }else{
-                            $new_qty = $previous_sale_return_qty - $data['qty'];
-                            $party->virtual_balance = $party_previous_virtual_balance - ($new_qty*$data['mrp_price']);
+                        $party = Party::find($request->party_id);
+                        if ($previous_sale_return_qty != $data['qty']) {
+                            if ($data['qty'] > $previous_sale_return_qty) {
+                                $new_qty = $data['qty'] - $previous_sale_return_qty;
+                                $party->virtual_balance = $party_previous_virtual_balance + ($new_qty * $data['mrp_price']);
+                            } else {
+                                $new_qty = $previous_sale_return_qty - $data['qty'];
+                                $party->virtual_balance = $party_previous_virtual_balance - ($new_qty * $data['mrp_price']);
+                            }
                         }
+                        $party->update();
                     }
-                    $party->update();
                 }
             }
 

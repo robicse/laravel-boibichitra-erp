@@ -102,7 +102,7 @@ class ProductController extends Controller
 //    }
 
     public function productList(){
-        return new ProductCollection(Product::latest()->paginate(10));
+        return new ProductCollection(Product::latest()->paginate(12));
     }
 
     public function barcodeProductList(Request $request){

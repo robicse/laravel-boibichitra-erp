@@ -871,7 +871,7 @@ class PartyController extends Controller
             ->leftJoin('stores','product_sales.store_id','stores.id')
             ->where('product_sales.party_id',$request->customer_id)
             ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name')
-            ->get();
+            ->paginate(12);
         if(count($product_sales) > 0){
             $success['product_sales'] = $product_sales;
 

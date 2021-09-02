@@ -1260,6 +1260,21 @@ class ProductPurchaseController extends Controller
         }
     }
 
+    // product purchase invoice list
+    public function productPurchaseInvoiceListPagination(){
+        $product_purchase_invoices = DB::table('product_purchases')
+            ->select('id','invoice_no')
+            ->paginate(12);
+
+        if($product_purchase_invoices)
+        {
+            $success['product_purchase_invoices'] =  $product_purchase_invoices;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Purchase List Found!'], $this->failStatus);
+        }
+    }
+
     public function productPurchaseReturnCreate(Request $request){
         //dd($request->all());
         $this->validate($request, [

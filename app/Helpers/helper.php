@@ -146,6 +146,20 @@ if (! function_exists('warehouseCurrentStock')) {
     }
 }
 
+// customer sale total amount
+if (! function_exists('customerSaleTotalAmount')) {
+    function customerSaleTotalAmount($customer_id,$type) {
+
+        $total_amount = DB::table('transactions')
+            ->select(DB::raw('SUM(amount) as sum_total_amount'))
+            ->where('party_id',$customer_id)
+            //->where('transaction_type',$type)
+            ->first();
+
+        return $total_amount->sum_total_amount;
+    }
+}
+
 
 
 

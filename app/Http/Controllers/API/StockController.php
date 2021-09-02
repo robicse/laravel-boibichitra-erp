@@ -1160,7 +1160,7 @@ class StockController extends Controller
             //->where('stock_transfers.sale_type','whole_sale')
             ->select('stock_transfers.id','stock_transfers.invoice_no','stock_transfers.total_amount','stock_transfers.issue_date','stock_transfers.miscellaneous_comment','stock_transfers.miscellaneous_charge','stock_transfers.total_vat_amount','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
             ->orderBy('stock_transfers.id','desc')
-            ->get();
+            ->paginate(12);
 
         if($stock_transfer_lists)
         {
