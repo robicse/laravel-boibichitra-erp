@@ -925,19 +925,42 @@ class AccountController extends Controller
     }
 
     public function chartOfAccountTransactionList(){
-        $chart_of_account_transactions = DB::table('chart_of_account_transactions')
-            ->join('voucher_types','chart_of_account_transactions.voucher_type_id','voucher_types.id')
-            ->select(
-                'chart_of_account_transactions.id',
-                'chart_of_account_transactions.voucher_type_id',
-                'voucher_types.name as voucher_type_name',
-                'chart_of_account_transactions.voucher_no',
-                'chart_of_account_transactions.is_approved',
-                'chart_of_account_transactions.transaction_date',
-                'chart_of_account_transactions.transaction_date_time'
-            )
-            ->orderBy('id','desc')
-            ->get();
+        $user = User::find(Auth::id());
+        $user_role = $user->getRoleNames()[0];
+        $store_id = $user->store_id;
+
+        //return response()->json(['success'=>true,'response' => $store_id], $this->successStatus);
+        if($user_role == 'admin'){
+            $chart_of_account_transactions = DB::table('chart_of_account_transactions')
+                ->join('voucher_types','chart_of_account_transactions.voucher_type_id','voucher_types.id')
+                ->select(
+                    'chart_of_account_transactions.id',
+                    'chart_of_account_transactions.voucher_type_id',
+                    'voucher_types.name as voucher_type_name',
+                    'chart_of_account_transactions.voucher_no',
+                    'chart_of_account_transactions.is_approved',
+                    'chart_of_account_transactions.transaction_date',
+                    'chart_of_account_transactions.transaction_date_time'
+                )
+                ->orderBy('id','desc')
+                ->get();
+        }elseif($store_id != null){
+            $chart_of_account_transactions = DB::table('chart_of_account_transactions')
+                ->join('voucher_types','chart_of_account_transactions.voucher_type_id','voucher_types.id')
+                ->where('chart_of_account_transactions.store_id',$store_id)
+                ->select(
+                    'chart_of_account_transactions.id',
+                    'chart_of_account_transactions.voucher_type_id',
+                    'voucher_types.name as voucher_type_name',
+                    'chart_of_account_transactions.voucher_no',
+                    'chart_of_account_transactions.is_approved',
+                    'chart_of_account_transactions.transaction_date',
+                    'chart_of_account_transactions.transaction_date_time'
+                )
+                ->orderBy('id','desc')
+                ->get();
+        }
+
 
         if($chart_of_account_transactions)
         {
