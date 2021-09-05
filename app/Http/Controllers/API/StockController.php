@@ -291,6 +291,7 @@ class StockController extends Controller
             ->leftJoin('stores','stock_transfer_requests.request_from_store_id','stores.id')
             //->where('stock_transfers.sale_type','whole_sale')
             ->select('stock_transfer_requests.id','stock_transfer_requests.invoice_no','stock_transfer_requests.request_date','stock_transfer_requests.request_remarks','stock_transfer_requests.view_by_user_id','stock_transfer_requests.view_status','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
+            ->orderBy('stock_transfer_requests.id','desc')
             ->get();
 
         if($stock_transfer_request_lists)

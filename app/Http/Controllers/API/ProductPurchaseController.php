@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductPurchaseCollection;
 use App\PaymentPaid;
 use App\Product;
 use App\ProductPurchase;
@@ -82,6 +83,11 @@ class ProductPurchaseController extends Controller
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Whole Purchase List Found!'], $this->failStatus);
         }
+    }
+
+    public function productWholePurchaseListPagination(){
+
+        return new ProductPurchaseCollection(ProductPurchase::latest()->paginate(12));
     }
 
     public function productWholePurchaseDetails(Request $request){

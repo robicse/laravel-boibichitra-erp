@@ -419,7 +419,7 @@ class PartyController extends Controller
         }
 
         $parties = Party::find($request->party_id);
-        $parties->customer_type = $request->customer_type;
+        //$parties->customer_type = $request->customer_type;
         $parties->name = $request->name;
         $parties->slug = Str::slug($request->name);
         $parties->phone = $request->phone;

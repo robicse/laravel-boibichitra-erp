@@ -160,6 +160,47 @@ if (! function_exists('customerSaleTotalAmount')) {
     }
 }
 
+// user name as id
+if (! function_exists('userName')) {
+    function userName($user_id) {
+
+        return DB::table('users')
+            ->where('id',$user_id)
+            ->pluck('name')
+            ->first();
+    }
+}
+
+// party name as id
+if (! function_exists('partyName')) {
+    function partyName($party_id) {
+
+        return DB::table('parties')
+            ->where('id',$party_id)
+            ->pluck('name')
+            ->first();
+    }
+}
+
+// warehouse name as id
+if (! function_exists('warehouseName')) {
+    function warehouseName($warehouse_id) {
+
+        return DB::table('warehouses')
+            ->where('id',$warehouse_id)
+            ->pluck('name')
+            ->first();
+    }
+}
+
+// payment type
+if (! function_exists('paymentType')) {
+    function paymentType($id) {
+
+        return DB::table('transactions')->where('ref_id',$id)->where('transaction_type','whole_purchase')->pluck('payment_type')->first();
+    }
+}
+
 
 
 

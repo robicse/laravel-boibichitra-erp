@@ -275,6 +275,9 @@ class PaginationController extends Controller
 
     public function storeCurrentStockListPagination(Request $request){
 
+//        $this->validate($request, [
+//            'store_id'=> 'required'
+//        ]);
         $store_stock_product = DB::table('warehouse_store_current_stocks')
             ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
             ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
