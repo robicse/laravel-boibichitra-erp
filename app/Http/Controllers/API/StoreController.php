@@ -180,9 +180,24 @@ class StoreController extends Controller
             )
             ->get();
 
+        $total_damage_amount = 0;
+        if(count($store_product_damage_details) > 0){
+            foreach ($store_product_damage_details as $store_product_damage_detail){
+                $total_damage_amount += $store_product_damage_detail->sub_total;
+            }
+        }
+
+        $store_info = DB::table('stores')
+            ->join('store_product_damages','stores.id','store_product_damages.store_id')
+            ->where('store_product_damages.id',$request->store_product_damage_id)
+            ->select('name','phone','email','address')
+            ->first();
+
         if($store_product_damage_details)
         {
             $success['store_product_damage_details'] =  $store_product_damage_details;
+            $success['total_damage_amount'] =  $total_damage_amount;
+            $success['store_info'] =  $store_info;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Store Product Damage Details Found!'], $this->failStatus);

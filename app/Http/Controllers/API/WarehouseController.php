@@ -174,9 +174,17 @@ class WarehouseController extends Controller
             )
             ->get();
 
+        $total_damage_amount = 0;
+        if(count($warehouse_product_damage_details) > 0){
+            foreach ($warehouse_product_damage_details as $warehouse_product_damage_detail){
+                $total_damage_amount += $warehouse_product_damage_detail->sub_total;
+            }
+        }
+
         if($warehouse_product_damage_details)
         {
             $success['warehouse_product_damage_details'] =  $warehouse_product_damage_details;
+            $success['total_damage_amount'] =  $total_damage_amount;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Warehouse Product Damage Details Found!'], $this->failStatus);

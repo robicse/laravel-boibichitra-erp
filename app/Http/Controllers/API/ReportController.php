@@ -572,38 +572,87 @@ class ReportController extends Controller
                 $from = $from_year.'-01-01';
                 $to = $to_year.'-12-31';
 
-                if($store_id != ''){
-                    $product_sales = DB::table('product_sales')
-                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
-                        ->where('sale_date','>=',$from)
-                        ->where('sale_date','<=',$to)
-                        ->where('sale_type',$sale_type)
-                        ->where('store_id',$store_id)
-                        ->groupBy(DB::raw('YEAR(created_at)'))
-                        ->get();
-                }else{
-                    $product_sales = DB::table('product_sales')
-                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
-                        ->where('sale_date','>=',$from)
-                        ->where('sale_date','<=',$to)
-                        ->where('sale_type',$sale_type)
-                        ->groupBy(DB::raw('YEAR(created_at)'))
-                        ->get();
+
+                // no delete (first requirement)
+
+//                if($store_id != ''){
+//                    $product_sales = DB::table('product_sales')
+//                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+//                        ->where('sale_date','>=',$from)
+//                        ->where('sale_date','<=',$to)
+//                        ->where('sale_type',$sale_type)
+//                        ->where('store_id',$store_id)
+//                        ->groupBy(DB::raw('YEAR(created_at)'))
+//                        ->get();
+//                }else{
+//                    $product_sales = DB::table('product_sales')
+//                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+//                        ->where('sale_date','>=',$from)
+//                        ->where('sale_date','<=',$to)
+//                        ->where('sale_type',$sale_type)
+//                        ->groupBy(DB::raw('YEAR(created_at)'))
+//                        ->get();
+//                }
+//
+//                $grand_total_amount = 0;
+//                $grand_total_vat_amount = 0;
+//                if(count($product_sales) > 0){
+//                    foreach ($product_sales as $product_sale){
+//                        $grand_total_amount += $product_sale->sum_total_amount;
+//                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+//                    }
+//                }
+
+
+
+
+                // no delete (second requirement)
+                $years = [];
+                for ($nYear = $from_year; $nYear <= $to_year; $nYear++) {
+                    //echo $nYear . "\n";
+                    if($store_id != ''){
+                        $product_sales = DB::table('product_sales')
+                            ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+                            ->where('sale_date','>=',$from)
+                            ->where('sale_date','<=',$to)
+                            ->where('sale_type',$sale_type)
+                            ->where('store_id',$store_id)
+                            ->whereYear('created_at',$nYear)
+                            ->groupBy(DB::raw('YEAR(created_at)'))
+                            ->get();
+                    }else{
+                        $product_sales = DB::table('product_sales')
+                            ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+                            ->where('sale_date','>=',$from)
+                            ->where('sale_date','<=',$to)
+                            ->where('sale_type',$sale_type)
+                            ->whereYear('created_at',$nYear)
+                            ->groupBy(DB::raw('YEAR(created_at)'))
+                            ->get();
+                    }
+                    $grand_total_amount = 0;
+                    $grand_total_vat_amount = 0;
+                    if(count($product_sales) > 0){
+                        foreach ($product_sales as $product_sale){
+                            $grand_total_amount += $product_sale->sum_total_amount;
+                            $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+                        }
+                    }
+
+                    $years[] = [
+                        'year'=>$nYear,
+                        'product_sales'=>$product_sales
+                    ];
                 }
 
-                $grand_total_amount = 0;
-                $grand_total_vat_amount = 0;
-                if(count($product_sales) > 0){
-                    foreach ($product_sales as $product_sale){
-                        $grand_total_amount += $product_sale->sum_total_amount;
-                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
-                    }
-                }
+
+
 
                 $sale_infos['year_wise'] = [
-                    'product_sales' => $product_sales,
+                    //'product_sales' => $product_sales,
                     'grand_total_amount' => $grand_total_amount,
                     'grand_total_vat_amount' => $grand_total_vat_amount,
+                    'years' => $years,
                 ];
             }
 
@@ -670,27 +719,61 @@ class ReportController extends Controller
                 $from = $from_year.'-01-01';
                 $to = $to_year.'-12-31';
 
-                $product_sales = DB::table('product_sales')
-                    ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
-                    ->where('sale_date','>=',$from)
-                    ->where('sale_date','<=',$to)
-                    ->where('sale_type',$sale_type)
-                    ->groupBy(DB::raw('YEAR(created_at)'))
-                    ->get();
 
-                $grand_total_amount = 0;
-                $grand_total_vat_amount = 0;
-                if(count($product_sales) > 0){
-                    foreach ($product_sales as $product_sale){
-                        $grand_total_amount += $product_sale->sum_total_amount;
-                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+
+
+                // no delete (first requirement)
+
+//                $product_sales = DB::table('product_sales')
+//                    ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+//                    ->where('sale_date','>=',$from)
+//                    ->where('sale_date','<=',$to)
+//                    ->where('sale_type',$sale_type)
+//                    ->groupBy(DB::raw('YEAR(created_at)'))
+//                    ->get();
+//
+//                $grand_total_amount = 0;
+//                $grand_total_vat_amount = 0;
+//                if(count($product_sales) > 0){
+//                    foreach ($product_sales as $product_sale){
+//                        $grand_total_amount += $product_sale->sum_total_amount;
+//                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+//                    }
+//                }
+
+
+                // no delete (second requirement)
+                $years = [];
+                for ($nYear = $from_year; $nYear <= $to_year; $nYear++) {
+                    //echo $nYear . "\n";
+                    $product_sales = DB::table('product_sales')
+                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+                        ->where('sale_date','>=',$from)
+                        ->where('sale_date','<=',$to)
+                        ->where('sale_type',$sale_type)
+                        ->groupBy(DB::raw('YEAR(created_at)'))
+                        ->get();
+                    $grand_total_amount = 0;
+                    $grand_total_vat_amount = 0;
+                    if(count($product_sales) > 0){
+                        foreach ($product_sales as $product_sale){
+                            $grand_total_amount += $product_sale->sum_total_amount;
+                            $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+                        }
                     }
+
+                    $years[] = [
+                        'year'=>$nYear,
+                        'product_sales'=>$product_sales
+                    ];
                 }
 
+
                 $sale_infos['year_wise'] = [
-                    'product_sales' => $product_sales,
+                    //'product_sales' => $product_sales,
                     'grand_total_amount' => $grand_total_amount,
                     'grand_total_vat_amount' => $grand_total_vat_amount,
+                    'years' => $years,
                 ];
             }
         }
@@ -851,38 +934,68 @@ class ReportController extends Controller
                 $from = $from_year.'-01-01';
                 $to = $to_year.'-12-31';
 
-                if($store_id != ''){
-                    $product_sales = DB::table('product_sales')
-                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
-                        ->where('sale_date','>=',$from)
-                        ->where('sale_date','<=',$to)
-                        ->where('sale_type',$sale_type)
-                        ->where('store_id',$store_id)
-                        ->groupBy(DB::raw('YEAR(created_at)'))
-                        ->get();
-                }else{
-                    $product_sales = DB::table('product_sales')
-                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
-                        ->where('sale_date','>=',$from)
-                        ->where('sale_date','<=',$to)
-                        ->where('sale_type',$sale_type)
-                        ->groupBy(DB::raw('YEAR(created_at)'))
-                        ->get();
-                }
+                // no delete (first requirement)
 
-                $grand_total_amount = 0;
-                $grand_total_vat_amount = 0;
-                if(count($product_sales) > 0){
-                    foreach ($product_sales as $product_sale){
-                        $grand_total_amount += $product_sale->sum_total_amount;
-                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+//                if($store_id != ''){
+//                    $product_sales = DB::table('product_sales')
+//                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+//                        ->where('sale_date','>=',$from)
+//                        ->where('sale_date','<=',$to)
+//                        ->where('sale_type',$sale_type)
+//                        ->where('store_id',$store_id)
+//                        ->groupBy(DB::raw('YEAR(created_at)'))
+//                        ->get();
+//                }else{
+//                    $product_sales = DB::table('product_sales')
+//                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+//                        ->where('sale_date','>=',$from)
+//                        ->where('sale_date','<=',$to)
+//                        ->where('sale_type',$sale_type)
+//                        ->groupBy(DB::raw('YEAR(created_at)'))
+//                        ->get();
+//                }
+//
+//                $grand_total_amount = 0;
+//                $grand_total_vat_amount = 0;
+//                if(count($product_sales) > 0){
+//                    foreach ($product_sales as $product_sale){
+//                        $grand_total_amount += $product_sale->sum_total_amount;
+//                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+//                    }
+//                }
+
+
+                // no delete (second requirement)
+                $years = [];
+                for ($nYear = $from_year; $nYear <= $to_year; $nYear++) {
+                    //echo $nYear . "\n";
+                    $product_sales = DB::table('product_sales')
+                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+                        ->where('sale_date','>=',$from)
+                        ->where('sale_date','<=',$to)
+                        ->where('sale_type',$sale_type)
+                        ->groupBy(DB::raw('YEAR(created_at)'))
+                        ->get();
+                    $grand_total_amount = 0;
+                    $grand_total_vat_amount = 0;
+                    if(count($product_sales) > 0){
+                        foreach ($product_sales as $product_sale){
+                            $grand_total_amount += $product_sale->sum_total_amount;
+                            $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+                        }
                     }
+
+                    $years[] = [
+                        'year'=>$nYear,
+                        'product_sales'=>$product_sales
+                    ];
                 }
 
                 $sale_infos['year_wise'] = [
-                    'product_sales' => $product_sales,
+                    //'product_sales' => $product_sales,
                     'grand_total_amount' => $grand_total_amount,
                     'grand_total_vat_amount' => $grand_total_vat_amount,
+                    'years' => $years,
                 ];
             }
 
@@ -949,27 +1062,56 @@ class ReportController extends Controller
                 $from = $from_year.'-01-01';
                 $to = $to_year.'-12-31';
 
-                $product_sales = DB::table('product_sales')
-                    ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
-                    ->where('sale_date','>=',$from)
-                    ->where('sale_date','<=',$to)
-                    ->where('sale_type',$sale_type)
-                    ->groupBy(DB::raw('YEAR(created_at)'))
-                    ->get();
+                // no delete (first requirement)
 
-                $grand_total_amount = 0;
-                $grand_total_vat_amount = 0;
-                if(count($product_sales) > 0){
-                    foreach ($product_sales as $product_sale){
-                        $grand_total_amount += $product_sale->sum_total_amount;
-                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+//                $product_sales = DB::table('product_sales')
+//                    ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+//                    ->where('sale_date','>=',$from)
+//                    ->where('sale_date','<=',$to)
+//                    ->where('sale_type',$sale_type)
+//                    ->groupBy(DB::raw('YEAR(created_at)'))
+//                    ->get();
+//
+//                $grand_total_amount = 0;
+//                $grand_total_vat_amount = 0;
+//                if(count($product_sales) > 0){
+//                    foreach ($product_sales as $product_sale){
+//                        $grand_total_amount += $product_sale->sum_total_amount;
+//                        $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+//                    }
+//                }
+
+                // no delete (second requirement)
+                $years = [];
+                for ($nYear = $from_year; $nYear <= $to_year; $nYear++) {
+                    //echo $nYear . "\n";
+                    $product_sales = DB::table('product_sales')
+                        ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
+                        ->where('sale_date','>=',$from)
+                        ->where('sale_date','<=',$to)
+                        ->where('sale_type',$sale_type)
+                        ->groupBy(DB::raw('YEAR(created_at)'))
+                        ->get();
+                    $grand_total_amount = 0;
+                    $grand_total_vat_amount = 0;
+                    if(count($product_sales) > 0){
+                        foreach ($product_sales as $product_sale){
+                            $grand_total_amount += $product_sale->sum_total_amount;
+                            $grand_total_vat_amount += $product_sale->sum_total_vat_amount;
+                        }
                     }
+
+                    $years[] = [
+                        'year'=>$nYear,
+                        'product_sales'=>$product_sales
+                    ];
                 }
 
                 $sale_infos['year_wise'] = [
-                    'product_sales' => $product_sales,
+                    //'product_sales' => $product_sales,
                     'grand_total_amount' => $grand_total_amount,
                     'grand_total_vat_amount' => $grand_total_vat_amount,
+                    'years' => $years,
                 ];
             }
         }
@@ -1022,7 +1164,7 @@ class ReportController extends Controller
         $to_date = $request->to_date;
         $sales = DB::table('product_sales')
             ->join('parties','product_sales.party_id','parties.id')
-            ->select('product_sales.sale_date as transaction_date','product_sales.invoice_no','product_sales.total_amount as debit','product_sales.paid_amount as credit')
+            ->select('product_sales.sale_date as transaction_date','product_sales.invoice_no','product_sales.total_amount as debit','product_sales.paid_amount as credit','product_sales.due_amount as balance')
             ->where('product_sales.party_id', $request->party_id)
             ->where('product_sales.sale_date','>=',"$from_date")
             ->where('product_sales.sale_date','<=',"$to_date")
@@ -1032,6 +1174,7 @@ class ReportController extends Controller
 
         if($sales)
         {
+            $total_balance = 0;
             $data = [];
             foreach($sales as $sale){
                 $nested_data['transaction_date']=$sale->transaction_date;
@@ -1039,6 +1182,9 @@ class ReportController extends Controller
                 $nested_data['vch_type']='Sale Invoice';
                 $nested_data['debit']=$sale->debit;
                 $nested_data['credit']=$sale->credit;
+                $nested_data['balance']=$sale->balance;
+
+                $total_balance += $sale->balance;
 
                 array_push($data, $nested_data);
             }
@@ -1048,7 +1194,7 @@ class ReportController extends Controller
                 ->select('name','phone','email','address')
                 ->first();
 
-            return response()->json(['success'=>true,'response' => $data, 'customer_info' => $customer_info], $this->successStatus);
+            return response()->json(['success'=>true,'response' => $data, 'customer_info' => $customer_info, 'total_balance' => $total_balance], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>null], $this->successStatus);
         }

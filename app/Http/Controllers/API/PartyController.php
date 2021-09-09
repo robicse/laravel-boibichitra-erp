@@ -487,6 +487,7 @@ class PartyController extends Controller
         $parties->email = $request->email;
         $parties->address = $request->address;
         $parties->status = $request->status;
+        $parties->initial_due = $request->initial_due;
         $parties->save();
         $insert_id = $parties->id;
 
