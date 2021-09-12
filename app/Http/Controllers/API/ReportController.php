@@ -751,6 +751,7 @@ class ReportController extends Controller
                         ->where('sale_date','>=',$from)
                         ->where('sale_date','<=',$to)
                         ->where('sale_type',$sale_type)
+                        ->whereYear('created_at',$nYear)
                         ->groupBy(DB::raw('YEAR(created_at)'))
                         ->get();
                     $grand_total_amount = 0;
@@ -974,6 +975,7 @@ class ReportController extends Controller
                         ->where('sale_date','>=',$from)
                         ->where('sale_date','<=',$to)
                         ->where('sale_type',$sale_type)
+                        ->whereYear('created_at',$nYear)
                         ->groupBy(DB::raw('YEAR(created_at)'))
                         ->get();
                     $grand_total_amount = 0;
@@ -1090,6 +1092,7 @@ class ReportController extends Controller
                         ->where('sale_date','>=',$from)
                         ->where('sale_date','<=',$to)
                         ->where('sale_type',$sale_type)
+                        ->whereYear('created_at',$nYear)
                         ->groupBy(DB::raw('YEAR(created_at)'))
                         ->get();
                     $grand_total_amount = 0;

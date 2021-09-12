@@ -41,7 +41,7 @@ class PartyController extends Controller
 
     public function partyCustomerList(){
         $party_customers = DB::table('parties')
-            ->select('id','type','customer_type','name','phone','address','virtual_balance','status')
+            ->select('id','type','customer_type','name','phone','email','address','virtual_balance','status','initial_due')
             ->where('type','customer')
             ->orderBy('id','desc')
             ->get();
@@ -77,6 +77,7 @@ class PartyController extends Controller
                 $nested_data['sale_total_amount'] = $sale_total_amount;
                 $nested_data['virtual_balance'] = $party_customer->virtual_balance;
                 $nested_data['status'] = $party_customer->status;
+                $nested_data['initial_due'] = $party_customer->initial_due;
 
                 array_push($party_customer_arr,$nested_data);
             }
@@ -426,6 +427,7 @@ class PartyController extends Controller
         $parties->email = $request->email;
         $parties->address = $request->address;
         $parties->status = $request->status;
+        $parties->initial_due = $request->initial_due;
         $update_party = $parties->save();
 
         if($update_party){
