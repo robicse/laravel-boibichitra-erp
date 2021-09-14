@@ -1407,9 +1407,8 @@ class ProductSaleController extends Controller
 
 
             // posting
-            $transaction_date = $request->date;
-            $month = date('m', strtotime($request->date));
-            $year = date('Y', strtotime($request->date));
+            $month = date('m');
+            $year = date('Y');
             $transaction_date_time = date('Y-m-d H:i:s');
 
             $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
@@ -1441,7 +1440,7 @@ class ProductSaleController extends Controller
                 // sales
                 $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
                 $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                $chart_of_account_transactions->warehouse_id = $warehouse_id;
+                $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
                 $chart_of_account_transaction_details->store_id = $store_id;
                 $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                 $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
@@ -1462,6 +1461,8 @@ class ProductSaleController extends Controller
                 if($request->payment_type == 'Cash'){
                     $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
                     $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                    $chart_of_account_transaction_details->store_id = $store_id;
                     $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                     $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                     $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -1479,6 +1480,8 @@ class ProductSaleController extends Controller
                 }elseif($request->payment_type == 'Check'){
                     $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
                     $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                    $chart_of_account_transaction_details->store_id = $store_id;
                     $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                     $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                     $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -1496,6 +1499,8 @@ class ProductSaleController extends Controller
                 }elseif($request->payment_type == 'Card'){
                     $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
                     $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                    $chart_of_account_transaction_details->store_id = $store_id;
                     $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                     $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                     $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -1513,6 +1518,8 @@ class ProductSaleController extends Controller
                 }elseif($request->payment_type == 'Bkash'){
                     $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
                     $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                    $chart_of_account_transaction_details->store_id = $store_id;
                     $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                     $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                     $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -1530,6 +1537,8 @@ class ProductSaleController extends Controller
                 }elseif($request->payment_type == 'Nogod'){
                     $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
                     $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                    $chart_of_account_transaction_details->store_id = $store_id;
                     $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                     $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                     $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -1547,6 +1556,8 @@ class ProductSaleController extends Controller
                 }elseif($request->payment_type == 'Rocket'){
                     $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
                     $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                    $chart_of_account_transaction_details->store_id = $store_id;
                     $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                     $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                     $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -1564,6 +1575,8 @@ class ProductSaleController extends Controller
                 }elseif($request->payment_type == 'Upay'){
                     $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
                     $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                    $chart_of_account_transaction_details->store_id = $store_id;
                     $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                     $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                     $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -1683,7 +1696,7 @@ class ProductSaleController extends Controller
                 $purchase_sale_detail->product_unit_id = $data['product_unit_id'];
                 $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                 $purchase_sale_detail->product_id = $product_id;
-                $product_sale_detail->purchase_price = $get_purchase_price;
+                $purchase_sale_detail->purchase_price = $get_purchase_price;
                 $purchase_sale_detail->qty = $data['qty'];
                 $purchase_sale_detail->discount = $discount;
                 $purchase_sale_detail->price = $data['mrp_price'];
@@ -2537,10 +2550,11 @@ class ProductSaleController extends Controller
                     }
                     $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
                     $chart_of_account_transactions = new ChartOfAccountTransaction();
+                    $chart_of_account_transactions->warehouse_id = $warehouse_id;
+                    $chart_of_account_transactions->store_id = $store_id;
                     $chart_of_account_transactions->ref_id = $insert_id;
                     $chart_of_account_transactions->transaction_type = 'Sales Return';
                     $chart_of_account_transactions->user_id = $user_id;
-                    $chart_of_account_transactions->store_id = $store_id;
                     $chart_of_account_transactions->voucher_type_id = 7;
                     $chart_of_account_transactions->voucher_no = $final_voucher_no;
                     $chart_of_account_transactions->is_approved = 'approved';
@@ -2554,6 +2568,8 @@ class ProductSaleController extends Controller
                         // sales Return
                         $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales Return')->first();
                         $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                        $chart_of_account_transaction_details->store_id = $store_id;
                         $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                         $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
                         $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
@@ -2573,6 +2589,8 @@ class ProductSaleController extends Controller
                         if($request->payment_type == 'Cash'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                            $chart_of_account_transaction_details->store_id = $store_id;
                             $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -2590,6 +2608,8 @@ class ProductSaleController extends Controller
                         }elseif($request->payment_type == 'Check'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                            $chart_of_account_transaction_details->store_id = $store_id;
                             $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -2607,6 +2627,8 @@ class ProductSaleController extends Controller
                         }elseif($request->payment_type == 'Card'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                            $chart_of_account_transaction_details->store_id = $store_id;
                             $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -2624,6 +2646,8 @@ class ProductSaleController extends Controller
                         }elseif($request->payment_type == 'Bkash'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                            $chart_of_account_transaction_details->store_id = $store_id;
                             $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -2641,6 +2665,8 @@ class ProductSaleController extends Controller
                         }elseif($request->payment_type == 'Nogod'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                            $chart_of_account_transaction_details->store_id = $store_id;
                             $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -2658,6 +2684,8 @@ class ProductSaleController extends Controller
                         }elseif($request->payment_type == 'Rocket'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                            $chart_of_account_transaction_details->store_id = $store_id;
                             $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
@@ -2675,6 +2703,8 @@ class ProductSaleController extends Controller
                         }elseif($request->payment_type == 'Upay'){
                             $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
                             $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                            $chart_of_account_transaction_details->store_id = $store_id;
                             $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                             $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                             $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;

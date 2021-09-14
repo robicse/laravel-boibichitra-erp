@@ -927,6 +927,7 @@ class AccountController extends Controller
     public function chartOfAccountTransactionList(){
         $user = User::find(Auth::id());
         $user_role = $user->getRoleNames()[0];
+        $warehouse_id = $user->warehouse_id;
         $store_id = $user->store_id;
 
         //return response()->json(['success'=>true,'response' => $store_id], $this->successStatus);
@@ -959,6 +960,23 @@ class AccountController extends Controller
                 )
                 ->orderBy('id','desc')
                 ->get();
+        }elseif($warehouse_id != null){
+            $chart_of_account_transactions = DB::table('chart_of_account_transactions')
+                ->join('voucher_types','chart_of_account_transactions.voucher_type_id','voucher_types.id')
+                ->where('chart_of_account_transactions.warehouse_id',$warehouse_id)
+                ->select(
+                    'chart_of_account_transactions.id',
+                    'chart_of_account_transactions.voucher_type_id',
+                    'voucher_types.name as voucher_type_name',
+                    'chart_of_account_transactions.voucher_no',
+                    'chart_of_account_transactions.is_approved',
+                    'chart_of_account_transactions.transaction_date',
+                    'chart_of_account_transactions.transaction_date_time'
+                )
+                ->orderBy('id','desc')
+                ->get();
+        }else{
+            return response()->json(['success'=>false,'response'=>'Something Went Wrong!'], $this->failStatus);
         }
 
 
@@ -1090,7 +1108,7 @@ class AccountController extends Controller
                 $chart_of_account_info = ChartOfAccount::where('head_name',$data['chart_of_account_name']['head_name'])->first();
 
                 $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                $chart_of_account_transactions->warehouse_id = 6;
+                $chart_of_account_transaction_details->warehouse_id = 6;
                 $chart_of_account_transaction_details->store_id = $store_id;
                 $chart_of_account_transaction_details->chart_of_account_transaction_id = $insert_id;
                 $chart_of_account_transaction_details->chart_of_account_id = $chart_of_account_info->id;
@@ -1261,20 +1279,20 @@ class AccountController extends Controller
 
         if($store_id != 0){
             $gl_pre_valance_data = DB::table('chart_of_account_transaction_details')
-                    ->join('chart_of_account_transactions','chart_of_account_transaction_details.chart_of_account_transaction_id','=','chart_of_account_transactions.id')
-                    ->select('chart_of_account_transaction_details.chart_of_account_name', DB::raw('SUM(chart_of_account_transaction_details.debit) as debit, SUM(chart_of_account_transaction_details.credit) as credit'))
-                    ->where('chart_of_account_transaction_details.transaction_date', '<',$from_date)
-                    ->where('chart_of_account_transaction_details.chart_of_account_name',$chart_of_account_name)
-                    ->where('chart_of_account_transactions.store_id',$store_id)
-                    ->groupBy('chart_of_account_transaction_details.chart_of_account_name')
-                    ->first();
+                ->join('chart_of_account_transactions','chart_of_account_transaction_details.chart_of_account_transaction_id','=','chart_of_account_transactions.id')
+                ->select('chart_of_account_transaction_details.chart_of_account_name', DB::raw('SUM(chart_of_account_transaction_details.debit) as debit, SUM(chart_of_account_transaction_details.credit) as credit'))
+                ->where('chart_of_account_transaction_details.transaction_date', '<',$from_date)
+                ->where('chart_of_account_transaction_details.chart_of_account_name',$chart_of_account_name)
+                ->where('chart_of_account_transactions.store_id',$store_id)
+                ->groupBy('chart_of_account_transaction_details.chart_of_account_name')
+                ->first();
         }else{
             $gl_pre_valance_data = DB::table('chart_of_account_transaction_details')
-                    ->select('chart_of_account_name', DB::raw('SUM(debit) as debit, SUM(credit) as credit'))
-                    ->where('transaction_date', '<',$request->from_date)
-                    ->where('chart_of_account_name',$request->chart_of_account_name)
-                    ->groupBy('chart_of_account_name')
-                    ->first();
+                ->select('chart_of_account_name', DB::raw('SUM(debit) as debit, SUM(credit) as credit'))
+                ->where('transaction_date', '<',$request->from_date)
+                ->where('chart_of_account_name',$request->chart_of_account_name)
+                ->groupBy('chart_of_account_name')
+                ->first();
 
         }
 
