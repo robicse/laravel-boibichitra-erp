@@ -88,8 +88,10 @@ if (! function_exists('totalSale')) {
 if (! function_exists('todaySaleReturn')) {
     function todaySaleReturn() {
         $today_sale_return_history = DB::table('product_sale_returns')
-            ->where('product_sale_return_date', date('Y-m-d'))
-            ->select(DB::raw('SUM(total_amount) as today_sale_return'))
+            ->join('product_sales','product_sale_returns.product_sale_invoice_no','product_sales.invoice_no')
+            ->where('product_sale_returns.product_sale_return_date', date('Y-m-d'))
+            ->where('product_sales.sale_type', 'pos_sale')
+            ->select(DB::raw('SUM(product_sale_returns.total_amount) as today_sale_return'))
             ->first();
 
         return $today_sale_return_history->today_sale_return;
@@ -100,7 +102,9 @@ if (! function_exists('todaySaleReturn')) {
 if (! function_exists('totalSaleReturn')) {
     function totalSaleReturn() {
         $total_sale_return_history = DB::table('product_sale_returns')
-            ->select(DB::raw('SUM(total_amount) as total_sale_return'))
+            ->join('product_sales','product_sale_returns.product_sale_invoice_no','product_sales.invoice_no')
+            ->where('product_sales.sale_type', 'pos_sale')
+            ->select(DB::raw('SUM(product_sale_returns.total_amount) as total_sale_return'))
             ->first();
 
         return $total_sale_return_history->total_sale_return;
@@ -111,11 +115,20 @@ if (! function_exists('totalSaleReturn')) {
 if (! function_exists('todayProfit')) {
     function todayProfit() {
         $total_sale_for_profit_loss_history = DB::table('product_sale_details')
-            ->where('sale_date', date('Y-m-d'))
-            ->select(DB::raw('SUM(sub_total) as sub_total'),DB::raw('SUM(vat_amount) as vat_amount'),DB::raw('SUM(purchase_price) as purchase_price'))
+            ->join('product_sales','product_sale_details.product_sale_id','product_sales.id')
+            ->where('product_sale_details.sale_date', date('Y-m-d'))
+            ->where('product_sales.sale_type', 'pos_sale')
+            ->select(DB::raw('SUM(product_sale_details.sub_total) as sub_total'),DB::raw('SUM(product_sale_details.purchase_price) as purchase_price'))
             ->first();
 
-        return $total_sale_for_profit_loss_history->sub_total - ($total_sale_for_profit_loss_history->vat_amount + $total_sale_for_profit_loss_history->purchase_price);
+        $total_discount_sale_for_profit_loss_history = DB::table('product_sales')
+            ->where('sale_date', date('Y-m-d'))
+            ->where('sale_type', 'pos_sale')
+            ->select(DB::raw('SUM(discount_amount) as discount_amount'))
+            ->first();
+
+        $after_discount = $total_sale_for_profit_loss_history->sub_total - $total_discount_sale_for_profit_loss_history->discount_amount;
+        return $after_discount - $total_sale_for_profit_loss_history->purchase_price;
     }
 }
 
@@ -123,10 +136,18 @@ if (! function_exists('todayProfit')) {
 if (! function_exists('totalProfit')) {
     function totalProfit() {
         $total_sale_for_profit_loss_history = DB::table('product_sale_details')
-            ->select(DB::raw('SUM(sub_total) as sub_total'),DB::raw('SUM(vat_amount) as vat_amount'),DB::raw('SUM(purchase_price) as purchase_price'))
+            ->join('product_sales','product_sale_details.product_sale_id','product_sales.id')
+            ->where('product_sales.sale_type', 'pos_sale')
+            ->select(DB::raw('SUM(product_sale_details.sub_total) as sub_total'),DB::raw('SUM(product_sale_details.purchase_price) as purchase_price'))
             ->first();
 
-        return $total_sale_for_profit_loss_history->sub_total - ($total_sale_for_profit_loss_history->vat_amount + $total_sale_for_profit_loss_history->purchase_price);
+        $total_discount_sale_for_profit_loss_history = DB::table('product_sales')
+            ->where('sale_type', 'pos_sale')
+            ->select(DB::raw('SUM(discount_amount) as discount_amount'))
+            ->first();
+
+        $after_discount = $total_sale_for_profit_loss_history->sub_total - $total_discount_sale_for_profit_loss_history->discount_amount;
+        return $after_discount - $total_sale_for_profit_loss_history->purchase_price;
     }
 }
 

@@ -183,6 +183,22 @@ class ProductSaleController extends Controller
                 $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
                 $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
 
+                // discount start
+                $price = $data['mrp_price'];
+                $discount_amount = $request->discount_amount;
+                $total_amount = $request->total_amount;
+
+                $final_discount_amount = (float)$discount_amount * (float)$price;
+                $final_total_amount = (float)$discount_amount + (float)$total_amount;
+                $discount_type = $request->discount_type;
+                $discount = (float)$final_discount_amount/(float)$final_total_amount;
+                if($discount_type != NULL){
+                    if($discount_type == 'Flat'){
+                        $discount = round($discount);
+                    }
+                }
+                // discount end
+
                 // product sale detail
                 $product_sale_detail = new ProductSaleDetail();
                 $product_sale_detail->product_sale_id = $insert_id;
@@ -192,6 +208,7 @@ class ProductSaleController extends Controller
                 $product_sale_detail->purchase_price = $get_purchase_price;
                 $product_sale_detail->qty = $data['qty'];
                 $product_sale_detail->price = $data['mrp_price'];
+                $product_sale_detail->discount = $discount;
                 $product_sale_detail->vat_amount = $data['vat_amount'];
                 $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
                 $product_sale_detail->barcode = $barcode;
