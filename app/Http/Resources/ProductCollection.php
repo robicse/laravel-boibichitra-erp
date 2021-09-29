@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\ProductUnit;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
 class ProductCollection extends ResourceCollection
@@ -10,18 +11,19 @@ class ProductCollection extends ResourceCollection
     {
         return [
             'data' => $this->collection->map(function($data) {
+                $unit_name = ProductUnit::where('id',$data->product_unit_id)->pluck('name')->first();
                 return [
                     'id' => $data->id,
                     'product_name' => $data->name,
                     'image' => $data->image,
-                    'unit_id' => $data->unit_id,
-                    'unit_name' => $data->unit_id,
+                    'unit_id' => $data->product_unit_id,
+                    'unit_name' => $unit_name,
                     'item_code' => $data->item_code,
                     'barcode' => $data->barcode,
                     'self_no' => $data->self_no,
                     'low_inventory_alert' => $data->low_inventory_alert,
-                    'brand_id' => $data->brand_id,
-                    'brand_name' => $data->brand_id,
+                    //'brand_id' => $data->brand_id,
+                    //'brand_name' => $data->brand_id,
                     'purchase_price' => $data->purchase_price,
                     'whole_sale_price' => $data->whole_sale_price,
                     'selling_price' => $data->selling_price,

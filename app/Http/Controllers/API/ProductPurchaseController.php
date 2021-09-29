@@ -102,7 +102,14 @@ class ProductPurchaseController extends Controller
 
         if($product_purchase_details)
         {
+            $supplier_details = DB::table('parties')
+                ->join('product_purchases','product_purchases.party_id','parties.id')
+                ->where('product_purchases.id',$request->product_purchase_id)
+                ->select('parties.id as supplier_id','parties.name as supplier_name','parties.phone as supplier_phone','parties.address as supplier_address')
+                ->first();
+
             $success['product_whole_purchase_details'] =  $product_purchase_details;
+            $success['supplier_details'] =  $supplier_details;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Whole Purchase Detail Found!'], $this->failStatus);
