@@ -6,6 +6,7 @@ use App\ChartOfAccount;
 use App\ChartOfAccountTransaction;
 use App\ChartOfAccountTransactionDetail;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductWholeSaleCollection;
 use App\Party;
 use App\PaymentCollection;
 use App\PaymentPaid;
@@ -98,6 +99,46 @@ class ProductSaleController extends Controller
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);
         }
+    }
+
+    public function productWholeSaleListPagination(Request $request){
+        if($request->search){
+            $product_whole_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
+                ->where('product_sales.sale_type','whole_sale')
+                ->where('product_sales.invoice_no','like','%'.$request->search.'%')
+                ->orWhere('parties.name','like','%'.$request->search.'%')
+                ->select(
+                    'product_sales.id',
+                    'product_sales.invoice_no',
+                    'product_sales.sale_date',
+                    'product_sales.discount_type',
+                    'product_sales.discount_amount',
+                    'product_sales.total_vat_amount',
+                    'product_sales.total_amount',
+                    'product_sales.paid_amount',
+                    'product_sales.due_amount',
+                    'product_sales.sale_date_time',
+                    'product_sales.miscellaneous_comment',
+                    'product_sales.miscellaneous_charge',
+                    'product_sales.user_id',
+                    'product_sales.party_id',
+                    'product_sales.warehouse_id'
+                    //'warehouses.id as warehouse_id',
+                    //'warehouses.name as warehouse_name'
+                    //'users.name as user_name',
+                    //'parties.id as customer_id',
+                    //'parties.name as customer_name',
+                    //'parties.phone as customer_phone',
+                    //'parties.email as customer_email',
+                    //'parties.address as customer_address',
+                )
+                ->orderBy('product_sales.id','desc')
+                ->paginate(12);
+            return new ProductWholeSaleCollection($product_whole_sales);
+        }else{
+            return new ProductWholeSaleCollection(ProductSale::where('sale_type','whole_sale')->latest()->paginate(12));
+        }
+
     }
 
     public function productWholeSaleDetails(Request $request){
@@ -1228,6 +1269,35 @@ class ProductSaleController extends Controller
             }
         }else{
             return response()->json(['success'=>false,'response'=>'No Product POS Sale List Found!'], $this->failStatus);
+        }
+
+    }
+
+    public function productWholeSaleListSearch(Request $request){
+        if($request->search){
+            $product_pos_sales = DB::table('product_sales')
+                ->leftJoin('users','product_sales.user_id','users.id')
+                ->leftJoin('parties','product_sales.party_id','parties.id')
+                ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+                ->leftJoin('stores','product_sales.store_id','stores.id')
+                ->where('product_sales.sale_type','whole_sale')
+                ->where('product_sales.invoice_no','like','%'.$request->search.'%')
+                ->orWhere('product_sales.total_amount','like','%'.$request->search.'%')
+                ->orWhere('parties.name','like','%'.$request->search.'%')
+                ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone')
+                ->orderBy('product_sales.id','desc')
+                ->paginate(12);
+
+            if(count($product_pos_sales) > 0)
+            {
+
+                $success['product_pos_sales'] =  $product_pos_sales;
+                return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+            }else{
+                return response()->json(['success'=>false,'response'=>'No Product POS Sale List Found!'], $this->failStatus);
+            }
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);
         }
 
     }

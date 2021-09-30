@@ -203,6 +203,39 @@ if (! function_exists('partyName')) {
     }
 }
 
+// party name as id
+if (! function_exists('partyPhone')) {
+    function partyPhone($party_id) {
+
+        return DB::table('parties')
+            ->where('id',$party_id)
+            ->pluck('phone')
+            ->first();
+    }
+}
+
+// party name as id
+if (! function_exists('partyEmail')) {
+    function partyEmail($party_id) {
+
+        return DB::table('parties')
+            ->where('id',$party_id)
+            ->pluck('email')
+            ->first();
+    }
+}
+
+// party name as id
+if (! function_exists('partyAddress')) {
+    function partyAddress($party_id) {
+
+        return DB::table('parties')
+            ->where('id',$party_id)
+            ->pluck('address')
+            ->first();
+    }
+}
+
 // warehouse name as id
 if (! function_exists('warehouseName')) {
     function warehouseName($warehouse_id) {

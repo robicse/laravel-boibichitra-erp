@@ -150,6 +150,8 @@ Route::middleware('auth:api')->post('/product_vat_edit', 'API\ProductVatControll
 Route::middleware('auth:api')->post('/product_vat_delete', 'API\ProductVatController@productVatDelete');
 
 // product
+// changed product_list to product_list_barcode
+Route::middleware('auth:api')->get('/product_list_barcode', 'API\ProductController@productListBarcode');
 Route::middleware('auth:api')->get('/product_list', 'API\ProductController@productList');
 Route::middleware('auth:api')->post('/barcode-products', 'API\ProductController@barcodeProductList');
 Route::middleware('auth:api')->get('/all_active_product_list', 'API\ProductController@allActiveProductList');
@@ -200,6 +202,7 @@ Route::middleware('auth:api')->post('/product_whole_purchase_create', 'API\Produ
 Route::middleware('auth:api')->post('/product_whole_purchase_edit', 'API\ProductPurchaseController@productWholePurchaseEdit');
 Route::middleware('auth:api')->post('/product_whole_purchase_delete', 'API\ProductPurchaseController@productWholePurchaseDelete');
 Route::middleware('auth:api')->post('/product_whole_purchase_single_product_remove', 'API\ProductPurchaseController@productWholePurchaseSingleProductRemove');
+Route::middleware('auth:api')->post('/product_whole_purchase_list_search', 'API\ProductPurchaseController@productWholePurchaseListSearch');
 
 // product purchase pos
 Route::middleware('auth:api')->get('/product_pos_purchase_list', 'API\ProductPurchaseController@productPOSPurchaseList');
@@ -272,11 +275,14 @@ Route::middleware('auth:api')->get('/stock_sync', 'API\StockController@stock_syn
 // product sale whole
 Route::middleware('auth:api')->get('/product_sale_invoice_no', 'API\ProductSaleController@productSaleInvoiceNo');
 Route::middleware('auth:api')->get('/product_whole_sale_list', 'API\ProductSaleController@productWholeSaleList');
+//Route::middleware('auth:api')->get('/product_whole_sale_list_pagination', 'API\ProductSaleController@productWholeSaleListPagination');
+Route::middleware('auth:api')->post('/product_whole_sale_list_pagination', 'API\ProductSaleController@productWholeSaleListPagination');
 Route::middleware('auth:api')->post('/product_whole_sale_details', 'API\ProductSaleController@productWholeSaleDetails');
 Route::middleware('auth:api')->post('/product_whole_sale_create', 'API\ProductSaleController@productWholeSaleCreate');
 Route::middleware('auth:api')->post('/product_whole_sale_edit', 'API\ProductSaleController@productWholeSaleEdit');
 Route::middleware('auth:api')->post('/product_whole_sale_delete', 'API\ProductSaleController@productWholeSaleDelete');
 Route::middleware('auth:api')->post('/product_whole_sale_single_product_remove', 'API\ProductSaleController@productWholeSaleSingleProductRemove');
+Route::middleware('auth:api')->post('/product_whole_sale_list_search', 'API\ProductSaleController@productWholeSaleListSearch');
 
 
 // product sale pos

@@ -90,6 +90,28 @@ class ProductPurchaseController extends Controller
         return new ProductPurchaseCollection(ProductPurchase::latest()->paginate(12));
     }
 
+    public function productWholePurchaseListSearch(Request $request){
+        if($request->search) {
+            $product_whole_purchase_lists = DB::table('product_purchases')
+                ->join('product_purchase_details', 'product_purchases.id', 'product_purchase_details.product_purchase_id')
+                ->leftJoin('products', 'product_purchase_details.product_id', 'products.id')
+                ->leftJoin('product_units', 'product_purchase_details.product_unit_id', 'product_units.id')
+                ->leftJoin('product_brands', 'product_purchase_details.product_brand_id', 'product_brands.id')
+                ->leftJoin('parties','product_purchases.party_id','parties.id')
+                ->where('product_purchases.invoice_no','like','%'.$request->search.'%')
+                ->orWhere('parties.name','like','%'.$request->search.'%')
+                ->select('products.id as product_id', 'products.name as product_name', 'product_units.id as product_unit_id', 'product_units.name as product_unit_name', 'product_brands.id as product_brand_id', 'product_brands.name as product_brand_name', 'product_purchase_details.qty', 'product_purchase_details.id as product_purchase_detail_id', 'product_purchase_details.price', 'product_purchase_details.mrp_price')
+                ->paginate(12);
+
+            if ($product_whole_purchase_lists) {
+                $success['product_whole_purchase_lists'] = $product_whole_purchase_lists;
+                return response()->json(['success' => true, 'response' => $success], $this->successStatus);
+            } else {
+                return response()->json(['success' => false, 'response' => 'No Product Whole Purchase List Found!'], $this->failStatus);
+            }
+        }
+    }
+
     public function productWholePurchaseDetails(Request $request){
         $product_purchase_details = DB::table('product_purchases')
             ->join('product_purchase_details','product_purchases.id','product_purchase_details.product_purchase_id')

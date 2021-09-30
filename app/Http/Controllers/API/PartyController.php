@@ -187,7 +187,7 @@ class PartyController extends Controller
                 $head_code="5010100001";
                 //$p_acc = $headcode ."-".$request->name;
             }
-            $head_name = $request->name;
+            $head_name = $request->name.'('.$request->phone.')';
 
             $parent_head_name = 'Account Payable';
             $head_level = 3;
