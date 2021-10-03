@@ -1172,6 +1172,38 @@ class StockController extends Controller
         }
     }
 
+    public function stockTransferListWithSearch(Request $request){
+        if($request->search){
+            $stock_transfer_lists = DB::table('stock_transfers')
+                ->leftJoin('users','stock_transfers.user_id','users.id')
+                ->leftJoin('warehouses','stock_transfers.warehouse_id','warehouses.id')
+                ->leftJoin('stores','stock_transfers.store_id','stores.id')
+                ->where('stock_transfers.invoice_no','like','%'.$request->search.'%')
+                ->orWhere('warehouses.name','like','%'.$request->search.'%')
+                ->orWhere('stores.name','like','%'.$request->search.'%')
+                ->select('stock_transfers.id','stock_transfers.invoice_no','stock_transfers.total_amount','stock_transfers.issue_date','stock_transfers.miscellaneous_comment','stock_transfers.miscellaneous_charge','stock_transfers.total_vat_amount','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
+                ->orderBy('stock_transfers.id','desc')
+                ->paginate(12);
+        }else{
+            $stock_transfer_lists = DB::table('stock_transfers')
+                ->leftJoin('users','stock_transfers.user_id','users.id')
+                ->leftJoin('warehouses','stock_transfers.warehouse_id','warehouses.id')
+                ->leftJoin('stores','stock_transfers.store_id','stores.id')
+                ->select('stock_transfers.id','stock_transfers.invoice_no','stock_transfers.total_amount','stock_transfers.issue_date','stock_transfers.miscellaneous_comment','stock_transfers.miscellaneous_charge','stock_transfers.total_vat_amount','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
+                ->orderBy('stock_transfers.id','desc')
+                ->paginate(12);
+        }
+
+
+        if($stock_transfer_lists)
+        {
+            $success['stock_transfer_list'] =  $stock_transfer_lists;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Stock Transfer List Found!'], $this->failStatus);
+        }
+    }
+
     public function stockTransferDetails(Request $request){
         $stock_transfer_details = DB::table('stock_transfers')
             ->join('stock_transfer_details','stock_transfers.id','stock_transfer_details.stock_transfer_id')

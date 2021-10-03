@@ -107,6 +107,18 @@ class PaymentController extends Controller
         return new CustomerCollection(Party::where('type','customer')->where('customer_type','Whole Sale')->latest()->paginate(12));
     }
 
+    public function wholeSaleCustomerListPaginationWithSearch(Request $request){
+        if($request->search){
+            $parties = Party::where('type','customer')
+                ->where('customer_type','Whole Sale')
+                ->where('name','like','%'.$request->search.'%')
+                ->latest()->paginate(12);
+            return new CustomerCollection($parties);
+        }else{
+            return new CustomerCollection(Party::where('type','customer')->where('customer_type','Whole Sale')->latest()->paginate(12));
+        }
+    }
+
     public function posSaleCustomerList(){
         $customer_lists = DB::table('parties')
             ->where('type','customer')
@@ -154,6 +166,18 @@ class PaymentController extends Controller
 
     public function posSaleCustomerListPagination(){
         return new CustomerCollection(Party::where('type','customer')->where('customer_type','POS Sale')->latest()->paginate(12));
+    }
+
+    public function posSaleCustomerListPaginationWithSearch(Request $request){
+        if($request->search){
+            $parties = Party::where('type','customer')
+                ->where('customer_type','POS Sale')
+                ->where('name','like','%'.$request->search.'%')
+                ->latest()->paginate(12);
+            return new CustomerCollection($parties);
+        }else{
+            return new CustomerCollection(Party::where('type','customer')->where('customer_type','POS Sale')->latest()->paginate(12));
+        }
     }
 
     public function paymentPaidDueList(){

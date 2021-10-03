@@ -101,8 +101,23 @@ class ProductController extends Controller
         }
     }
 
-    public function productList(){
+    public function productList(Request $request){
         return new ProductCollection(Product::latest()->paginate(12));
+    }
+
+    public function productListWithSearch(Request $request){
+        if($request->search){
+            $products = Product::where('name','like','%'.$request->search.'%')
+                ->orWhere('name','like','%'.$request->search.'%')
+                ->orWhere('item_code','like','%'.$request->search.'%')
+                ->orWhere('barcode','like','%'.$request->search.'%')
+                ->orWhere('whole_sale_price','like','%'.$request->search.'%')
+                ->orWhere('selling_price','like','%'.$request->search.'%')
+                ->latest()->paginate(12);
+            return new ProductCollection($products);
+        }else{
+            return new ProductCollection(Product::latest()->paginate(12));
+        }
     }
 
     public function barcodeProductList(Request $request){

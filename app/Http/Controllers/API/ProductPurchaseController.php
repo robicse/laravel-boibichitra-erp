@@ -85,9 +85,37 @@ class ProductPurchaseController extends Controller
         }
     }
 
-    public function productWholePurchaseListPagination(){
+    public function productWholePurchaseListPagination(Request $request){
 
-        return new ProductPurchaseCollection(ProductPurchase::latest()->paginate(12));
+        return new ProductPurchaseCollection(ProductPurchase::where('purchase_type','whole_purchase')->latest()->paginate(12));
+    }
+
+    public function productWholePurchaseListPaginationWithSearch(Request $request){
+        if($request->search){
+            $product_whole_purchases = ProductPurchase::join('parties','product_purchases.party_id','parties.id')
+            ->where('product_purchases.purchase_type','whole_purchase')
+            ->where(function ($q) use ($request){
+                $q->where('product_purchases.invoice_no','like','%'.$request->search.'%')
+                    ->orWhere('parties.name','like','%'.$request->search.'%');
+            })
+            ->select(
+                'product_purchases.id',
+                'product_purchases.invoice_no',
+                'product_purchases.discount_type',
+                'product_purchases.discount_amount',
+                'product_purchases.total_amount',
+                'product_purchases.paid_amount',
+                'product_purchases.due_amount',
+                'product_purchases.purchase_date_time',
+                'product_purchases.user_id',
+                'product_purchases.party_id',
+                'product_purchases.warehouse_id'
+            )
+            ->latest('product_purchases.id','desc')->paginate(12);
+            return new ProductPurchaseCollection($product_whole_purchases);
+        }else{
+            return new ProductPurchaseCollection(ProductPurchase::where('purchase_type','whole_purchase')->latest()->paginate(12));
+        }
     }
 
     public function productWholePurchaseListSearch(Request $request){
@@ -1300,6 +1328,29 @@ class ProductPurchaseController extends Controller
         $product_purchase_invoices = DB::table('product_purchases')
             ->select('id','invoice_no')
             ->paginate(12);
+
+        if($product_purchase_invoices)
+        {
+            $success['product_purchase_invoices'] =  $product_purchase_invoices;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Product Purchase List Found!'], $this->failStatus);
+        }
+    }
+
+    // product purchase invoice list
+    public function productPurchaseInvoiceListPaginationWithSearch(Request $request){
+        if($request->search){
+            $product_purchase_invoices = DB::table('product_purchases')
+                ->where('invoice_no','like','%'.$request->search.'%')
+                ->select('id','invoice_no')
+                ->paginate(12);
+        }else{
+            $product_purchase_invoices = DB::table('product_purchases')
+                ->select('id','invoice_no')
+                ->paginate(12);
+        }
+
 
         if($product_purchase_invoices)
         {

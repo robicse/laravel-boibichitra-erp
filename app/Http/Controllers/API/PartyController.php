@@ -93,7 +93,7 @@ class PartyController extends Controller
     // supplier
     public function partySupplierList(){
         $party_suppliers = DB::table('parties')
-            ->select('id','type','customer_type','name','phone','address','virtual_balance','status')
+            ->select('id','type','customer_type','name','phone','email','address','virtual_balance','status')
             ->where('type','supplier')
             ->orderBy('id','desc')
             ->get();
@@ -125,6 +125,7 @@ class PartyController extends Controller
                 $nested_data['customer_type'] = $party_supplier->customer_type;
                 $nested_data['name'] = $party_supplier->name;
                 $nested_data['phone'] = $party_supplier->phone;
+                $nested_data['email'] = $party_supplier->email;
                 $nested_data['address'] = $party_supplier->address;
                 $nested_data['purchase_total_amount'] = $purchase_total_amount;
                 $nested_data['virtual_balance'] = $party_supplier->virtual_balance;
