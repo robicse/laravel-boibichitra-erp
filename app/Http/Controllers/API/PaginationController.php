@@ -311,14 +311,26 @@ class PaginationController extends Controller
 //        $this->validate($request, [
 //            'store_id'=> 'required'
 //        ]);
-        $store_stock_product = DB::table('warehouse_store_current_stocks')
-            ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
-            ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
-            ->leftJoin('product_units','products.product_unit_id','product_units.id')
-            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
-            ->where('warehouse_store_current_stocks.store_id',$request->store_id)
-            ->select('warehouse_store_current_stocks.*','stores.name as store_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
-            ->paginate(12);
+        if($request->search){
+            $store_stock_product = DB::table('warehouse_store_current_stocks')
+                ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+                ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
+                ->leftJoin('product_units','products.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+                ->where('warehouse_store_current_stocks.store_id',$request->store_id)
+                ->where('products.name','like','%'.$request->search.'%')
+                ->select('warehouse_store_current_stocks.*','stores.name as store_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+                ->paginate(12);
+        }else{
+            $store_stock_product = DB::table('warehouse_store_current_stocks')
+                ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+                ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
+                ->leftJoin('product_units','products.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+                ->where('warehouse_store_current_stocks.store_id',$request->store_id)
+                ->select('warehouse_store_current_stocks.*','stores.name as store_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+                ->paginate(12);
+        }
 
         if($store_stock_product)
         {

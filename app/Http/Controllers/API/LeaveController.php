@@ -125,7 +125,7 @@ class LeaveController extends Controller
         $leave_applications = DB::table('leave_applications')
             ->join('employees','leave_applications.employee_id','=','employees.id')
             ->join('leave_categories','leave_applications.leave_category_id','=','leave_categories.id')
-            ->select('leave_applications.id','leave_applications.start_date','leave_applications.end_date','leave_applications.duration','leave_applications.reason','leave_applications.approval_status','leave_applications.status','leave_applications.id as employee_id','employees.name as employee_name','leave_categories.id as leave_category_id','leave_categories.name as leave_category_name')
+            ->select('leave_applications.id','leave_applications.start_date','leave_applications.end_date','leave_applications.duration','leave_applications.reason','leave_applications.approval_status','leave_applications.status','employees.id as employee_id','employees.name as employee_name','leave_categories.id as leave_category_id','leave_categories.name as leave_category_name')
             ->orderBy('id','desc')
             ->get();
 
