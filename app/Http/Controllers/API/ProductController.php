@@ -313,13 +313,13 @@ class ProductController extends Controller
             return response()->json($response, $this->validationStatus);
         }
 
-        $item_code = isset($request->item_code) ? $request->item_code : '';
-        if($item_code){
-            $check_exists = Product::where('item_code',$item_code)->where('id','!=',$request->product_id)->pluck('id')->first();
-            if($check_exists){
-                return response()->json(['success'=>false,'response'=>'Already exists, this item code!'], $this->failStatus);
-            }
-        }
+//        $item_code = isset($request->item_code) ? $request->item_code : '';
+//        if($item_code){
+//            $check_exists = Product::where('item_code',$item_code)->where('id','!=',$request->product_id)->get();
+//            if(count($check_exists) > 0){
+//                return response()->json(['success'=>false,'response'=>'Already exists, this item code!'], $this->failStatus);
+//            }
+//        }
 
         $check_exists_product = DB::table("products")->where('id',$request->product_id)->pluck('id')->first();
         if($check_exists_product == null){

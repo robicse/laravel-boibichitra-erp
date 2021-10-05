@@ -158,6 +158,21 @@ class AttendanceController extends Controller
             $month = date('m', strtotime($date));
             $day = date('d', strtotime($date));
 
+            // check employee already attendance
+            $check_exists = Attendance::where('card_no',$data['card_no'])
+                ->where('year',$year)
+                ->where('month',$month)
+                ->first();
+            if(!empty($check_exists)){
+                $response = [
+                    'success' => false,
+                    'data' => 'Validation Error.',
+                    'message' => ['This Employee ['.$data['card_no'].'] Attendance of '.$month. ' ' .$year.' Already Exists, Please Try Another.]'],
+                    'exist'=>1
+                ];
+                return response()->json($response, $this-> failStatus);
+            }
+
             $employee_info = DB::table('employees')
                 ->join('employee_office_informations','employees.id','=','employee_office_informations.employee_id')
                 ->where('employee_office_informations.card_no',$data['card_no'])
