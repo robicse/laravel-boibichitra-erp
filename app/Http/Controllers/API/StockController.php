@@ -1629,6 +1629,7 @@ class StockController extends Controller
     function universalSearchStoreCurrentProductStock(Request $request){
 
         $store_stocks = '';
+        $warehouse_stocks = '';
         if($request->name){
             $store_stocks = DB::table('products')
                 ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
@@ -1636,6 +1637,14 @@ class StockController extends Controller
                 //->where('products.name','like','%'.$request->name.'%')
                 ->where('products.name',$request->name)
                 ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
+                ->get();
+
+            $warehouse_stocks = DB::table('products')
+                ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+                ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+                //->where('products.name','like','%'.$request->name.'%')
+                ->where('products.name',$request->name)
+                ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
                 ->get();
         }
 
@@ -1646,6 +1655,13 @@ class StockController extends Controller
                 ->orWhere('products.barcode',$request->barcode)
                 ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
                 ->get();
+
+            $warehouse_stocks = DB::table('products')
+                ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+                ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+                ->orWhere('products.barcode',$request->barcode)
+                ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
+                ->get();
         }
 
         if($request->item_code){
@@ -1655,10 +1671,18 @@ class StockController extends Controller
                 ->orWhere('products.item_code',$request->item_code)
                 ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
                 ->get();
+
+            $warehouse_stocks = DB::table('products')
+                ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+                ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+                ->orWhere('products.item_code',$request->item_code)
+                ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
+                ->get();
         }
 
         if($store_stocks){
             $success['store_stock_details'] =  $store_stocks;
+            $success['warehouse_stock_details'] =  $warehouse_stocks;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Data Found!'], $this->failStatus);

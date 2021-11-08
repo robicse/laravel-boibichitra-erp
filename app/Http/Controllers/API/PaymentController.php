@@ -109,9 +109,13 @@ class PaymentController extends Controller
 
     public function wholeSaleCustomerListPaginationWithSearch(Request $request){
         if($request->search){
+            $search = $request->search;
             $parties = Party::where('type','customer')
                 ->where('customer_type','Whole Sale')
-                ->where('name','like','%'.$request->search.'%')
+                ->where(function ($query) use ($search) {
+                    $query->where('name','like','%'.$search.'%')
+                        ->orWhere('phone', 'like', '%'.$search.'%');
+                })
                 ->latest()->paginate(12);
             return new CustomerCollection($parties);
         }else{
@@ -170,9 +174,13 @@ class PaymentController extends Controller
 
     public function posSaleCustomerListPaginationWithSearch(Request $request){
         if($request->search){
+            $search = $request->search;
             $parties = Party::where('type','customer')
                 ->where('customer_type','POS Sale')
-                ->where('name','like','%'.$request->search.'%')
+                ->where(function ($query) use ($search) {
+                    $query->where('name','like','%'.$search.'%')
+                        ->orWhere('phone', 'like', '%'.$search.'%');
+                })
                 ->latest()->paginate(12);
             return new CustomerCollection($parties);
         }else{
