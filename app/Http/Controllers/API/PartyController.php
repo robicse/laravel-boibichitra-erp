@@ -4,10 +4,14 @@ namespace App\Http\Controllers\API;
 
 
 use App\ChartOfAccount;
+use App\ChartOfAccountTransaction;
+use App\ChartOfAccountTransactionDetail;
 use App\Helpers\UserInfo;
 use App\Http\Controllers\Controller;
 use App\Party;
+use App\Store;
 use App\User;
+use App\VoucherType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -432,6 +436,119 @@ class PartyController extends Controller
         $update_party = $parties->save();
 
         if($update_party){
+
+            // whole customer initial due
+            if(($request->initial_due > 0) && ($parties->customer_type == 'Whole Sale')){
+                $coa = ChartOfAccount::where('head_name',$parties->name)->first();
+
+                $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
+                $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
+                if(!empty($get_voucher_no)){
+                    $get_voucher_name_str = $get_voucher_name."-";
+                    $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+                    $voucher_no = $get_voucher+1;
+                }else{
+                    $voucher_no = 8000;
+                }
+                $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+
+                $date = date('Y-m-d');
+                $year = date('Y');
+                $month = date('m');
+                $date_time = date('Y-m-d h:i:s');
+                $user_id = Auth::user()->id;
+                //$store_id = $request->store_id;
+                //$warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
+                $warehouse_id = 6;
+
+                $check_exists_posting = ChartOfAccountTransaction::where('ref_id',$parties->id)
+                    ->where('transaction_type','Initial Due')->first();
+
+                if(empty($check_exists_posting)){
+                    $chart_of_account_transactions = new ChartOfAccountTransaction();
+                    $chart_of_account_transactions->ref_id = $parties->id;
+                    $chart_of_account_transactions->transaction_type = 'Initial Due';
+                    $chart_of_account_transactions->user_id = $user_id;
+                    $chart_of_account_transactions->warehouse_id = $warehouse_id;
+                    $chart_of_account_transactions->store_id = NULL;
+                    $chart_of_account_transactions->voucher_type_id = 2;
+                    $chart_of_account_transactions->voucher_no = $final_voucher_no;
+                    $chart_of_account_transactions->is_approved = 'approved';
+                    $chart_of_account_transactions->transaction_date = $date;
+                    $chart_of_account_transactions->transaction_date_time = $date_time;
+                    $chart_of_account_transactions->save();
+                    $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
+
+                    if($chart_of_account_transactions_insert_id) {
+
+                        // customer account
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                        $chart_of_account_transaction_details->store_id = NULL;
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $coa->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $coa->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = $coa->head_name;
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $coa->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $coa->head_type;
+                        $chart_of_account_transaction_details->debit = $request->initial_due;
+                        $chart_of_account_transaction_details->credit = NULL;
+                        $chart_of_account_transaction_details->description = 'Initial Due';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $date_time;
+                        $chart_of_account_transaction_details->save();
+
+                        // Account Receivable
+                        $cash_chart_of_account_info = ChartOfAccount::where('head_name', 'Account Receivable')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                        $chart_of_account_transaction_details->store_id = NULL;
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Account Receivable';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = NULL;
+                        $chart_of_account_transaction_details->credit = $request->initial_due;
+                        $chart_of_account_transaction_details->description = 'Initial Due';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $date_time;
+                        $chart_of_account_transaction_details->save();
+
+                    }
+                }else{
+                    $check_exists_posting->transaction_date = $date;
+                    $check_exists_posting->transaction_date_time = $date_time;
+                    $check_exists_posting->save();
+
+
+
+                    // customer account
+                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_name',$check_exists_posting->head_name)
+                        ->where('chart_of_account_id',$check_exists_posting->id)->first();
+
+                    $chart_of_account_transaction_details->debit = $request->initial_due;
+                    $chart_of_account_transaction_details->transaction_date = $date;
+                    $chart_of_account_transaction_details->transaction_date_time = $date_time;
+                    $chart_of_account_transaction_details->save();
+
+                    // Account Receivable
+                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_name','Account Receivable')
+                        ->where('chart_of_account_transaction_id',$check_exists_posting->id)->first();
+                    $chart_of_account_transaction_details->credit = $request->initial_due;
+                    $chart_of_account_transaction_details->transaction_date = $date;
+                    $chart_of_account_transaction_details->transaction_date_time = $date_time;
+                    $chart_of_account_transaction_details->save();
+
+
+                }
+
+            }
             return response()->json(['success'=>true,'response' => $parties], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'Customer Not Created Successfully!'], $this->failStatus);
@@ -484,7 +601,7 @@ class PartyController extends Controller
         $parties = new Party();
         $parties->type = 'customer';
         $parties->customer_type = 'Whole Sale';
-        $parties->name = $request->name;
+        $parties->name = $request->name.'('.$request->phone.')';
         $parties->slug = Str::slug($request->name);
         $parties->phone = $request->phone;
         $parties->email = $request->email;
@@ -521,7 +638,7 @@ class PartyController extends Controller
                 $head_code="1020300001";
                 //$p_acc = $headcode ."-".$request->name;
             }
-            $head_name = $request->name;
+            $head_name = $request->name.'('.$request->phone.')';
 
             $parent_head_name = 'Account Receivable';
             $head_level = 3;
@@ -541,6 +658,92 @@ class PartyController extends Controller
             $coa->created_by              = Auth::User()->id;
             $coa->updated_by              = Auth::User()->id;
             $coa->save();
+
+
+
+            // whole customer initial due
+            if($request->initial_due > 0){
+                $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
+                $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
+                if(!empty($get_voucher_no)){
+                    $get_voucher_name_str = $get_voucher_name."-";
+                    $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+                    $voucher_no = $get_voucher+1;
+                }else{
+                    $voucher_no = 8000;
+                }
+                $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+
+                $date = date('Y-m-d');
+                $year = date('Y');
+                $month = date('m');
+                $date_time = date('Y-m-d h:i:s');
+                $user_id = Auth::user()->id;
+                //$store_id = $request->store_id;
+                //$warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
+                $warehouse_id = 6;
+
+                $chart_of_account_transactions = new ChartOfAccountTransaction();
+                $chart_of_account_transactions->ref_id = $insert_id;
+                $chart_of_account_transactions->transaction_type = 'Initial Due';
+                $chart_of_account_transactions->user_id = $user_id;
+                $chart_of_account_transactions->warehouse_id = $warehouse_id;
+                $chart_of_account_transactions->store_id = NULL;
+                $chart_of_account_transactions->voucher_type_id = 2;
+                $chart_of_account_transactions->voucher_no = $final_voucher_no;
+                $chart_of_account_transactions->is_approved = 'approved';
+                $chart_of_account_transactions->transaction_date = $date;
+                $chart_of_account_transactions->transaction_date_time = $date_time;
+                $chart_of_account_transactions->save();
+                $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
+
+                if($chart_of_account_transactions_insert_id) {
+
+                    // customer account
+                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                    $chart_of_account_transaction_details->store_id = NULL;
+                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                    $chart_of_account_transaction_details->chart_of_account_id = $coa->id;
+                    $chart_of_account_transaction_details->chart_of_account_number = $coa->head_code;
+                    $chart_of_account_transaction_details->chart_of_account_name = $coa->head_name;
+                    $chart_of_account_transaction_details->chart_of_account_parent_name = $coa->parent_head_name;
+                    $chart_of_account_transaction_details->chart_of_account_type = $coa->head_type;
+                    $chart_of_account_transaction_details->debit = $request->initial_due;
+                    $chart_of_account_transaction_details->credit = NULL;
+                    $chart_of_account_transaction_details->description = 'Initial Due';
+                    $chart_of_account_transaction_details->year = $year;
+                    $chart_of_account_transaction_details->month = $month;
+                    $chart_of_account_transaction_details->transaction_date = $date;
+                    $chart_of_account_transaction_details->transaction_date_time = $date_time;
+                    $chart_of_account_transaction_details->save();
+
+                    // Account Receivable
+                    $cash_chart_of_account_info = ChartOfAccount::where('head_name', 'Account Receivable')->first();
+                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                    $chart_of_account_transaction_details->store_id = NULL;
+                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                    $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                    $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                    $chart_of_account_transaction_details->chart_of_account_name = 'Account Receivable';
+                    $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                    $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                    $chart_of_account_transaction_details->debit = NULL;
+                    $chart_of_account_transaction_details->credit = $request->initial_due;
+                    $chart_of_account_transaction_details->description = 'Initial Due';
+                    $chart_of_account_transaction_details->year = $year;
+                    $chart_of_account_transaction_details->month = $month;
+                    $chart_of_account_transaction_details->transaction_date = $date;
+                    $chart_of_account_transaction_details->transaction_date_time = $date_time;
+                    $chart_of_account_transaction_details->save();
+
+                }
+            }
+
+
+
+
 
             return response()->json(['success'=>true,'response' => $parties,'exist'=>0], $this->successStatus);
         }else{

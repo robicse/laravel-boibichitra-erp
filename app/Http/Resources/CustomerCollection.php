@@ -19,6 +19,7 @@ class CustomerCollection extends ResourceCollection
                     'phone' => $data->phone,
                     'address' => $data->address,
                     'virtual_balance' => $data->virtual_balance,
+                    'initial_due' => $data->initial_due,
                     'status' => $data->status,
                     'sale_total_amount' => customerSaleTotalAmount($data->id,$transaction_type) != null ? customerSaleTotalAmount($data->id,$transaction_type) : 0,
                 ];
