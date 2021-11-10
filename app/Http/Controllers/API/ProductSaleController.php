@@ -208,15 +208,15 @@ class ProductSaleController extends Controller
             'payment_type'=> 'required',
         ]);
 
-//        $get_invoice_no = ProductSale::latest()->pluck('invoice_no')->first();
-//        if(!empty($get_invoice_no)){
-//            $get_invoice = str_replace("sale-","",$get_invoice_no);
-//            $invoice_no = $get_invoice+1;
-//        }else{
-//            $invoice_no = 100000;
-//        }
-//        $final_invoice = 'sale-'.$invoice_no;
-        $final_invoice = $request->invoice_no;
+        $get_invoice_no = ProductSale::latest()->pluck('invoice_no')->first();
+        if(!empty($get_invoice_no)){
+            $get_invoice = str_replace("sale-","",$get_invoice_no);
+            $invoice_no = $get_invoice+1;
+        }else{
+            $invoice_no = 100000;
+        }
+        $final_invoice = 'sale-'.$invoice_no;
+//        $final_invoice = $request->invoice_no;
 
         $date = $request->date;
         $date_time = $date." ".date('h:i:s');
