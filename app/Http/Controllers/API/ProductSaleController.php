@@ -1265,6 +1265,7 @@ class ProductSaleController extends Controller
                 ->where('product_sales.sale_type','pos_sale')
                 ->where('product_sales.invoice_no','like','%'.$request->search.'%')
                 ->orWhere('parties.name','like','%'.$request->search.'%')
+                ->orWhere('parties.phone','like','%'.$request->search.'%')
                 ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone')
                 ->orderBy('product_sales.id','desc')
                 ->paginate(12);
