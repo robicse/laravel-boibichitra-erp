@@ -147,6 +147,9 @@ class ProductSaleController extends Controller
                     'product_sales.id',
                     'product_sales.invoice_no',
                     'product_sales.sale_date',
+                    'product_sales.sub_total',
+                    'product_sales.miscellaneous_comment',
+                    'product_sales.miscellaneous_charge',
                     'product_sales.discount_type',
                     'product_sales.discount_amount',
                     'product_sales.total_vat_amount',
@@ -154,8 +157,6 @@ class ProductSaleController extends Controller
                     'product_sales.paid_amount',
                     'product_sales.due_amount',
                     'product_sales.sale_date_time',
-                    'product_sales.miscellaneous_comment',
-                    'product_sales.miscellaneous_charge',
                     'product_sales.user_id',
                     'product_sales.party_id',
                     'product_sales.warehouse_id'
@@ -198,6 +199,8 @@ class ProductSaleController extends Controller
 
     public function productWholeSaleCreate(Request $request){
 
+        //dd($request->all());
+        //return response()->json(['success'=>true,'response' => $request->all()], $this->successStatus);
         $this->validate($request, [
             'party_id'=> 'required',
             //'store_id'=> 'required',
@@ -235,6 +238,7 @@ class ProductSaleController extends Controller
         $productSale->warehouse_id = $warehouse_id;
         $productSale->party_id = $request->party_id;
         $productSale->sale_type = 'whole_sale';
+        $productSale->sub_total = $request->sub_total;
         $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
         $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
@@ -286,8 +290,10 @@ class ProductSaleController extends Controller
                 $product_sale_detail->qty = $data['qty'];
                 $product_sale_detail->price = $data['mrp_price'];
                 $product_sale_detail->discount = $discount;
-                $product_sale_detail->vat_amount = $data['vat_amount'];
-                $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                //$product_sale_detail->vat_amount = $data['vat_amount'];
+                $product_sale_detail->vat_amount = 0;
+                //$product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']);
                 $product_sale_detail->barcode = $barcode;
                 $product_sale_detail->sale_date = $date;
                 $product_sale_detail->return_among_day = 2;
@@ -581,6 +587,7 @@ class ProductSaleController extends Controller
         $productSale->party_id = $request->party_id;
         $productSale->warehouse_id = $warehouse_id;
         $productSale->store_id = NULL;
+        $productSale->sub_total = $request->sub_total;
         $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
         $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
@@ -704,9 +711,11 @@ class ProductSaleController extends Controller
                     $product_sale_detail->product_id = $product_id;
                     $product_sale_detail->purchase_price = $get_purchase_price;
                     $product_sale_detail->qty = $data['qty'];
-                    $product_sale_detail->vat_amount = $data['vat_amount'];
+                    //$product_sale_detail->vat_amount = $data['vat_amount'];
+                    $product_sale_detail->vat_amount = 0;
                     $product_sale_detail->price = $data['mrp_price'];
-                    $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                    //$product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                    $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']);
                     $product_sale_detail->barcode = $barcode;
                     $product_sale_detail->return_last_date = $add_two_day_date;
                     $product_sale_detail->update();
@@ -1394,6 +1403,7 @@ class ProductSaleController extends Controller
         $productSale ->party_id = $request->party_id;
         $productSale ->warehouse_id = $warehouse_id;
         $productSale ->store_id = $store_id;
+        $productSale ->sub_total = $request->sub_total;
         $productSale ->sale_type = 'pos_sale';
         $productSale ->discount_type = $request->discount_type ? $request->discount_type : NULL;
         $productSale ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
@@ -1733,7 +1743,7 @@ class ProductSaleController extends Controller
                     ->leftJoin('stores','product_sales.store_id','stores.id')
                     ->where('product_sales.sale_type','pos_sale')
                     ->where('product_sales.id',$insert_id)
-                    ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone')
+                    ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone')
                     ->first();
 
                 return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => $request->payment_type,'product_pos_sale' => $product_pos_sale], $this->successStatus);
@@ -1746,7 +1756,7 @@ class ProductSaleController extends Controller
                     ->leftJoin('stores','product_sales.store_id','stores.id')
                     ->where('product_sales.sale_type','pos_sale')
                     ->where('product_sales.id',$insert_id)
-                    ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone')
+                    ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone')
                     ->first();
 
                 return response()->json(['success'=>true,'product_pos_sale' => $product_pos_sale], $this->successStatus);
@@ -1782,6 +1792,7 @@ class ProductSaleController extends Controller
         $productSale ->party_id = $request->party_id;
         $productSale ->warehouse_id = $warehouse_id;
         $productSale ->store_id = $store_id;
+        $productSale ->sub_total = $request->sub_total;
         $productSale ->discount_type = $request->discount_type ? $request->discount_type : NULL;
         $productSale ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productSale ->paid_amount = $request->paid_amount;

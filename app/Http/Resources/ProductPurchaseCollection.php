@@ -13,6 +13,7 @@ class ProductPurchaseCollection extends ResourceCollection
                 return [
                     'id' => $data->id,
                     'invoice_no' => $data->invoice_no,
+                    'sub_total' => $data->sub_total,
                     'discount_type' => $data->discount_type,
                     'discount_amount' => $data->discount_amount,
                     'total_amount' => $data->total_amount,

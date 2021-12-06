@@ -14,6 +14,7 @@ class ProductWholeSaleCollection extends ResourceCollection
                     'id' => $data->id,
                     'invoice_no' => $data->invoice_no,
                     'sale_date' => $data->sale_date,
+                    'sub_total' => $data->sub_total,
                     'miscellaneous_comment' => $data->miscellaneous_comment,
                     'miscellaneous_charge' => $data->miscellaneous_charge,
                     'discount_type' => $data->discount_type,

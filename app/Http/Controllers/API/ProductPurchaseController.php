@@ -101,6 +101,7 @@ class ProductPurchaseController extends Controller
             ->select(
                 'product_purchases.id',
                 'product_purchases.invoice_no',
+                'product_purchases.sub_total',
                 'product_purchases.discount_type',
                 'product_purchases.discount_amount',
                 'product_purchases.total_amount',
@@ -269,6 +270,7 @@ class ProductPurchaseController extends Controller
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->purchase_type = 'whole_purchase';
+        $productPurchase ->sub_total = $request->sub_total;
         $productPurchase ->discount_type = $request->discount_type ? $request->discount_type : NULL;
         $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
         $productPurchase ->paid_amount = $request->paid_amount;
@@ -458,11 +460,12 @@ class ProductPurchaseController extends Controller
         $productPurchase ->user_id = $user_id;
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
+        $productPurchase ->sub_total = $request->sub_total;
         $productPurchase ->discount_type = $request->discount_type ? $request->discount_type : NULL;
         $productPurchase ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+        $productPurchase ->total_amount = $request->total_amount;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
-        $productPurchase ->total_amount = $request->total_amount;
         $productPurchase->update();
         $affectedRows = $productPurchase->id;
         if($affectedRows)
@@ -1747,9 +1750,10 @@ class ProductPurchaseController extends Controller
         $productPurchase ->party_id = $request->party_id;
         $productPurchase ->warehouse_id = $request->warehouse_id;
         $productPurchase ->purchase_type = 'whole_purchase';
+        $productPurchase ->sub_total = $request->sub_total;
+        $productPurchase ->total_amount = $request->total_amount;
         $productPurchase ->paid_amount = $request->paid_amount;
         $productPurchase ->due_amount = $request->due_amount;
-        $productPurchase ->total_amount = $request->total_amount;
         $productPurchase ->purchase_date = $date;
         $productPurchase ->purchase_date_time = $date_time;
         $productPurchase->save();
