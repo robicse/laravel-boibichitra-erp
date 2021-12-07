@@ -623,7 +623,7 @@ class ReportController extends Controller
                     }else{
                         $product_sales = DB::table('product_sales')
                             ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'))
-                            ->where('sale_date1','>=',$from)
+                            ->where('sale_date','>=',$from)
                             ->where('sale_date','<=',$to)
                             ->where('sale_type',$sale_type)
                             ->whereYear('created_at',$nYear)
