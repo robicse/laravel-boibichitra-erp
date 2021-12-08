@@ -414,13 +414,16 @@ class PaginationController extends Controller
             ->leftJoin('parties','product_sales.party_id','parties.id')
             ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
             ->leftJoin('stores','product_sales.store_id','stores.id')
+            ->leftJoin('transactions','product_sales.invoice_no','transactions.invoice_no')
             ->where('product_sales.sale_type','pos_sale')
-            ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.sub_total','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone')
+            ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_percent','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone','transactions.payment_type')
             ->orderBy('product_sales.id','desc')
             ->paginate(12);
 
         if(count($product_pos_sales) > 0)
         {
+            $success['product_pos_sales'] =  $product_pos_sales;
+
 //            $product_pos_sale_arr = [];
 //            foreach ($product_pos_sales as $data){
 //                $payment_type = DB::table('transactions')->where('ref_id',$data->id)->where('transaction_type','pos_sale')->pluck('payment_type')->first();
@@ -447,8 +450,7 @@ class PaginationController extends Controller
 //
 //                array_push($product_pos_sale_arr,$nested_data);
 //            }
-
-            $success['product_pos_sales'] =  $product_pos_sales;
+//            $success['product_pos_sales'] =  $product_pos_sale_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);

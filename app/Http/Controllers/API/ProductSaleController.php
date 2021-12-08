@@ -151,8 +151,10 @@ class ProductSaleController extends Controller
                     'product_sales.miscellaneous_comment',
                     'product_sales.miscellaneous_charge',
                     'product_sales.discount_type',
+                    'product_sales.discount_percent',
                     'product_sales.discount_amount',
                     'product_sales.total_vat_amount',
+                    'product_sales.after_discount_amount',
                     'product_sales.total_amount',
                     'product_sales.paid_amount',
                     'product_sales.due_amount',
@@ -240,13 +242,15 @@ class ProductSaleController extends Controller
         $productSale->sale_type = 'whole_sale';
         $productSale->sub_total = $request->sub_total;
         $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
         $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+        $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
         $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
         $productSale->miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
-        $productSale->paid_amount = $request->paid_amount;
-        $productSale->due_amount = $request->due_amount;
         $productSale->total_vat_amount = $request->total_vat_amount;
         $productSale->total_amount = $request->total_amount;
+        $productSale->paid_amount = $request->paid_amount;
+        $productSale->due_amount = $request->due_amount;
         $productSale->sale_date = $date;
         $productSale->sale_date_time = $date_time;
         $productSale->save();
@@ -340,7 +344,7 @@ class ProductSaleController extends Controller
 
             }
 
-            // whole sale kono paid hobe na
+            // N.B: whole sale kono paid hobe na
 
             // transaction
 //            $transaction = new Transaction();
@@ -589,7 +593,9 @@ class ProductSaleController extends Controller
         $productSale->store_id = NULL;
         $productSale->sub_total = $request->sub_total;
         $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
         $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+        $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
         $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
         $productSale->miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
         $productSale->paid_amount = $request->paid_amount;
@@ -1271,11 +1277,12 @@ class ProductSaleController extends Controller
                 ->leftJoin('parties','product_sales.party_id','parties.id')
                 ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
                 ->leftJoin('stores','product_sales.store_id','stores.id')
+                ->leftJoin('transactions','product_sales.invoice_no','transactions.invoice_no')
                 ->where('product_sales.sale_type','pos_sale')
                 ->where('product_sales.invoice_no','like','%'.$request->search.'%')
                 ->orWhere('parties.name','like','%'.$request->search.'%')
                 ->orWhere('parties.phone','like','%'.$request->search.'%')
-                ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone')
+                ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_percent','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone','transactions.payment_type')
                 ->orderBy('product_sales.id','desc')
                 ->paginate(12);
 
@@ -1330,7 +1337,7 @@ class ProductSaleController extends Controller
                 ->where('product_sales.invoice_no','like','%'.$request->search.'%')
                 ->orWhere('product_sales.total_amount','like','%'.$request->search.'%')
                 ->orWhere('parties.name','like','%'.$request->search.'%')
-                ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone')
+                ->select('product_sales.id','product_sales.invoice_no','product_sales.discount_type','product_sales.discount_percent','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.after_discount_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone')
                 ->orderBy('product_sales.id','desc')
                 ->paginate(12);
 
@@ -1398,21 +1405,23 @@ class ProductSaleController extends Controller
 
         // product purchase
         $productSale = new ProductSale();
-        $productSale ->invoice_no = $final_invoice;
-        $productSale ->user_id = $user_id;
-        $productSale ->party_id = $request->party_id;
-        $productSale ->warehouse_id = $warehouse_id;
-        $productSale ->store_id = $store_id;
-        $productSale ->sub_total = $request->sub_total;
-        $productSale ->sale_type = 'pos_sale';
-        $productSale ->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productSale ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
-        $productSale ->paid_amount = $request->paid_amount;
-        $productSale ->due_amount = $request->due_amount;
-        $productSale ->total_vat_amount = $request->total_vat_amount;
-        $productSale ->total_amount = $request->total_amount;
-        $productSale ->sale_date = $date;
-        $productSale ->sale_date_time = $date_time;
+        $productSale->invoice_no = $final_invoice;
+        $productSale->user_id = $user_id;
+        $productSale->party_id = $request->party_id;
+        $productSale->warehouse_id = $warehouse_id;
+        $productSale->store_id = $store_id;
+        $productSale->sub_total = $request->sub_total;
+        $productSale->sale_type = 'pos_sale';
+        $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
+        $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+        $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
+        $productSale->paid_amount = $request->paid_amount;
+        $productSale->due_amount = $request->due_amount;
+        $productSale->total_vat_amount = $request->total_vat_amount;
+        $productSale->total_amount = $request->total_amount;
+        $productSale->sale_date = $date;
+        $productSale->sale_date_time = $date_time;
         $productSale->save();
         $insert_id = $productSale->id;
 
@@ -1788,17 +1797,19 @@ class ProductSaleController extends Controller
         // product purchase
         $productSale = ProductSale::find($request->product_sale_id);
         $previous_paid_amount = $productSale ->paid_amount;
-        $productSale ->user_id = $user_id;
-        $productSale ->party_id = $request->party_id;
-        $productSale ->warehouse_id = $warehouse_id;
-        $productSale ->store_id = $store_id;
-        $productSale ->sub_total = $request->sub_total;
-        $productSale ->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productSale ->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
-        $productSale ->paid_amount = $request->paid_amount;
-        $productSale ->due_amount = $request->due_amount;
-        $productSale ->total_vat_amount = $request->total_vat_amount;
-        $productSale ->total_amount = $request->total_amount;
+        $productSale->user_id = $user_id;
+        $productSale->party_id = $request->party_id;
+        $productSale->warehouse_id = $warehouse_id;
+        $productSale->store_id = $store_id;
+        $productSale->sub_total = $request->sub_total;
+        $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
+        $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
+        $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+        $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
+        $productSale->paid_amount = $request->paid_amount;
+        $productSale->due_amount = $request->due_amount;
+        $productSale->total_vat_amount = $request->total_vat_amount;
+        $productSale->total_amount = $request->total_amount;
         $productSale->update();
         $affectedRows = $productSale->id;
         if($affectedRows)

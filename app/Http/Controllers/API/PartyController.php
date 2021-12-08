@@ -455,7 +455,7 @@ class PartyController extends Controller
                 $date = date('Y-m-d');
                 $year = date('Y');
                 $month = date('m');
-                $date_time = date('Y-m-d h:i:s');
+                $date_time = date('Y-m-d H:i:s');
                 $user_id = Auth::user()->id;
                 //$store_id = $request->store_id;
                 //$warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
