@@ -182,6 +182,7 @@ Route::middleware('auth:api')->post('/store_current_stock_list_pagination_barcod
 Route::middleware('auth:api')->post('/store_current_stock_list_pagination_item_code', 'API\PaginationController@storeCurrentStockListPaginationItemcode');
 Route::middleware('auth:api')->post('/store_current_stock_list_pagination_product_name', 'API\PaginationController@storeCurrentStockListPaginationProductName');
 Route::middleware('auth:api')->get('/product_pos_sale_pagination', 'API\PaginationController@productPOSSaleListPagination');
+Route::middleware('auth:api')->post('/product_pos_sale_list_pagination_with_search', 'API\PaginationController@productPOSSaleListPaginationWithSearch');
 
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_without_zero_pagination', 'API\PaginationController@warehouseCurrentStockListPaginationWithOutZero');
 Route::middleware('auth:api')->post('/store_current_stock_list_without_zero_pagination', 'API\PaginationController@storeCurrentStockListPaginationWithOutZero');

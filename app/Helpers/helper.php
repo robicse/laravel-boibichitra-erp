@@ -247,6 +247,17 @@ if (! function_exists('warehouseName')) {
     }
 }
 
+// warehouse name as id
+if (! function_exists('storeName')) {
+    function storeName($store_id) {
+
+        return DB::table('stores')
+            ->where('id',$store_id)
+            ->pluck('name')
+            ->first();
+    }
+}
+
 // payment type
 if (! function_exists('paymentType')) {
     function paymentType($id) {

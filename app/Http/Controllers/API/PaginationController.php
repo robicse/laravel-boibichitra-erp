@@ -15,6 +15,7 @@ use App\ExpenseCategory;
 use App\Helpers\UserInfo;
 use App\Holiday;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductPOSSaleCollection;
 use App\LeaveApplication;
 use App\LeaveCategory;
 use App\Party;
@@ -454,6 +455,41 @@ class PaginationController extends Controller
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Whole Sale List Found!'], $this->failStatus);
+        }
+    }
+
+    public function productPOSSaleListPaginationWithSearch(Request $request){
+        if($request->search){
+            $product_pos_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
+                ->where('product_sales.sale_type','pos_sale')
+                ->where(function ($q) use ($request){
+                    $q->where('product_sales.invoice_no','like','%'.$request->search.'%')
+                        ->orWhere('parties.name','like','%'.$request->search.'%');
+                })
+                ->select(
+                    'product_sales.id',
+                    'product_sales.invoice_no',
+                    'product_sales.sub_total',
+                    'product_sales.miscellaneous_comment',
+                    'product_sales.miscellaneous_charge',
+                    'product_sales.discount_type',
+                    'product_sales.discount_percent',
+                    'product_sales.discount_amount',
+                    'product_sales.total_vat_amount',
+                    'product_sales.total_amount',
+                    'product_sales.paid_amount',
+                    'product_sales.due_amount',
+                    'product_sales.sale_date',
+                    'product_sales.sale_date_time',
+                    'product_sales.user_id',
+                    'product_sales.party_id',
+                    'product_sales.warehouse_id',
+                    'product_sales.store_id'
+                )
+                ->latest('product_sales.id','desc')->paginate(12);
+            return new ProductPOSSaleCollection($product_pos_sales);
+        }else{
+            return new ProductPOSSaleCollection(ProductSale::where('sale_type','pos_sale')->latest()->paginate(12));
         }
     }
 
