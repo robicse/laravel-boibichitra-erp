@@ -39,6 +39,8 @@ class ProductPOSSaleCollection extends ResourceCollection
                     'warehouse_name' => warehouseName($data->warehouse_id),
                     'store_id' => $data->store_id,
                     'store_name' => storeName($data->store_id),
+                    'store_address' => storeAddress($data->store_id),
+                    'phone' => storePhone($data->store_id),
                     //'payment_type' => paymentType($data->id),
                     'payment_type' => $payment_type
                 ];

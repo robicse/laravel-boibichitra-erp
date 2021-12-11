@@ -258,6 +258,28 @@ if (! function_exists('storeName')) {
     }
 }
 
+// warehouse name as id
+if (! function_exists('storeAddress')) {
+    function storeAddress($store_id) {
+
+        return DB::table('stores')
+            ->where('id',$store_id)
+            ->pluck('address')
+            ->first();
+    }
+}
+
+// warehouse name as id
+if (! function_exists('storePhone')) {
+    function storePhone($store_id) {
+
+        return DB::table('stores')
+            ->where('id',$store_id)
+            ->pluck('phone')
+            ->first();
+    }
+}
+
 // payment type
 if (! function_exists('paymentType')) {
     function paymentType($id) {
