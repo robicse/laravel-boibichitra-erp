@@ -108,6 +108,7 @@ class PaymentController extends Controller
     }
 
     public function wholeSaleCustomerListPaginationWithSearch(Request $request){
+
         if($request->search){
             $search = $request->search;
             $parties = Party::where('type','customer')

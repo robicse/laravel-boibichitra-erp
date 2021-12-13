@@ -1750,9 +1750,10 @@ class ProductSaleController extends Controller
                     ->leftJoin('parties','product_sales.party_id','parties.id')
                     ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
                     ->leftJoin('stores','product_sales.store_id','stores.id')
+                    ->leftJoin('transactions','product_sales.invoice_no','transactions.invoice_no')
                     ->where('product_sales.sale_type','pos_sale')
                     ->where('product_sales.id',$insert_id)
-                    ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone')
+                    ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone','transactions.payment_type')
                     ->first();
 
                 return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => $request->payment_type,'product_pos_sale' => $product_pos_sale], $this->successStatus);
@@ -1763,9 +1764,11 @@ class ProductSaleController extends Controller
                     ->leftJoin('parties','product_sales.party_id','parties.id')
                     ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
                     ->leftJoin('stores','product_sales.store_id','stores.id')
+                    ->leftJoin('stores','product_sales.store_id','stores.id')
+                    ->leftJoin('transactions','product_sales.invoice_no','transactions.invoice_no')
                     ->where('product_sales.sale_type','pos_sale')
                     ->where('product_sales.id',$insert_id)
-                    ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone')
+                    ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone','transactions.payment_type')
                     ->first();
 
                 return response()->json(['success'=>true,'product_pos_sale' => $product_pos_sale], $this->successStatus);

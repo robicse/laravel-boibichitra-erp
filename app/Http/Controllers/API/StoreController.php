@@ -145,7 +145,8 @@ class StoreController extends Controller
                 'store_product_damages.invoice_no',
                 'users.name as user_name',
                 'stores.id as store_id',
-                'stores.name as store_name'
+                'stores.name as store_name',
+                'store_product_damages.damage_date'
             )
             ->paginate(12);
 

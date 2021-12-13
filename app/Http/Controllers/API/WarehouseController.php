@@ -139,7 +139,8 @@ class WarehouseController extends Controller
                 'warehouse_product_damages.invoice_no',
                 'users.name as user_name',
                 'warehouses.id as warehouse_id',
-                'warehouses.name as warehouse_name'
+                'warehouses.name as warehouse_name',
+                'warehouse_product_damages.damage_date'
             )
             ->paginate(12);
 
@@ -183,8 +184,15 @@ class WarehouseController extends Controller
 
         if($warehouse_product_damage_details)
         {
+            $warehouse_info = DB::table('warehouses')
+                ->join('warehouse_product_damages','warehouses.id','warehouse_product_damages.warehouse_id')
+                ->where('warehouse_product_damages.id',$request->warehouse_product_damage_id)
+                ->select('name','phone','email','address')
+                ->first();
+
             $success['warehouse_product_damage_details'] =  $warehouse_product_damage_details;
             $success['total_damage_amount'] =  $total_damage_amount;
+            $success['warehouse_info'] =  $warehouse_info;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Warehouse Product Damage Details Found!'], $this->failStatus);
