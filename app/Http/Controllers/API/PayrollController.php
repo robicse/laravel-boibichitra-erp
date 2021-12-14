@@ -38,6 +38,17 @@ class PayrollController extends Controller
         $year = $request->year;
         $employee_id = $request->employee_id;
 
+        $check_attendance_count = DB::table('attendances')
+            ->where('employee_id', $employee_id)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->pluck('id')
+            ->first();
+
+        if(empty($check_attendance_count)){
+            return response()->json(['success'=>true,'response' => 'No Attendance Found Yet!'], $this->successStatus);
+        }
+
         $total_absent = 0;
         $day_count_of_month = cal_days_in_month(CAL_GREGORIAN, $month, $year);
         $day = 1;

@@ -21,7 +21,8 @@ class CustomerCollection extends ResourceCollection
                     'virtual_balance' => $data->virtual_balance,
                     'initial_due' => $data->initial_due,
                     'status' => $data->status,
-                    'sale_total_amount' => customerSaleTotalAmount($data->id,$transaction_type) != null ? customerSaleTotalAmount($data->id,$transaction_type) : 0,
+                    //'sale_total_amount' => customerSaleTotalAmount($data->id,$transaction_type) != null ? customerSaleTotalAmount($data->id,$transaction_type) : 0,
+                    'sale_total_amount' => $data->amount,
                 ];
             })
         ];

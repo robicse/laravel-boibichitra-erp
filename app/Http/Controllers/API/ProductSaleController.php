@@ -1764,7 +1764,6 @@ class ProductSaleController extends Controller
                     ->leftJoin('parties','product_sales.party_id','parties.id')
                     ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
                     ->leftJoin('stores','product_sales.store_id','stores.id')
-                    ->leftJoin('stores','product_sales.store_id','stores.id')
                     ->leftJoin('transactions','product_sales.invoice_no','transactions.invoice_no')
                     ->where('product_sales.sale_type','pos_sale')
                     ->where('product_sales.id',$insert_id)
