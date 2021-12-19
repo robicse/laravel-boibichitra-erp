@@ -1165,6 +1165,41 @@ class ReportController extends Controller
     public function dateAndCustomerWiseWholeSaleReport(Request $request){
         $from_date = $request->from_date;
         $to_date = $request->to_date;
+
+
+        $gl_pre_valance_data = DB::table('product_sales')
+            ->join('parties','product_sales.party_id','parties.id')
+            ->select(DB::raw('SUM(product_sales.total_amount) as debit, SUM(product_sales.paid_amount) as credit'))
+            ->where('product_sales.party_id', $request->party_id)
+            ->where('product_sales.sale_date','<',"$from_date")
+            //->groupBy('product_sales.sale_date')
+            ->first();
+
+        $PreBalance=0;
+        $preDebCre = 'De/Cr';
+        $pre_debit = 0;
+        $pre_credit = 0;
+        if(!empty($gl_pre_valance_data))
+        {
+            //echo 'ok';exit;
+            $pre_debit = $gl_pre_valance_data->debit == NULL ? 0 : $gl_pre_valance_data->debit;
+            $pre_credit = $gl_pre_valance_data->credit == NULL ? 0 : $gl_pre_valance_data->credit;
+            if($pre_debit > $pre_credit)
+            {
+                $PreBalance = $pre_debit - $pre_credit;
+                $preDebCre = 'De';
+            }else{
+                $PreBalance = $pre_credit - $pre_debit;
+                $preDebCre = 'Cr';
+            }
+        }
+
+
+
+
+
+
+
         $sales = DB::table('product_sales')
             ->join('parties','product_sales.party_id','parties.id')
             ->select('product_sales.sale_date as transaction_date','product_sales.invoice_no','product_sales.total_amount as debit','product_sales.paid_amount as credit','product_sales.due_amount as balance')
@@ -1197,7 +1232,18 @@ class ReportController extends Controller
                 ->select('name','phone','email','address')
                 ->first();
 
-            return response()->json(['success'=>true,'response' => $data, 'customer_info' => $customer_info, 'total_balance' => $total_balance], $this->successStatus);
+            return response()->json(
+                [
+                    'success'=>true,
+                    'response' => $data,
+                    'customer_info' => $customer_info,
+                    'total_balance' => $total_balance,
+
+                    'PreBalance' => $PreBalance,
+                    'preDebCre' => $preDebCre,
+                    'pre_debit' => $pre_debit,
+                    'pre_credit' => $pre_credit,
+                ], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>null], $this->successStatus);
         }

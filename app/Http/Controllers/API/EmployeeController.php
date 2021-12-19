@@ -68,8 +68,8 @@ class EmployeeController extends Controller
     public function employeeCreate(Request $request){
 
         $validator = Validator::make($request->all(), [
-            'name' => 'required|unique:employees,name',
-            'email'=> 'required',
+            //'name' => 'required|unique:employees,name',
+            //'email'=> 'required',
             'phone'=> 'required',
             'status'=> 'required',
             'warehouse_id'=> 'required',
@@ -128,8 +128,8 @@ class EmployeeController extends Controller
 
         $validator = Validator::make($request->all(), [
             'employee_id'=> 'required',
-            'name' => 'required|unique:employees,name,'.$request->employee_id,
-            'email'=> 'required',
+            //'name' => 'required|unique:employees,name,'.$request->employee_id,
+            //'email'=> 'required',
             'phone'=> 'required',
             'status'=> 'required',
             'warehouse_id'=> 'required',
