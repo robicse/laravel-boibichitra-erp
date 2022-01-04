@@ -459,38 +459,90 @@ class PaginationController extends Controller
     }
 
     public function productPOSSaleListPaginationWithSearch(Request $request){
-        if($request->search){
-            $product_pos_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
-                ->where('product_sales.sale_type','pos_sale')
-                ->where(function ($q) use ($request){
-                    $q->where('product_sales.invoice_no','like','%'.$request->search.'%')
-                        ->orWhere('parties.name','like','%'.$request->search.'%');
-                })
-                ->select(
-                    'product_sales.id',
-                    'product_sales.invoice_no',
-                    'product_sales.sub_total',
-                    'product_sales.miscellaneous_comment',
-                    'product_sales.miscellaneous_charge',
-                    'product_sales.discount_type',
-                    'product_sales.discount_percent',
-                    'product_sales.discount_amount',
-                    'product_sales.total_vat_amount',
-                    'product_sales.total_amount',
-                    'product_sales.paid_amount',
-                    'product_sales.due_amount',
-                    'product_sales.sale_date',
-                    'product_sales.sale_date_time',
-                    'product_sales.user_id',
-                    'product_sales.party_id',
-                    'product_sales.warehouse_id',
-                    'product_sales.store_id'
-                )
-                ->latest('product_sales.id','desc')->paginate(12);
-            return new ProductPOSSaleCollection($product_pos_sales);
+        $user_id = Auth::user()->id;
+        $currentUserDetails = currentUserDetails($user_id);
+        $role = $currentUserDetails['role'];
+        $warehouse_id = $currentUserDetails['warehouse_id'];
+        $store_id = $currentUserDetails['store_id'];
+
+        if($role === 'admin'){
+            if($request->search){
+                $product_pos_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
+                    ->where('product_sales.sale_type','pos_sale')
+                    ->where(function ($q) use ($request){
+                        $q->where('product_sales.invoice_no','like','%'.$request->search.'%')
+                            ->orWhere('parties.name','like','%'.$request->search.'%');
+                    })
+                    ->select(
+                        'product_sales.id',
+                        'product_sales.invoice_no',
+                        'product_sales.sub_total',
+                        'product_sales.miscellaneous_comment',
+                        'product_sales.miscellaneous_charge',
+                        'product_sales.discount_type',
+                        'product_sales.discount_percent',
+                        'product_sales.discount_amount',
+                        'product_sales.total_vat_amount',
+                        'product_sales.total_amount',
+                        'product_sales.paid_amount',
+                        'product_sales.due_amount',
+                        'product_sales.sale_date',
+                        'product_sales.sale_date_time',
+                        'product_sales.user_id',
+                        'product_sales.party_id',
+                        'product_sales.warehouse_id',
+                        'product_sales.store_id'
+                    )
+                    ->latest('product_sales.id','desc')->paginate(12);
+                return new ProductPOSSaleCollection($product_pos_sales);
+            }else{
+                return new ProductPOSSaleCollection(
+                    ProductSale::where('sale_type','pos_sale')
+                        ->latest()->paginate(12)
+                );
+            }
         }else{
-            return new ProductPOSSaleCollection(ProductSale::where('sale_type','pos_sale')->latest()->paginate(12));
+            if($request->search){
+                $product_pos_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
+                    ->join('stores','product_sales.store_id','stores.id')
+                    ->where('product_sales.store_id',$store_id)
+                    ->where('product_sales.sale_type','pos_sale')
+                    ->where(function ($q) use ($request){
+                        $q->where('product_sales.invoice_no','like','%'.$request->search.'%')
+                            ->orWhere('parties.name','like','%'.$request->search.'%');
+                    })
+                    ->select(
+                        'product_sales.id',
+                        'product_sales.invoice_no',
+                        'product_sales.sub_total',
+                        'product_sales.miscellaneous_comment',
+                        'product_sales.miscellaneous_charge',
+                        'product_sales.discount_type',
+                        'product_sales.discount_percent',
+                        'product_sales.discount_amount',
+                        'product_sales.total_vat_amount',
+                        'product_sales.total_amount',
+                        'product_sales.paid_amount',
+                        'product_sales.due_amount',
+                        'product_sales.sale_date',
+                        'product_sales.sale_date_time',
+                        'product_sales.user_id',
+                        'product_sales.party_id',
+                        'product_sales.warehouse_id',
+                        'product_sales.store_id'
+                    )
+                    ->latest('product_sales.id','desc')->paginate(12);
+                return new ProductPOSSaleCollection($product_pos_sales);
+            }else{
+                return new ProductPOSSaleCollection(
+                    ProductSale::join('stores','product_sales.store_id','stores.id')
+                        ->where('product_sales.store_id',$store_id)
+                        ->where('sale_type','pos_sale')
+                        ->latest()->paginate(12)
+                );
+            }
         }
+
     }
 
     public function warehouseCurrentStockListPaginationWithOutZero(Request $request){
@@ -531,6 +583,11 @@ class PaginationController extends Controller
     }
 
     public function storeCurrentStockListPaginationWithOutZero(Request $request){
+        $user_id = Auth::user()->id;
+        $currentUserDetails = currentUserDetails($user_id);
+        $role = $currentUserDetails['role'];
+        $warehouse_id = $currentUserDetails['warehouse_id'];
+        $store_id = $currentUserDetails['store_id'];
 
         $store_stock_product = DB::table('warehouse_store_current_stocks')
             ->join('warehouses','warehouse_store_current_stocks.warehouse_id','warehouses.id')
@@ -538,6 +595,7 @@ class PaginationController extends Controller
             ->leftJoin('product_units','products.product_unit_id','product_units.id')
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('warehouse_store_current_stocks.store_id',$request->store_id)
+            //->where('warehouse_store_current_stocks.store_id',$store_id)
             ->where('warehouse_store_current_stocks.current_stock','>',0)
             ->select('warehouse_store_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->paginate(12);
@@ -545,6 +603,7 @@ class PaginationController extends Controller
         $warehouse_store_stock_total_amounts = DB::table('warehouse_store_current_stocks')
             ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
             ->where('warehouse_store_current_stocks.store_id',$request->store_id)
+            //->where('warehouse_store_current_stocks.store_id',$store_id)
             ->where('warehouse_store_current_stocks.current_stock','>',0)
             ->select('warehouse_store_current_stocks.*','products.purchase_price','products.selling_price')
             ->get();

@@ -288,6 +288,33 @@ if (! function_exists('paymentType')) {
     }
 }
 
+// Current User Details
+if (! function_exists('currentUserDetails')) {
+    function currentUserDetails($user_id) {
+        $user = User::find(Auth::id());
+        $user_role = $user->getRoleNames()[0];
+        $warehouse_id = $user->warehouse_id;
+        $warehouse_name = \App\Warehouse::where('id',$warehouse_id)->pluck('name')->first();
+        $store_id = $user->store_id;
+        $store_name = \App\Store::where('id',$store_id)->pluck('name')->first();
+
+
+        $currentUserDetails = [
+            'user_id' => $user_id,
+            'user_name' => $user->name,
+            'role' => $user_role,
+            'warehouse_id' => $warehouse_id,
+            'warehouse_name' => $warehouse_name,
+            //'category_id' => '',
+            //'category_name' => '',
+            'store_id' => $store_id,
+            'store_name' => $store_name,
+        ];
+
+        return $currentUserDetails;
+    }
+}
+
 
 
 
