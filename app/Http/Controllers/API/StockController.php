@@ -1187,7 +1187,7 @@ class StockController extends Controller
                 ->where('stock_transfers.invoice_no','like','%'.$request->search.'%')
                 ->orWhere('warehouses.name','like','%'.$request->search.'%')
                 ->orWhere('stores.name','like','%'.$request->search.'%')
-                ->select('stock_transfers.id','stock_transfers.invoice_no','stock_transfers.sub_total','stock_transfers.total_amount','stock_transfers.issue_date','stock_transfers.miscellaneous_comment','stock_transfers.miscellaneous_charge','stock_transfers.total_vat_amount','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
+                ->select('stock_transfers.id','stock_transfers.invoice_no','stock_transfers.sub_total','stock_transfers.total_amount','stock_transfers.issue_date','stock_transfers.created_at','stock_transfers.miscellaneous_comment','stock_transfers.miscellaneous_charge','stock_transfers.total_vat_amount','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
                 ->orderBy('stock_transfers.id','desc')
                 ->paginate(12);
         }else{
@@ -1195,7 +1195,7 @@ class StockController extends Controller
                 ->leftJoin('users','stock_transfers.user_id','users.id')
                 ->leftJoin('warehouses','stock_transfers.warehouse_id','warehouses.id')
                 ->leftJoin('stores','stock_transfers.store_id','stores.id')
-                ->select('stock_transfers.id','stock_transfers.invoice_no','stock_transfers.sub_total','stock_transfers.total_amount','stock_transfers.issue_date','stock_transfers.miscellaneous_comment','stock_transfers.miscellaneous_charge','stock_transfers.total_vat_amount','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
+                ->select('stock_transfers.id','stock_transfers.invoice_no','stock_transfers.sub_total','stock_transfers.total_amount','stock_transfers.issue_date','stock_transfers.created_at','stock_transfers.miscellaneous_comment','stock_transfers.miscellaneous_charge','stock_transfers.total_vat_amount','users.name as user_name','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.phone as store_phone','stores.email as store_email','stores.address as store_address')
                 ->orderBy('stock_transfers.id','desc')
                 ->paginate(12);
         }
@@ -1579,7 +1579,7 @@ class StockController extends Controller
             ->select(
                 'store_stock_returns.id',
                 'store_stock_returns.invoice_no',
-                'store_stock_returns.return_date',
+                'store_stock_returns.return_date_time',
                 'store_stock_returns.return_remarks',
                 'users.name as user_name',
                 'warehouses.id as warehouse_id',

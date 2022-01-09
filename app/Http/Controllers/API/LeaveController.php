@@ -159,14 +159,32 @@ class LeaveController extends Controller
         }
 
 
+        $date1 = $request->start_date;
+        $date2 = $request->end_date;
+
+        $ts1 = strtotime($date1);
+        $ts2 = strtotime($date2);
+
+        $year1 = date('Y', $ts1);
+        $year2 = date('Y', $ts2);
+
+        $month1 = date('m', $ts1);
+        $month2 = date('m', $ts2);
+        if(($year1 === $year2) && ($month1 === $month2)){
+            return response()->json(['success' => false,'data' => 'Please select same month on year'], $this-> validationStatus);
+        }
+
+
         $leave_application = new LeaveApplication();
         $leave_application->employee_id = $request->employee_id;
         $leave_application->leave_category_id = $request->leave_category_id;
+        $leave_application->year = $year1;
+        $leave_application->month = $month1;
         $leave_application->start_date = $request->start_date;
         $leave_application->end_date = $request->end_date;
         $leave_application->duration = $request->duration;
         $leave_application->reason = $request->reason;
-        //$leave_application->approval_status = $request->approval_status;
+        $leave_application->approval_status = $request->approval_status;
         $leave_application->status = $request->status;
         $leave_application->save();
         $insert_id = $leave_application->id;
@@ -211,7 +229,7 @@ class LeaveController extends Controller
         $leave_application->end_date = $request->end_date;
         $leave_application->duration = $request->duration;
         $leave_application->reason = $request->reason;
-        //$leave_application->approval_status = $request->approval_status;
+        $leave_application->approval_status = $request->approval_status;
         $leave_application->status = $request->status;
         $update_leave_application = $leave_application->save();
 

@@ -1522,7 +1522,7 @@ class ProductSaleController extends Controller
             $transaction->party_id = $request->party_id;
             $transaction->transaction_type = 'pos_sale';
             $transaction->payment_type = $request->payment_type;
-            $transaction->amount = $request->paid_amount;
+            $transaction->amount = $request->total_amount;
             $transaction->transaction_date = $date;
             $transaction->transaction_date_time = $date_time;
             $transaction->save();
@@ -1537,9 +1537,9 @@ class ProductSaleController extends Controller
             $payment_collection->warehouse_id = $warehouse_id;
             $payment_collection->store_id = $store_id;
             $payment_collection->collection_type = 'Sale';
-            $payment_collection->collection_amount = $request->paid_amount;
+            $payment_collection->collection_amount = $request->total_amount;
             $payment_collection->due_amount = $request->due_amount;
-            $payment_collection->current_collection_amount = $request->paid_amount;
+            $payment_collection->current_collection_amount = $request->total_amount;
             $payment_collection->collection_date = $date;
             $payment_collection->collection_date_time = $date_time;
             $payment_collection->save();
@@ -1592,7 +1592,7 @@ class ProductSaleController extends Controller
                 $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
                 $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
                 $chart_of_account_transaction_details->debit = NULL;
-                $chart_of_account_transaction_details->credit = $request->paid_amount;
+                $chart_of_account_transaction_details->credit = $request->total_amount;
                 $chart_of_account_transaction_details->description = 'Income From Sales';
                 $chart_of_account_transaction_details->year = $year;
                 $chart_of_account_transaction_details->month = $month;
@@ -1612,7 +1612,7 @@ class ProductSaleController extends Controller
                     $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
                     $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                     $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+                    $chart_of_account_transaction_details->debit = $request->total_amount;
                     $chart_of_account_transaction_details->credit = NULL;
                     $chart_of_account_transaction_details->description = 'Cash In For Sales';
                     $chart_of_account_transaction_details->year = $year;
@@ -1631,7 +1631,7 @@ class ProductSaleController extends Controller
                     $chart_of_account_transaction_details->chart_of_account_name = 'Check';
                     $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                     $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+                    $chart_of_account_transaction_details->debit = $request->total_amount;
                     $chart_of_account_transaction_details->credit = NULL;
                     $chart_of_account_transaction_details->description = 'Check In For Sales';
                     $chart_of_account_transaction_details->year = $year;
@@ -1650,7 +1650,7 @@ class ProductSaleController extends Controller
                     $chart_of_account_transaction_details->chart_of_account_name = 'Card';
                     $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                     $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+                    $chart_of_account_transaction_details->debit = $request->total_amount;
                     $chart_of_account_transaction_details->credit = NULL;
                     $chart_of_account_transaction_details->description = 'Card In For Sales';
                     $chart_of_account_transaction_details->year = $year;
@@ -1669,7 +1669,7 @@ class ProductSaleController extends Controller
                     $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
                     $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                     $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+                    $chart_of_account_transaction_details->debit = $request->total_amount;
                     $chart_of_account_transaction_details->credit = NULL;
                     $chart_of_account_transaction_details->description = 'Bkash In For Sales';
                     $chart_of_account_transaction_details->year = $year;
@@ -1688,7 +1688,7 @@ class ProductSaleController extends Controller
                     $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
                     $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                     $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+                    $chart_of_account_transaction_details->debit = $request->total_amount;
                     $chart_of_account_transaction_details->credit = NULL;
                     $chart_of_account_transaction_details->description = 'Nogod In For Sales';
                     $chart_of_account_transaction_details->year = $year;
@@ -1707,7 +1707,7 @@ class ProductSaleController extends Controller
                     $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
                     $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                     $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+                    $chart_of_account_transaction_details->debit = $request->total_amount;
                     $chart_of_account_transaction_details->credit = NULL;
                     $chart_of_account_transaction_details->description = 'Rocket In For Sales';
                     $chart_of_account_transaction_details->year = $year;
@@ -1726,7 +1726,7 @@ class ProductSaleController extends Controller
                     $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
                     $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                     $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+                    $chart_of_account_transaction_details->debit = $request->total_amount;
                     $chart_of_account_transaction_details->credit = NULL;
                     $chart_of_account_transaction_details->description = 'Upay In For Sales';
                     $chart_of_account_transaction_details->year = $year;
@@ -1928,7 +1928,7 @@ class ProductSaleController extends Controller
             $transaction->store_id = $store_id;
             $transaction->party_id = $request->party_id;
             $transaction->payment_type = $request->payment_type;
-            $transaction->amount = $request->paid_amount;
+            $transaction->amount = $request->total_amount;
             $transaction->update();
 
             // payment paid
@@ -1937,9 +1937,9 @@ class ProductSaleController extends Controller
             $payment_collection->party_id = $request->party_id;
             $payment_collection->warehouse_id = $warehouse_id;
             $payment_collection->store_id = $store_id;
-            $payment_collection->collection_amount = $request->paid_amount;
+            $payment_collection->collection_amount = $request->total_amount;
             $payment_collection->due_amount = $request->due_amount;
-            $payment_collection->current_collection_amount = $request->paid_amount;
+            $payment_collection->current_collection_amount = $request->total_amount;
             $payment_collection->update();
 
 

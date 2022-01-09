@@ -144,19 +144,10 @@ class AttendanceController extends Controller
                 return response()->json($response, $this-> failStatus);
             }
 
-        }
-
-        $success_insert_flag = true;
-
-
-        foreach ($request->attendances as $data) {
-
             $date =  $data['date'];
 
             $year = date('Y', strtotime($date));
-            //$month = date('F', strtotime($date));
             $month = date('m', strtotime($date));
-            $day = date('d', strtotime($date));
 
             // check employee already attendance
             $check_exists = Attendance::where('card_no',$data['card_no'])
@@ -173,6 +164,35 @@ class AttendanceController extends Controller
                 return response()->json($response, $this-> failStatus);
             }
 
+        }
+
+        $success_insert_flag = true;
+
+
+        foreach ($request->attendances as $data) {
+
+            $date =  $data['date'];
+
+            $year = date('Y', strtotime($date));
+            //$month = date('F', strtotime($date));
+            $month = date('m', strtotime($date));
+            $day = date('d', strtotime($date));
+
+            // check employee already attendance
+//            $check_exists = Attendance::where('card_no',$data['card_no'])
+//                ->where('year',$year)
+//                ->where('month',$month)
+//                ->first();
+//            if(!empty($check_exists)){
+//                $response = [
+//                    'success' => false,
+//                    'data' => 'Validation Error.',
+//                    'message' => ['This Employee ['.$data['card_no'].'] Attendance of '.$month. ' ' .$year.' Already Exists, Please Try Another.]'],
+//                    'exist'=>1
+//                ];
+//                return response()->json($response, $this-> failStatus);
+//            }
+
             $employee_info = DB::table('employees')
                 ->join('employee_office_informations','employees.id','=','employee_office_informations.employee_id')
                 ->where('employee_office_informations.card_no',$data['card_no'])
@@ -187,16 +207,26 @@ class AttendanceController extends Controller
             $attendance->year = $year;
             $attendance->month = $month;
             $attendance->day = $day;
-            $attendance->on_duty = isset($data['on_duty']) ? $data['on_duty'] : '';
-            $attendance->off_duty = isset($data['off_duty']) ? $data['off_duty'] : '';
-            $attendance->clock_in = isset($data['clock_in']) ? $data['clock_in'] : '';
-            $attendance->clock_out = isset($data['clock_out']) ? $data['clock_out'] : '';
-            $attendance->late = isset($data['late']) ? $data['late'] : '';
-            $attendance->early = isset($data['early']) ? $data['early'] : '';
-            $attendance->absent = isset($data['absent']) ? $data['absent'] : '';
-            $attendance->work_time = isset($data['work_time']) ? $data['work_time'] : '';
-            $attendance->att_time = isset($data['att_time']) ? $data['att_time'] : '';
-            $attendance->note = isset($data['note']) ? $data['note'] : '';
+//            $attendance->on_duty = isset($data['on_duty']) ? $data['on_duty'] : '';
+//            $attendance->off_duty = isset($data['off_duty']) ? $data['off_duty'] : '';
+//            $attendance->clock_in = isset($data['clock_in']) ? $data['clock_in'] : '';
+//            $attendance->clock_out = isset($data['clock_out']) ? $data['clock_out'] : '';
+//            $attendance->late = isset($data['late']) ? $data['late'] : '';
+//            $attendance->early = isset($data['early']) ? $data['early'] : '';
+//            $attendance->absent = isset($data['absent']) ? $data['absent'] : '';
+//            $attendance->work_time = isset($data['work_time']) ? $data['work_time'] : '';
+//            $attendance->att_time = isset($data['att_time']) ? $data['att_time'] : '';
+//            $attendance->note = isset($data['note']) ? $data['note'] : '';
+            $attendance->on_duty = isset($data['on_duty']) ? $data['on_duty'] : NULL;
+            $attendance->off_duty = isset($data['off_duty']) ? $data['off_duty'] : NULL;
+            $attendance->clock_in = isset($data['clock_in']) ? $data['clock_in'] : NULL;
+            $attendance->clock_out = isset($data['clock_out']) ? $data['clock_out'] : NULL;
+            $attendance->late = isset($data['late']) ? $data['late'] : NULL;
+            $attendance->early = isset($data['early']) ? $data['early'] : NULL;
+            $attendance->absent = isset($data['absent']) ? $data['absent'] : NULL;
+            $attendance->work_time = isset($data['work_time']) ? $data['work_time'] : NULL;
+            $attendance->att_time = isset($data['att_time']) ? $data['att_time'] : NULL;
+            $attendance->note = isset($data['note']) ? $data['note'] : NULL;
             $attendance->save();
             $insert_id = $attendance->id;
             if($insert_id == ''){

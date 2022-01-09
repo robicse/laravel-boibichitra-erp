@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\LeaveApplication;
 use App\Payroll;
 use App\Payslip;
 use Illuminate\Http\Request;
@@ -46,7 +47,7 @@ class PayrollController extends Controller
             ->first();
 
         if(empty($check_attendance_count)){
-            return response()->json(['success'=>true,'response' => 'No Attendance Found Yet!'], $this->successStatus);
+            return response()->json(['success'=>true,'response' => 'No Attendance Found Yet!'], $this->validationStatus);
         }
 
         $total_absent = 0;
@@ -95,9 +96,22 @@ class PayrollController extends Controller
                 $total_absent += 1;
             }
 
+
             //$nested_data['clock_in'] = $clock_in;
             //array_push($check_data_arr, $nested_data);
 
+        }
+
+        $total_leave_absent = LeaveApplication::where('employee_id', $employee_id)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->where('approval_status', '=','Approved')
+            ->select('employee_id','year','month', DB::raw('SUM(duration) as total_duration'))
+            ->groupBy('employee_id','year','month')
+            ->first();
+
+        if(!empty($total_leave_absent)){
+            $total_absent -= $total_leave_absent->total_duration;
         }
 
         return response()->json(['success'=>true,'total_absent' => $total_absent], $this->successStatus);
@@ -130,7 +144,6 @@ class PayrollController extends Controller
             ->where('employee_id',$request->employee_id)
             ->where('late','!=',NULL)
             ->first();
-
 
         if($late){
             $total_late = $late->total_late;
@@ -280,7 +293,6 @@ class PayrollController extends Controller
 
                 $nested_data['employee_id'] = $employee_detail->employee_id;
                 $nested_data['department_id'] = $employee_detail->department_id;
-                $nested_data['designation_id'] = $employee_detail->designation_id;
                 $nested_data['designation_id'] = $employee_detail->designation_id;
                 $nested_data['card_no'] = $employee_detail->card_no;
                 $nested_data['employee_name'] = $employee_detail->employee_name;
