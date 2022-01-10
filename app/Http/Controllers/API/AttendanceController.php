@@ -226,7 +226,8 @@ class AttendanceController extends Controller
             $attendance->absent = isset($data['absent']) ? $data['absent'] : NULL;
             $attendance->work_time = isset($data['work_time']) ? $data['work_time'] : NULL;
             $attendance->att_time = isset($data['att_time']) ? $data['att_time'] : NULL;
-            $attendance->note = isset($data['note']) ? $data['note'] : NULL;
+            //$attendance->note = isset($data['note']) ? $data['note'] : NULL;
+            $attendance->note = isset($data['late']) ? 'Late' : 'Present';
             $attendance->save();
             $insert_id = $attendance->id;
             if($insert_id == ''){

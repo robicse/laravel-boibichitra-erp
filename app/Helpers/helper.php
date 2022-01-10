@@ -1,5 +1,6 @@
 <?php
 //filter products published
+use App\LeaveApplication;
 use App\User;
 
 use Illuminate\Database\Eloquent\Model;
@@ -312,6 +313,143 @@ if (! function_exists('currentUserDetails')) {
         ];
 
         return $currentUserDetails;
+    }
+}
+
+
+if (! function_exists('countWeekendThisMonth')) {
+    function countWeekendThisMonth($year, $month) {
+        $total_weekend = 0;
+        $weekend = DB::table('weekends')
+            ->select(DB::raw('COUNT(id) as weekend'))
+            ->where('year',$year)
+            ->where('month',$month)
+            ->first();
+
+        if($weekend){
+            $total_weekend = $weekend->weekend;
+        }
+
+        return $total_weekend;
+    }
+}
+
+if (! function_exists('countHolidayThisMonth')) {
+    function countHolidayThisMonth($year, $month) {
+        $total_holiday = 0;
+        $holiday = DB::table('holidays')
+            ->select(DB::raw('COUNT(id) as holiday'))
+            ->where('year',$year)
+            ->where('month',$month)
+            ->first();
+
+        if($holiday){
+            $total_holiday = $holiday->holiday;
+        }
+
+        return $total_holiday;
+    }
+}
+
+if (! function_exists('countPresentThisMonth')) {
+    function countPresentThisMonth($year, $month, $employee_id) {
+        $total_present = 0;
+        $present = DB::table('attendances')
+            ->select(DB::raw('COUNT(note) as total_present'))
+            ->where('year',$year)
+            ->where('month',$month)
+            ->where('employee_id',$employee_id)
+            ->where('note','Present')
+            ->first();
+
+        if($present){
+            $total_present = $present->total_present;
+        }
+
+        return $total_present;
+    }
+}
+
+if (! function_exists('countLeaveApprovedThisMonth')) {
+    function countLeaveApprovedThisMonth($year, $month, $employee_id) {
+        $total_approved_leave = 0;
+        $approved_leave = LeaveApplication::where('employee_id', $employee_id)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->where('approval_status', '=','Approved')
+            ->select('employee_id','year','month', DB::raw('SUM(duration) as total_duration'))
+            ->groupBy('employee_id','year','month')
+            ->first();
+
+        if($approved_leave){
+            $total_approved_leave = $approved_leave->total_duration;
+        }
+
+        return $total_approved_leave;
+    }
+}
+
+if (! function_exists('countLeavePendingThisMonth')) {
+    function countLeavePendingThisMonth($year, $month, $employee_id) {
+        $total_pending_leave = 0;
+        $pending_leave = LeaveApplication::where('employee_id', $employee_id)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->where('approval_status', '=','Pending')
+            ->select('employee_id','year','month', DB::raw('SUM(duration) as total_duration'))
+            ->groupBy('employee_id','year','month')
+            ->first();
+
+        if($pending_leave){
+            $total_pending_leave = $pending_leave->total_duration;
+        }
+
+        return $total_pending_leave;
+    }
+}
+
+if (! function_exists('countLatePresentThisMonth')) {
+    function countLatePresentThisMonth($year, $month, $employee_id) {
+        $total_late_present = 0;
+        $late = DB::table('attendances')
+            ->select(DB::raw('COUNT(late) as total_late'))
+            ->where('year',$year)
+            ->where('month',$month)
+            ->where('employee_id',$employee_id)
+            ->where('note','Late')
+            ->first();
+
+        if($late){
+            $total_late = $late->total_late;
+            if($total_late <= 2){
+                $total_late_present = $total_late;
+            }
+        }
+
+        return $total_late_present;
+    }
+}
+
+if (! function_exists('countLateAbsentThisMonth')) {
+    function countLateAbsentThisMonth($year, $month, $employee_id) {
+        $total_late_absent = 0;
+        $late = DB::table('attendances')
+            ->select(DB::raw('COUNT(late) as total_late'))
+            ->where('year',$year)
+            ->where('month',$month)
+            ->where('employee_id',$employee_id)
+            ->where('note','Late')
+            ->first();
+
+        if($late){
+            $total_late = $late->total_late;
+            if($total_late > 2){
+                $calculated_late = $total_late/3;
+                $total_late_absent = floor($calculated_late);
+            }
+        }
+
+        return $total_late_absent;
     }
 }
 

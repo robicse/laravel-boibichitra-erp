@@ -56,7 +56,7 @@ class WeekendController extends Controller
         $weekend->year = $year;
         $weekend->month = $month;
         $weekend->day = $day;
-        $weekend->note = $request->note;
+        $weekend->note = isset($request->note) ? $request->note : NULL;
         $weekend->status = $request->status;
         $weekend->save();
         $insert_id = $weekend->id;

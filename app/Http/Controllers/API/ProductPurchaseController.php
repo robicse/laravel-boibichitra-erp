@@ -1629,11 +1629,50 @@ class ProductPurchaseController extends Controller
                 ->leftJoin('product_units','product_purchase_details.product_unit_id','product_units.id')
                 ->leftJoin('product_brands','product_purchase_details.product_brand_id','product_brands.id')
                 ->where('product_purchases.invoice_no',$request->product_purchase_invoice_no)
-                ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_purchase_details.qty','product_purchase_details.qty as current_qty','product_purchase_details.id as product_purchase_detail_id','product_purchase_details.price','product_purchase_details.mrp_price')
+                ->select(
+                    'products.id as product_id',
+                    'products.name as product_name',
+                    'product_units.id as product_unit_id',
+                    'product_units.name as product_unit_name',
+                    'product_brands.id as product_brand_id',
+                    'product_brands.name as product_brand_name',
+                    'product_purchase_details.qty',
+                    'product_purchase_details.qty as current_qty',
+                    'product_purchase_details.id as product_purchase_detail_id',
+                    'product_purchase_details.price',
+                    'product_purchase_details.mrp_price'
+                )
                 ->get();
 
+            $product_purchase_arr = [];
+            if(count($product_pos_purchase_details) > 0){
+                foreach ($product_pos_purchase_details as $product_pos_purchase_detail){
+                    $already_return_qty = DB::table('product_purchase_return_details')
+                        ->where('pro_pur_detail_id',$product_pos_purchase_detail->product_purchase_detail_id)
+                        ->where('product_id',$product_pos_purchase_detail->product_id)
+                        ->pluck('qty')
+                        ->first();
+
+                    $nested_data['product_id'] = $product_pos_purchase_detail->product_id;
+                    $nested_data['product_name'] = $product_pos_purchase_detail->product_name;
+                    $nested_data['product_unit_id'] = $product_pos_purchase_detail->product_unit_id;
+                    $nested_data['product_unit_name'] = $product_pos_purchase_detail->product_unit_name;
+                    $nested_data['product_brand_id'] = $product_pos_purchase_detail->product_brand_id;
+                    $nested_data['product_brand_name'] = $product_pos_purchase_detail->product_brand_name;
+                    $nested_data['qty'] = $product_pos_purchase_detail->qty;
+                    $nested_data['current_qty'] = $product_pos_purchase_detail->current_qty;
+                    $nested_data['already_return_qty'] = $already_return_qty;
+                    $nested_data['product_purchase_detail_id'] = $product_pos_purchase_detail->product_purchase_detail_id;
+                    $nested_data['price'] = $product_pos_purchase_detail->price;
+                    $nested_data['mrp_price'] = $product_pos_purchase_detail->mrp_price;
+
+                    array_push($product_purchase_arr,$nested_data);
+
+                }
+            }
+
             $success['product_purchases'] = $product_purchases;
-            $success['product_pos_purchase_details'] = $product_pos_purchase_details;
+            $success['product_pos_purchase_details'] = $product_purchase_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Purchase Data Found!'], $this->failStatus);

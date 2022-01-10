@@ -148,7 +148,7 @@ class PartyController extends Controller
     public function supplierCreate(Request $request){
 
         $validator = Validator::make($request->all(), [
-            'email' => 'unique:parties',
+            //'email' => 'unique:parties',
             'name' => 'required',
             'phone'=> 'required',
             'status' => 'required',
