@@ -112,63 +112,42 @@ class PaymentController extends Controller
         if($request->search){
             $search = $request->search;
             $order_by = $request->order_by;
-//            $parties = Party::where('type','customer')
-//                ->where('customer_type','Whole Sale')
-//                ->where(function ($query) use ($search) {
-//                    $query->where('name','like','%'.$search.'%')
-//                        ->orWhere('phone', 'like', '%'.$search.'%');
-//                })
-//                ->latest()->paginate(12);
 
             if($order_by == 'asc'){
-                $parties = Party::addSelect(['amount' => Transaction::selectRaw('sum(amount) as total_amount')
-                    ->whereColumn('id', 'parties.id')
-                    ->groupBy('id')
-                ])
-                    ->where('type','customer')
-                    ->where('customer_type','Whole Sale')
-                    ->where(function ($query) use ($search) {
-                        $query->where('name','like','%'.$search.'%')
-                            ->orWhere('phone', 'like', '%'.$search.'%');
-                    })
-                    ->orderBy('amount', 'ASC')
+                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                    ->where('parties.customer_type','Whole Sale')
+                    ->where('name','like','%'.$search.'%')
+                    ->orWhere('phone', 'like', '%'.$search.'%')
+                    ->groupBy('parties.id')
+                    ->orderBy('total_amount', 'ASC')
                     ->paginate(12);
             }else{
-                $parties = Party::addSelect(['amount' => Transaction::selectRaw('sum(amount) as total_amount')
-                    ->whereColumn('id', 'parties.id')
-                    ->groupBy('id')
-                ])
-                    ->where('type','customer')
-                    ->where('customer_type','Whole Sale')
-                    ->where(function ($query) use ($search) {
-                        $query->where('name','like','%'.$search.'%')
-                            ->orWhere('phone', 'like', '%'.$search.'%');
-                    })
-                    ->orderBy('amount', 'DESC')
+                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                    ->where('parties.customer_type','Whole Sale')
+                    ->where('name','like','%'.$search.'%')
+                    ->orWhere('phone', 'like', '%'.$search.'%')
+                    ->groupBy('parties.id')
+                    ->orderBy('total_amount', 'DESC')
                     ->paginate(12);
             }
             return new CustomerCollection($parties);
         }else{
-            //return new CustomerCollection(Party::where('type','customer')->where('customer_type','Whole Sale')->latest()->paginate(12));
-
             $order_by = $request->order_by;
             if($order_by == 'asc'){
-                $parties = Party::addSelect(['amount' => Transaction::selectRaw('sum(amount) as total_amount')
-                    ->whereColumn('id', 'parties.id')
-                    ->groupBy('id')
-                ])
-                    ->where('type','customer')
-                    ->where('customer_type','Whole Sale')
-                    ->orderBy('amount', 'ASC')
+                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                    ->where('parties.customer_type','Whole Sale')
+                    ->groupBy('parties.id')
+                    ->orderBy('total_amount', 'ASC')
                     ->paginate(12);
             }else{
-                $parties = Party::addSelect(['amount' => Transaction::selectRaw('sum(amount) as total_amount')
-                    ->whereColumn('id', 'parties.id')
-                    ->groupBy('id')
-                ])
-                    ->where('type','customer')
-                    ->where('customer_type','Whole Sale')
-                    ->orderBy('amount', 'DESC')
+                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                    ->where('parties.customer_type','Whole Sale')
+                    ->groupBy('parties.id')
+                    ->orderBy('total_amount', 'DESC')
                     ->paginate(12);
             }
             return new CustomerCollection($parties);
@@ -229,63 +208,41 @@ class PaymentController extends Controller
             $search = $request->search;
             $order_by = $request->order_by;
 
-//            $parties = Party::where('type','customer')
-//                ->where('customer_type','POS Sale')
-//                ->where(function ($query) use ($search) {
-//                    $query->where('name','like','%'.$search.'%')
-//                        ->orWhere('phone', 'like', '%'.$search.'%');
-//                })
-//                ->latest()->paginate(12);
-
             if($order_by == 'asc'){
-                $parties = Party::addSelect(['amount' => Transaction::selectRaw('sum(amount) as total_amount')
-                    ->whereColumn('id', 'parties.id')
-                    ->groupBy('id')
-                ])
-                    ->where('type','customer')
-                    ->where('customer_type','POS Sale')
-                    ->where(function ($query) use ($search) {
-                    $query->where('name','like','%'.$search.'%')
-                        ->orWhere('phone', 'like', '%'.$search.'%');
-                    })
-                    ->orderBy('amount', 'ASC')
+                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                    ->where('parties.customer_type','POS Sale')
+                    ->where('name','like','%'.$search.'%')
+                    ->orWhere('phone', 'like', '%'.$search.'%')
+                    ->groupBy('parties.id')
+                    ->orderBy('total_amount', 'ASC')
                     ->paginate(12);
             }else{
-                $parties = Party::addSelect(['amount' => Transaction::selectRaw('sum(amount) as total_amount')
-                    ->whereColumn('id', 'parties.id')
-                    ->groupBy('id')
-                ])
-                    ->where('type','customer')
-                    ->where('customer_type','POS Sale')
-                    ->where(function ($query) use ($search) {
-                        $query->where('name','like','%'.$search.'%')
-                            ->orWhere('phone', 'like', '%'.$search.'%');
-                    })
-                    ->orderBy('amount', 'DESC')
+                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                    ->where('parties.customer_type','POS Sale')
+                    ->where('name','like','%'.$search.'%')
+                    ->orWhere('phone', 'like', '%'.$search.'%')
+                    ->groupBy('parties.id')
+                    ->orderBy('total_amount', 'DESC')
                     ->paginate(12);
             }
             return new CustomerCollection($parties);
         }else{
-            //return new CustomerCollection(Party::where('type','customer')->where('customer_type','POS Sale')->latest()->paginate(12));
-
             $order_by = $request->order_by;
             if($order_by == 'asc'){
-                $parties = Party::addSelect(['amount' => Transaction::selectRaw('sum(amount) as total_amount')
-                    ->whereColumn('id', 'parties.id')
-                    ->groupBy('id')
-                ])
-                    ->where('type','customer')
-                    ->where('customer_type','POS Sale')
-                    ->orderBy('amount', 'ASC')
+                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                    ->where('parties.customer_type','POS Sale')
+                    ->groupBy('parties.id')
+                    ->orderBy('total_amount', 'ASC')
                     ->paginate(12);
             }else{
-                $parties = Party::addSelect(['amount' => Transaction::selectRaw('sum(amount) as total_amount')
-                    ->whereColumn('id', 'parties.id')
-                    ->groupBy('id')
-                ])
-                    ->where('type','customer')
-                    ->where('customer_type','POS Sale')
-                    ->orderBy('amount', 'DESC')
+                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                    ->where('parties.customer_type','POS Sale')
+                    ->groupBy('parties.id')
+                    ->orderBy('total_amount', 'DESC')
                     ->paginate(12);
             }
             return new CustomerCollection($parties);

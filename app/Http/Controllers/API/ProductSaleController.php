@@ -2428,11 +2428,55 @@ class ProductSaleController extends Controller
                 ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
                 ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
                 ->where('product_sales.invoice_no',$request->product_sale_invoice_no)
-                ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.qty as current_qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.sale_date','product_sale_details.return_among_day','product_sale_details.price as mrp_price')
+                ->select(
+                    'products.id as product_id',
+                    'products.name as product_name',
+                    'product_units.id as product_unit_id',
+                    'product_units.name as product_unit_name',
+                    'product_brands.id as product_brand_id',
+                    'product_brands.name as product_brand_name',
+                    'product_sale_details.qty',
+                    'product_sale_details.qty as current_qty',
+                    'product_sale_details.id as product_sale_detail_id',
+                    'product_sale_details.price as mrp_price',
+                    'product_sale_details.sale_date',
+                    'product_sale_details.return_among_day'
+                )
                 ->get();
 
+            $product_sale_arr = [];
+            if(count($product_sale_details) > 0){
+                foreach ($product_sale_details as $product_sale_detail){
+                    $already_return_qty = DB::table('product_sale_return_details')
+                        ->where('pro_sale_detail_id',$product_sale_detail->product_sale_detail_id)
+                        ->where('product_id',$product_sale_detail->product_id)
+                        ->pluck('qty')
+                        ->first();
+
+                    $nested_data['product_id'] = $product_sale_detail->product_id;
+                    $nested_data['product_name'] = $product_sale_detail->product_name;
+                    $nested_data['product_unit_id'] = $product_sale_detail->product_unit_id;
+                    $nested_data['product_unit_name'] = $product_sale_detail->product_unit_name;
+                    $nested_data['product_brand_id'] = $product_sale_detail->product_brand_id;
+                    $nested_data['product_brand_name'] = $product_sale_detail->product_brand_name;
+                    //$nested_data['qty'] = $product_sale_detail->qty;
+                    $nested_data['sale_qty'] = $product_sale_detail->qty;
+                    //$nested_data['current_qty'] = $product_sale_detail->current_qty;
+                    $nested_data['already_return_qty'] = $already_return_qty;
+                    $nested_data['exists_return_qty'] = $product_sale_detail->qty - $already_return_qty;
+                    $nested_data['product_sale_detail_id'] = $product_sale_detail->product_purchase_detail_id;
+                    $nested_data['price'] = $product_sale_detail->price;
+                    $nested_data['mrp_price'] = $product_sale_detail->mrp_price;
+                    $nested_data['sale_date'] = $product_sale_detail->sale_date;
+                    $nested_data['return_among_day'] = $product_sale_detail->return_among_day;
+
+                    array_push($product_sale_arr,$nested_data);
+
+                }
+            }
+
             $success['product_sales'] = $product_sales;
-            $success['product_sale_details'] = $product_sale_details;
+            $success['product_sale_details'] = $product_sale_arr;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{
             return response()->json(['success'=>false,'response'=>'No Product Sale Data Found!'], $this->failStatus);

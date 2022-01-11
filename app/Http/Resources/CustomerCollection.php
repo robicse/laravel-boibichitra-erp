@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Party;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
 class CustomerCollection extends ResourceCollection
@@ -10,19 +11,19 @@ class CustomerCollection extends ResourceCollection
     {
         return [
             'data' => $this->collection->map(function($data) {
-                $transaction_type = $data->customer_type == 'POS Sale' ? 'pos_sale' : 'whole_sale';
+                $party_info = Party::find($data->id);
                 return [
                     'id' => $data->id,
-                    'type' => $data->type,
-                    'customer_type' => $data->customer_type,
-                    'name' => $data->name,
-                    'phone' => $data->phone,
-                    'address' => $data->address,
-                    'virtual_balance' => $data->virtual_balance,
-                    'initial_due' => $data->initial_due,
-                    'status' => $data->status,
-                    //'sale_total_amount' => customerSaleTotalAmount($data->id,$transaction_type) != null ? customerSaleTotalAmount($data->id,$transaction_type) : 0,
-                    'sale_total_amount' => $data->amount,
+                    'type' => $party_info->type,
+                    'customer_type' => $party_info->customer_type,
+                    'name' => $party_info->name,
+                    'phone' => $party_info->phone,
+                    'address' => $party_info->address,
+                    'virtual_balance' => $party_info->virtual_balance,
+                    'initial_due' => $party_info->initial_due,
+                    'status' => $party_info->status,
+//                    //'sale_total_amount' => customerSaleTotalAmount($data->id,$transaction_type) != null ? customerSaleTotalAmount($data->id,$transaction_type) : 0,
+                    'sale_total_amount' => $data->total_amount,
                 ];
             })
         ];

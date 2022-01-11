@@ -1637,7 +1637,7 @@ class ProductPurchaseController extends Controller
                     'product_brands.id as product_brand_id',
                     'product_brands.name as product_brand_name',
                     'product_purchase_details.qty',
-                    'product_purchase_details.qty as current_qty',
+                    //'product_purchase_details.qty as current_qty',
                     'product_purchase_details.id as product_purchase_detail_id',
                     'product_purchase_details.price',
                     'product_purchase_details.mrp_price'
@@ -1647,11 +1647,17 @@ class ProductPurchaseController extends Controller
             $product_purchase_arr = [];
             if(count($product_pos_purchase_details) > 0){
                 foreach ($product_pos_purchase_details as $product_pos_purchase_detail){
-                    $already_return_qty = DB::table('product_purchase_return_details')
+                    $already_return_qty = 0;
+                    $return_qty = DB::table('product_purchase_return_details')
+                        ->select('pro_pur_detail_id','product_id',DB::raw('SUM(qty) as qty'))
                         ->where('pro_pur_detail_id',$product_pos_purchase_detail->product_purchase_detail_id)
                         ->where('product_id',$product_pos_purchase_detail->product_id)
-                        ->pluck('qty')
+                        ->groupBy('pro_pur_detail_id','product_id')
                         ->first();
+
+                    if(!empty($return_qty)){
+                        $already_return_qty = (int) $return_qty->qty;
+                    }
 
                     $nested_data['product_id'] = $product_pos_purchase_detail->product_id;
                     $nested_data['product_name'] = $product_pos_purchase_detail->product_name;
@@ -1659,9 +1665,11 @@ class ProductPurchaseController extends Controller
                     $nested_data['product_unit_name'] = $product_pos_purchase_detail->product_unit_name;
                     $nested_data['product_brand_id'] = $product_pos_purchase_detail->product_brand_id;
                     $nested_data['product_brand_name'] = $product_pos_purchase_detail->product_brand_name;
-                    $nested_data['qty'] = $product_pos_purchase_detail->qty;
-                    $nested_data['current_qty'] = $product_pos_purchase_detail->current_qty;
+                    //$nested_data['qty'] = $product_pos_purchase_detail->qty;
+                    $nested_data['purchase_qty'] = $product_pos_purchase_detail->qty;
+                    //$nested_data['current_qty'] = $product_pos_purchase_detail->current_qty;
                     $nested_data['already_return_qty'] = $already_return_qty;
+                    $nested_data['exists_return_qty'] = $product_pos_purchase_detail->qty - $already_return_qty;
                     $nested_data['product_purchase_detail_id'] = $product_pos_purchase_detail->product_purchase_detail_id;
                     $nested_data['price'] = $product_pos_purchase_detail->price;
                     $nested_data['mrp_price'] = $product_pos_purchase_detail->mrp_price;
