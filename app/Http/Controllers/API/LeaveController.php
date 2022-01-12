@@ -170,7 +170,7 @@ class LeaveController extends Controller
 
         $month1 = date('m', $ts1);
         $month2 = date('m', $ts2);
-        if(($year1 === $year2) && ($month1 === $month2)){
+        if(($year1 !== $year2) && ($month1 !== $month2)){
             return response()->json(['success' => false,'data' => 'Please select same month on year'], $this-> validationStatus);
         }
 

@@ -149,18 +149,50 @@ class ProductPurchaseController extends Controller
             ->leftJoin('product_units','product_purchase_details.product_unit_id','product_units.id')
             ->leftJoin('product_brands','product_purchase_details.product_brand_id','product_brands.id')
             ->where('product_purchases.id',$request->product_purchase_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_purchase_details.qty','product_purchase_details.id as product_purchase_detail_id','product_purchase_details.price','product_purchase_details.mrp_price')
+            ->select(
+                'product_purchases.warehouse_id',
+                'products.id as product_id',
+                'products.name as product_name',
+                'product_units.id as product_unit_id',
+                'product_units.name as product_unit_name',
+                'product_brands.id as product_brand_id',
+                'product_brands.name as product_brand_name',
+                'product_purchase_details.qty',
+                'product_purchase_details.id as product_purchase_detail_id',
+                'product_purchase_details.price',
+                'product_purchase_details.mrp_price'
+            )
             ->get();
 
-        if($product_purchase_details)
-        {
+        $product_purchase_detail_arr = [];
+        if(count($product_purchase_details) > 0){
+            foreach ($product_purchase_details as $product_purchase_detail){
+                $current_qty = warehouseProductCurrentStock($product_purchase_detail->warehouse_id,$product_purchase_detail->product_id);
+
+                $nested_data['product_id'] = $product_purchase_detail->product_id;
+                $nested_data['product_name'] = $product_purchase_detail->product_name;
+                $nested_data['product_unit_id'] = $product_purchase_detail->product_unit_id;
+                $nested_data['product_unit_name'] = $product_purchase_detail->product_unit_name;
+                $nested_data['product_brand_id'] = $product_purchase_detail->product_brand_id;
+                $nested_data['product_brand_name'] = $product_purchase_detail->product_brand_name;
+                $nested_data['qty'] = $product_purchase_detail->qty;
+                $nested_data['product_purchase_detail_id'] = $product_purchase_detail->product_purchase_detail_id;
+                $nested_data['price'] = $product_purchase_detail->price;
+                $nested_data['mrp_price'] = $product_purchase_detail->mrp_price;
+                $nested_data['current_qty'] = $current_qty;
+
+
+                array_push($product_purchase_detail_arr,$nested_data);
+
+            }
+
             $supplier_details = DB::table('parties')
                 ->join('product_purchases','product_purchases.party_id','parties.id')
                 ->where('product_purchases.id',$request->product_purchase_id)
                 ->select('parties.id as supplier_id','parties.name as supplier_name','parties.phone as supplier_phone','parties.address as supplier_address')
                 ->first();
 
-            $success['product_whole_purchase_details'] =  $product_purchase_details;
+            $success['product_whole_purchase_details'] =  $product_purchase_detail_arr;
             $success['supplier_details'] =  $supplier_details;
             return response()->json(['success'=>true,'response' => $success], $this->successStatus);
         }else{

@@ -168,6 +168,23 @@ if (! function_exists('warehouseCurrentStock')) {
     }
 }
 
+// warehouse and product current stock
+if (! function_exists('warehouseProductCurrentStock')) {
+    function warehouseProductCurrentStock($warehouse_id,$product_id) {
+        $warehouse_current_stock = DB::table('warehouse_current_stocks')
+            ->where('warehouse_id',$warehouse_id)
+            ->where('product_id',$product_id)
+            ->latest('id')
+            ->pluck('current_stock')
+            ->first();
+
+        if($warehouse_current_stock == NULL){
+            $warehouse_current_stock = 0;
+        }
+        return $warehouse_current_stock;
+    }
+}
+
 // customer sale total amount
 if (! function_exists('customerSaleTotalAmount')) {
     function customerSaleTotalAmount($customer_id,$type) {
