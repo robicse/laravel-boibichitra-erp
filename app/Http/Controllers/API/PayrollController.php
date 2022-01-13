@@ -113,8 +113,8 @@ class PayrollController extends Controller
         $total_late_present_count = countLatePresentThisMonth($request->year, $request->month, $request->employee_id);
         $total_late_absent_count = countLateAbsentThisMonth($request->year, $request->month, $request->employee_id);
 
-        $absent_day_minus = $total_weekend + $total_holiday + $total_present + $total_leave_approved + $total_late_present_count;
-        $absent_day_plus = $total_leave_pending + $total_late_absent_count;
+        $absent_day_minus = $total_weekend + $total_holiday + $total_present + $total_leave_approved + $total_late_present_count + $total_late_absent_count['total_late_absent_remainder'];
+        $absent_day_plus = $total_leave_pending + $total_late_absent_count['total_late_absent_quotient'];
         $final_absent = ($day_count_of_month + $absent_day_plus) - $absent_day_minus;
         return response()->json(['success'=>true,'total_absent' => $final_absent], $this->successStatus);
 

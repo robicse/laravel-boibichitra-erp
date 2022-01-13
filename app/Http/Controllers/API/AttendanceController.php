@@ -18,13 +18,12 @@ class AttendanceController extends Controller
 
     // Attendance
     public function attendanceList(Request $request){
-        if(($request->from_date && $request->to_date) && ($request->store_id != NULL)){
+        if($request->from_date && $request->to_date && $request->store_id){
             $attendances = DB::table('attendances')
                 ->join('employees','attendances.employee_id','=','employees.id')
                 ->where('attendances.date','>=',$request->from_date)
                 ->where('attendances.date','<=',$request->to_date)
-                ->where('attendances.date','<=',$request->to_date)
-                ->where('employees.store_id',$request->store_id)
+                ->where('attendances.store_id',$request->store_id)
                 ->select('attendances.id','attendances.card_no','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.on_duty','attendances.off_duty','attendances.clock_in','attendances.clock_out','attendances.late','attendances.early','attendances.absent','attendances.work_time','attendances.att_time','attendances.note','attendances.id as employee_id','employees.name as employee_name')
                 ->orderBy('id','desc')
                 ->get();
@@ -33,7 +32,8 @@ class AttendanceController extends Controller
             $attendances = DB::table('attendances')
                 ->join('employees','attendances.employee_id','=','employees.id')
                 ->where('attendances.date','>=',$request->from_date)
-                ->where('attendances.date','<=',$request->to_date)
+                ->where('attendances.date2','<=',$request->to_date)
+                ->where('attendances.store_id',NULL)
                 ->select('attendances.id','attendances.card_no','attendances.employee_name','attendances.date','attendances.year','attendances.month','attendances.on_duty','attendances.off_duty','attendances.clock_in','attendances.clock_out','attendances.late','attendances.early','attendances.absent','attendances.work_time','attendances.att_time','attendances.note','attendances.id as employee_id','employees.name as employee_name')
                 ->orderBy('id','desc')
                 ->get();
@@ -179,6 +179,7 @@ class AttendanceController extends Controller
             //$month = date('F', strtotime($date));
             $month = date('m', strtotime($date));
             $day = date('d', strtotime($date));
+            $update_date = $year.'-'.$month.'-'.$day;
 
             // check employee already attendance
 //            $check_exists = Attendance::where('card_no',$data['card_no'])
@@ -198,14 +199,16 @@ class AttendanceController extends Controller
             $employee_info = DB::table('employees')
                 ->join('employee_office_informations','employees.id','=','employee_office_informations.employee_id')
                 ->where('employee_office_informations.card_no',$data['card_no'])
-                ->select('employees.id','employees.name','employee_office_informations.card_no')
+                ->select('employees.id','employees.name','employee_office_informations.card_no','employees.warehouse_id','employees.store_id')
                 ->first();
 
             $attendance = new Attendance();
+            $attendance->warehouse_id = $employee_info->warehouse_id;
+            $attendance->store_id = $employee_info->store_id;
             $attendance->employee_id = $employee_info->id;
             $attendance->card_no = $data['card_no'];
             $attendance->employee_name = $employee_info->name;
-            $attendance->date = $date;
+            $attendance->date = $update_date;
             $attendance->year = $year;
             $attendance->month = $month;
             $attendance->day = $day;

@@ -449,7 +449,10 @@ if (! function_exists('countLatePresentThisMonth')) {
 
 if (! function_exists('countLateAbsentThisMonth')) {
     function countLateAbsentThisMonth($year, $month, $employee_id) {
-        $total_late_absent = 0;
+        $total_late_absent_info = [
+            'total_late_absent_quotient' => 0,
+            'total_late_absent_remainder ' => 0
+        ];
         $late = DB::table('attendances')
             ->select(DB::raw('COUNT(late) as total_late'))
             ->where('year',$year)
@@ -462,11 +465,13 @@ if (! function_exists('countLateAbsentThisMonth')) {
             $total_late = $late->total_late;
             if($total_late > 2){
                 $calculated_late = $total_late/3;
-                $total_late_absent = floor($calculated_late);
+                $total_late_absent_info['total_late_absent_quotient'] = floor($calculated_late);
+
+                $total_late_absent_info['total_late_absent_remainder'] = (int) $total_late % 3;
             }
         }
 
-        return $total_late_absent;
+        return $total_late_absent_info;
     }
 }
 
