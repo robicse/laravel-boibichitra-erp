@@ -50,92 +50,55 @@ class PayrollController extends Controller
             return response()->json(['success'=>true,'response' => 'No Attendance Found Yet!'], $this->validationStatus);
         }
 
-//        $total_absent = 0;
+
+
 //        $day_count_of_month = cal_days_in_month(CAL_GREGORIAN, $month, $year);
-//        $day = 1;
 //
-//        //$check_data_arr = [];
-//        for($i=0;$i<$day_count_of_month;$i++) {
+//        $total_present_string_count = countPresentThisMonth($request->year, $request->month, $request->employee_id);
+//        $total_weekend = countWeekendThisMonth($request->year, $request->month);
+//        $total_holiday = countHolidayThisMonth($request->year, $request->month);
+//        $total_leave_approved = countLeaveApprovedThisMonth($request->year, $request->month, $request->employee_id);
+//        $total_leave_pending = countLeavePendingThisMonth($request->year, $request->month, $request->employee_id);
 //
-//            // check attendance
-//            if ($day == 1) {
-//                $custom_today = '01';
-//            } elseif ($day == 2) {
-//                $custom_today = '02';
-//            } elseif ($day == 3) {
-//                $custom_today = '03';
-//            } elseif ($day == 4) {
-//                $custom_today = '04';
-//            } elseif ($day == 5) {
-//                $custom_today = '05';
-//            } elseif ($day == 6) {
-//                $custom_today = '06';
-//            } elseif ($day == 7) {
-//                $custom_today = '07';
-//            } elseif ($day == 8) {
-//                $custom_today = '08';
-//            } elseif ($day == 9) {
-//                $custom_today = '09';
-//            } else {
-//                $custom_today = $day;
-//            }
+//        $total_late_absent_count = countLateInfoThisMonth($request->year, $request->month, $request->employee_id);
+//        $total_late = $total_late_absent_count['total_late_count'];
+//        $total_late_absent_quotient = $total_late_absent_count['total_late_absent_quotient'];
+//        $total_late_absent_remainder = $total_late_absent_count['total_late_absent_remainder'];
 //
-//            $day++;
+//        $calculation_late = $total_late - $total_late_absent_quotient;
+//        $absent_day_minus = $total_present_string_count + $total_leave_approved + $calculation_late;
 //
-//            //$current_date = $year . '-' . $month . '-' . $custom_today;
-//            $clock_in = DB::table('attendances')
-//                ->where('employee_id', $employee_id)
-//                //->where('date', $current_date)
-//                ->where('year', $year)
-//                ->where('month', $month)
-//                ->where('day', $custom_today)
-//                ->pluck('clock_in')
-//                ->first();
+//        $total_working_day = $day_count_of_month - ($total_weekend + $total_holiday); // 31-4 = 27
+//        $final_absent = ($total_working_day - $absent_day_minus); // 27 - 27 = 0
 //
-//            if($clock_in == null){
-//                $total_absent += 1;
-//            }
-//
-//        }
+//        return response()->json(['success'=>true,'total_absent' => $final_absent], $this->successStatus);
+
 
 
         $total_absent = 0;
-        $total_present = 0;
+        $total_present_string_count = 0;
         $total_late = 0;
         $final_absent = 0;
         $day_count_of_month = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
-        $total_present = countPresentThisMonth($request->year, $request->month, $request->employee_id);
-        $total_weekend = countWeekendThisMonth($request->year, $request->month);
-        $total_holiday = countHolidayThisMonth($request->year, $request->month);
+        $total_present_string_count = countPresentThisMonth($request->year, $request->month, $request->employee_id);
+        $total_weekend = countWeekendThisMonth($request->year, $request->month, $request->employee_id);
+        $total_holiday = countHolidayThisMonth($request->year, $request->month, $request->employee_id);
         $total_leave_approved = countLeaveApprovedThisMonth($request->year, $request->month, $request->employee_id);
-        $total_leave_pending = countLeavePendingThisMonth($request->year, $request->month, $request->employee_id);
-        $total_late_present_count = countLatePresentThisMonth($request->year, $request->month, $request->employee_id);
-        $total_late_absent_count = countLateAbsentThisMonth($request->year, $request->month, $request->employee_id);
+        //$total_leave_pending = countLeavePendingThisMonth($request->year, $request->month, $request->employee_id);
 
-        $absent_day_minus = $total_weekend + $total_holiday + $total_present + $total_leave_approved + $total_late_present_count + $total_late_absent_count['total_late_absent_remainder'];
-        $absent_day_plus = $total_leave_pending + $total_late_absent_count['total_late_absent_quotient'];
-        $final_absent = ($day_count_of_month + $absent_day_plus) - $absent_day_minus;
+        $total_late_absent_count = countLateInfoThisMonth($request->year, $request->month, $request->employee_id);
+        $total_late = $total_late_absent_count['total_late_count'];
+        $total_late_absent_quotient = $total_late_absent_count['total_late_absent_quotient'];
+        //$total_late_absent_remainder = $total_late_absent_count['total_late_absent_remainder'];
+
+        $calculation_late = $total_late - $total_late_absent_quotient;
+        $absent_day_minus = $total_present_string_count + $total_leave_approved + $calculation_late;
+
+        $total_working_day = $day_count_of_month - ($total_weekend + $total_holiday); // 31-4 = 27
+        $final_absent = ($total_working_day - $absent_day_minus); // 27 - 27 = 0
+
         return response()->json(['success'=>true,'total_absent' => $final_absent], $this->successStatus);
-
-
-//        $late = DB::table('attendances')
-//            ->select(DB::raw('COUNT(late) as total_late'))
-//            ->where('year',$request->year)
-//            ->where('month',$request->month)
-//            ->where('employee_id',$request->employee_id)
-//            ->where('note','Late')
-//            ->first();
-//
-//        if($late){
-//            $total_late = $late->total_late;
-//            if($total_late <= 2){
-//                $total_present += $total_late;
-//            }else{
-//                $calculated_late = $total_late/3;
-//                $total_absent += $calculated_late;
-//            }
-//        }
 
     }
 

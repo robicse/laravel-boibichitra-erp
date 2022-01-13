@@ -335,12 +335,14 @@ if (! function_exists('currentUserDetails')) {
 
 
 if (! function_exists('countWeekendThisMonth')) {
-    function countWeekendThisMonth($year, $month) {
+    function countWeekendThisMonth($year, $month, $employee_id) {
         $total_weekend = 0;
-        $weekend = DB::table('weekends')
+        $weekend = DB::table('attendances')
             ->select(DB::raw('COUNT(id) as weekend'))
             ->where('year',$year)
             ->where('month',$month)
+            ->where('employee_id',$employee_id)
+            ->where('status','Weekend')
             ->first();
 
         if($weekend){
@@ -352,12 +354,14 @@ if (! function_exists('countWeekendThisMonth')) {
 }
 
 if (! function_exists('countHolidayThisMonth')) {
-    function countHolidayThisMonth($year, $month) {
+    function countHolidayThisMonth($year, $month, $employee_id) {
         $total_holiday = 0;
-        $holiday = DB::table('holidays')
+        $holiday = DB::table('attendances')
             ->select(DB::raw('COUNT(id) as holiday'))
             ->where('year',$year)
             ->where('month',$month)
+            ->where('employee_id',$employee_id)
+            ->where('status','Holiday')
             ->first();
 
         if($holiday){
@@ -372,11 +376,11 @@ if (! function_exists('countPresentThisMonth')) {
     function countPresentThisMonth($year, $month, $employee_id) {
         $total_present = 0;
         $present = DB::table('attendances')
-            ->select(DB::raw('COUNT(note) as total_present'))
+            ->select(DB::raw('COUNT(status) as total_present'))
             ->where('year',$year)
             ->where('month',$month)
             ->where('employee_id',$employee_id)
-            ->where('note','Present')
+            ->where('status','Present')
             ->first();
 
         if($present){
@@ -425,53 +429,95 @@ if (! function_exists('countLeavePendingThisMonth')) {
     }
 }
 
-if (! function_exists('countLatePresentThisMonth')) {
-    function countLatePresentThisMonth($year, $month, $employee_id) {
-        $total_late_present = 0;
-        $late = DB::table('attendances')
-            ->select(DB::raw('COUNT(late) as total_late'))
-            ->where('year',$year)
-            ->where('month',$month)
-            ->where('employee_id',$employee_id)
-            ->where('note','Late')
-            ->first();
-
-        if($late){
-            $total_late = $late->total_late;
-            if($total_late <= 2){
-                $total_late_present = $total_late;
-            }
-        }
-
-        return $total_late_present;
-    }
-}
-
 if (! function_exists('countLateAbsentThisMonth')) {
-    function countLateAbsentThisMonth($year, $month, $employee_id) {
+    function countLateInfoThisMonth($year, $month, $employee_id) {
         $total_late_absent_info = [
+            'total_late_count' => 0,
             'total_late_absent_quotient' => 0,
-            'total_late_absent_remainder ' => 0
+            'total_late_absent_remainder' => 0
         ];
         $late = DB::table('attendances')
-            ->select(DB::raw('COUNT(late) as total_late'))
+            ->select(DB::raw('COUNT(id) as total_late'))
             ->where('year',$year)
             ->where('month',$month)
             ->where('employee_id',$employee_id)
-            ->where('note','Late')
+            ->where('status','Late')
             ->first();
 
         if($late){
             $total_late = $late->total_late;
-            if($total_late > 2){
+            $total_late_absent_info['total_late_count'] = $total_late;
+            if($total_late <= 2){
+                $total_late_absent_info['total_late_absent_remainder'] = $total_late;
+            }elseif($total_late > 2){
                 $calculated_late = $total_late/3;
-                $total_late_absent_info['total_late_absent_quotient'] = floor($calculated_late);
+                $total_late_absent_info['total_late_absent_quotient'] = (int) floor($calculated_late);
 
                 $total_late_absent_info['total_late_absent_remainder'] = (int) $total_late % 3;
             }
         }
 
         return $total_late_absent_info;
+    }
+}
+
+
+if (! function_exists('getExcelAttendanceData')) {
+    function getExcelAttendanceData($datas, $current_date)
+    {
+        $employeeInfoData = [
+            'date_match_or_not' => '',
+            'employee_data' => '',
+            'attendance_data' => '',
+        ];
+        $match_or_not = '';
+        foreach ($datas as $data){
+            $attendance_date = $data['date'];
+
+            $attendance_year = date('Y', strtotime($attendance_date));
+            $attendance_month = date('m', strtotime($attendance_date));
+            $attendance_day = date('d', strtotime($attendance_date));
+            $attendance_update_date = $attendance_year . '-' . $attendance_month . '-' . $attendance_day;
+
+            $employeeInfoData['attendance_data'] = $data;
+            $employeeInfoData['employee_data'] = DB::table('employees')
+                ->join('employee_office_informations','employees.id','=','employee_office_informations.employee_id')
+                ->where('employee_office_informations.card_no',$data['card_no'])
+                ->select('employees.id','employees.name','employee_office_informations.card_no','employees.warehouse_id','employees.store_id')
+                ->first();
+
+            if ($attendance_update_date === $current_date) {
+                $employeeInfoData['date_match_or_not'] = $current_date;
+                break;
+            }
+        }
+        return $employeeInfoData;
+    }
+
+}
+
+if (! function_exists('getWeekendThisDate')) {
+    function getWeekendThisDate($current_date)
+    {
+        return DB::table('weekends')->where('date',$current_date)->first();
+    }
+}
+
+if (! function_exists('getHolidayThisDate')) {
+    function getHolidayThisDate($current_date)
+    {
+        return DB::table('weekends')->where('date',$current_date)->first();
+    }
+}
+
+if (! function_exists('getLeaveThisDate')) {
+    function getLeaveThisDate($current_date)
+    {
+        return DB::table('leave_applications')
+            ->where('start_date','<=',$current_date)
+            ->where('end_date','>=',$current_date)
+            ->pluck('approval_status')
+            ->first();
     }
 }
 

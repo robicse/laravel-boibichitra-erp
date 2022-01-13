@@ -227,8 +227,9 @@ class StockController extends Controller
             $stock_transfer_request_detail->send_qty = 0;
             $stock_transfer_request_detail->received_qty = 0;
             $stock_transfer_request_detail->price = $product_info->purchase_price;
-            $stock_transfer_request_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
-            $stock_transfer_request_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
+            //$stock_transfer_request_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
+            $stock_transfer_request_detail->vat_amount = 0;
+            $stock_transfer_request_detail->sub_total = $data['qty']*$product_info->purchase_price;
             $stock_transfer_request_detail->received_date = $date;
             $stock_transfer_request_detail->save();
         }
@@ -272,8 +273,8 @@ class StockController extends Controller
             $stock_transfer_request_detail->barcode = $product_info->barcode;
             $stock_transfer_request_detail->request_qty = $data['qty'];
             $stock_transfer_request_detail->price = $product_info->purchase_price;
-            $stock_transfer_request_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
-            $stock_transfer_request_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
+            $stock_transfer_request_detail->vat_amount = 0;
+            $stock_transfer_request_detail->sub_total = ($data['qty']*$product_info->purchase_price);
             $stock_transfer_request_detail->save();
         }
 
