@@ -454,6 +454,8 @@ Route::middleware('auth:api')->post('/attendance_report', 'API\AttendanceControl
 // payroll/salary sheet
 Route::middleware('auth:api')->post('/total_absent_by_employee', 'API\PayrollController@totalAbsentByEmployee');
 Route::middleware('auth:api')->post('/total_late_by_employee', 'API\PayrollController@totalLateByEmployee');
+Route::middleware('auth:api')->post('/total_weekend', 'API\PayrollController@totalWeekend');
+Route::middleware('auth:api')->post('/total_holiday', 'API\PayrollController@totalHoliday');
 Route::middleware('auth:api')->post('/total_working_day', 'API\PayrollController@totalWorkingDay');
 //Route::middleware('auth:api')->post('/employee_details_department_wise', 'API\PayrollController@employeeDetailsDepartmentWise');
 Route::middleware('auth:api')->post('/employee_details_employee_wise', 'API\PayrollController@employeeDetailsEmployeeWise');

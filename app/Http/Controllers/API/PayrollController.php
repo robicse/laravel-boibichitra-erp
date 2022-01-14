@@ -137,6 +137,58 @@ class PayrollController extends Controller
         return response()->json(['success'=>true,'total_late' => $total_late], $this->successStatus);
     }
 
+    public function totalWeekend(Request $request){
+        $validator = Validator::make($request->all(), [
+            'year'=> 'required',
+            'month'=> 'required',
+            'employee_id'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+
+        $month = $request->month;
+        $year = $request->year;
+        $employee_id = $request->employee_id;
+        $total_weekend = countWeekendThisMonth($year, $month, $employee_id);
+
+        return response()->json(['success'=>true,'total_weekend' => $total_weekend], $this->successStatus);
+    }
+
+    public function totalHoliday(Request $request){
+        $validator = Validator::make($request->all(), [
+            'year'=> 'required',
+            'month'=> 'required',
+            'employee_id'=> 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'success' => false,
+                'data' => 'Validation Error.',
+                'message' => $validator->errors()
+            ];
+
+            return response()->json($response, $this->validationStatus);
+        }
+
+
+        $month = $request->month;
+        $year = $request->year;
+        $employee_id = $request->employee_id;
+        $total_holiday = countHolidayThisMonth($year, $month, $employee_id);
+
+        return response()->json(['success'=>true,'total_holiday' => $total_holiday], $this->successStatus);
+    }
+
     public function totalWorkingDay(Request $request){
         $validator = Validator::make($request->all(), [
             'year'=> 'required',

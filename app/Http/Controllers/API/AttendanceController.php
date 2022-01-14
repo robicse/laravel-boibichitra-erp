@@ -314,7 +314,7 @@ class AttendanceController extends Controller
 
                 if($attendance_data['clock_in'] > $attendance_data['on_duty']){
                     //$late = $attendance_data['clock_in'] - $attendance_data['on_duty'];
-                    $late = NULL;
+                    $late = $attendance_data['late'];
                     $status = 'Late';
                 }else{
                     $late = NULL;

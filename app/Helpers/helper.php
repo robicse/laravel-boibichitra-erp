@@ -506,7 +506,7 @@ if (! function_exists('getWeekendThisDate')) {
 if (! function_exists('getHolidayThisDate')) {
     function getHolidayThisDate($current_date)
     {
-        return DB::table('weekends')->where('date',$current_date)->first();
+        return DB::table('holidays')->where('date',$current_date)->first();
     }
 }
 
