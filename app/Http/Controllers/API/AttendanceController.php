@@ -230,6 +230,152 @@ class AttendanceController extends Controller
 
 
 
+//    public function attendanceCreate(Request $request){
+//        $validator = Validator::make($request->all(), [
+//            'attendances'=> 'required',
+//        ]);
+//
+//        if ($validator->fails()) {
+//            $response = [
+//                'success' => false,
+//                'data' => 'Validation Error.',
+//                'message' => $validator->errors()
+//            ];
+//
+//            return response()->json($response, $this-> validationStatus);
+//        }
+//
+//        foreach ($request->attendances as $data) {
+//            $card_no = DB::table('employee_office_informations')
+//                ->where('card_no',$data['card_no'])
+//                ->pluck('card_no')
+//                ->first();
+//
+//            if(empty($card_no)){
+//                $response = [
+//                    'success' => false,
+//                    'data' => 'Validation Error.',
+//                    'message' => ['This ['.$data['card_no'].'] Not Found, For Any Employee.]'],
+//                    'exist'=>1
+//                ];
+//                return response()->json($response, $this-> failStatus);
+//            }
+//
+//        }
+//
+//        $attendance_datas = $request->attendances;
+//        $date = $request->attendances[0]['date'];
+//        $year = date('Y', strtotime($date));
+//        $month = date('m', strtotime($date));
+//
+//        $day_count_of_month = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+//
+//        $day = 1;
+//        $success_insert_flag = true;
+//
+//        for($i=0;$i<$day_count_of_month;$i++){
+//            // check attendance
+//            if($day == 1){
+//                $custom_today = '01';
+//            }elseif($day == 2){
+//                $custom_today = '02';
+//            }elseif($day == 3){
+//                $custom_today = '03';
+//            }elseif($day == 4){
+//                $custom_today = '04';
+//            }elseif($day == 5){
+//                $custom_today = '05';
+//            }elseif($day == 6){
+//                $custom_today = '06';
+//            }elseif($day == 7){
+//                $custom_today = '07';
+//            }elseif($day == 8){
+//                $custom_today = '08';
+//            }elseif($day == 9){
+//                $custom_today = '09';
+//            }else{
+//                $custom_today = $day;
+//            }
+//
+//            $current_date = $year.'-'.$month.'-'.$custom_today;
+//
+//            $attendance_data_check = getExcelAttendanceData($attendance_datas,$current_date);
+//            $date_match_or_not = $attendance_data_check['date_match_or_not'];
+//            $employee_data = $attendance_data_check['employee_data'];
+//            $attendance_data = $attendance_data_check['attendance_data'];
+//
+//            if($date_match_or_not !== ''){
+//                //echo ' => found ----';
+//                if($attendance_data['clock_in'] > $attendance_data['on_duty']){
+//                    //$late = $attendance_data['clock_in'] - $attendance_data['on_duty'];
+//                    $late = $attendance_data['late'];
+//                    $status = 'Late';
+//                }else{
+//                    $late = NULL;
+//                    $status = 'Present';
+//                }
+//
+//                $on_duty = $attendance_data['on_duty'];
+//                $off_duty = $attendance_data['off_duty'];
+//                $clock_in = $attendance_data['clock_in'];
+//                $clock_out = $attendance_data['clock_out'];
+//            }else{
+//                //echo ' => not found ----';
+//                $on_duty = NULL;
+//                $off_duty = NULL;
+//                $clock_in = NULL;
+//                $clock_out = NULL;
+//                $late = NULL;
+//
+//                $weekend_check = getWeekendThisDate($current_date);
+//                $holiday_check = getHolidayThisDate($current_date);
+//                $leave_check = getLeaveThisDate($current_date);
+//                if(!empty($weekend_check)){
+//                    $status = 'Weekend';
+//                }elseif(!empty($holiday_check)){
+//                    $status = 'Holiday';
+//                }elseif(!empty($leave_check)){
+//                    $status = 'Leave';
+////                    if($leave_check == 'Pending'){
+////
+////                    }
+//                }else{
+//                    $status = 'Absent';
+//                }
+//            }
+//
+//            $attendance = new Attendance();
+//            $attendance->warehouse_id = $employee_data->warehouse_id;
+//            $attendance->store_id = $employee_data->store_id;
+//            $attendance->employee_id = $employee_data->id;
+//            $attendance->card_no = $data['card_no'];
+//            $attendance->employee_name = $employee_data->name;
+//            $attendance->date = $current_date;
+//            $attendance->year = $year;
+//            $attendance->month = $month;
+//            $attendance->day = $custom_today;
+//            $attendance->on_duty = $on_duty;
+//            $attendance->off_duty = $off_duty;
+//            $attendance->clock_in = $clock_in;
+//            $attendance->clock_out = $clock_out;
+//            $attendance->late = $late;
+//            $attendance->early = NULL;
+//            $attendance->absent = NULL;
+//            $attendance->work_time = NULL;
+//            $attendance->att_time = NULL;
+//            $attendance->status = $status;
+//            $attendance->save();
+//
+//            $day ++;
+//        }
+//
+//        if($success_insert_flag == true){
+//            return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+//        }else{
+//            return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
+//        }
+//    }
+
     public function attendanceCreate(Request $request){
         $validator = Validator::make($request->all(), [
             'attendances'=> 'required',
@@ -245,7 +391,12 @@ class AttendanceController extends Controller
             return response()->json($response, $this-> validationStatus);
         }
 
+        $count_card_nos = [];
         foreach ($request->attendances as $data) {
+            if(!in_array($data['card_no'], $count_card_nos, true)){
+                array_push($count_card_nos, $data['card_no']);
+            }
+
             $card_no = DB::table('employee_office_informations')
                 ->where('card_no',$data['card_no'])
                 ->pluck('card_no')
@@ -263,122 +414,120 @@ class AttendanceController extends Controller
 
         }
 
+        $employee_count = count($count_card_nos);
+        if($employee_count > 0){
+            foreach($count_card_nos as $employee_card_no){
 
+                $employee_data = DB::table('employees')
+                    ->join('employee_office_informations','employees.id','=','employee_office_informations.employee_id')
+                    ->where('employee_office_informations.card_no',$employee_card_no)
+                    ->select('employees.id','employees.name','employee_office_informations.card_no','employees.warehouse_id','employees.store_id')
+                    ->first();
 
-        $attendance_datas = $request->attendances;
-        $date = $request->attendances[0]['date'];
-        $year = date('Y', strtotime($date));
-        $month = date('m', strtotime($date));
+                $attendance_datas = $request->attendances;
+                $date = $request->attendances[0]['date'];
+                $year = date('Y', strtotime($date));
+                $month = date('m', strtotime($date));
 
-        $day_count_of_month = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+                $day_count_of_month = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
-        $day = 1;
-        $success_insert_flag = true;
+                $day = 1;
+                $success_insert_flag = true;
 
-        for($i=0;$i<$day_count_of_month;$i++){
+                for($i=0;$i<$day_count_of_month;$i++){
+                    // check attendance
+                    if($day == 1){
+                        $custom_today = '01';
+                    }elseif($day == 2){
+                        $custom_today = '02';
+                    }elseif($day == 3){
+                        $custom_today = '03';
+                    }elseif($day == 4){
+                        $custom_today = '04';
+                    }elseif($day == 5){
+                        $custom_today = '05';
+                    }elseif($day == 6){
+                        $custom_today = '06';
+                    }elseif($day == 7){
+                        $custom_today = '07';
+                    }elseif($day == 8){
+                        $custom_today = '08';
+                    }elseif($day == 9){
+                        $custom_today = '09';
+                    }else{
+                        $custom_today = $day;
+                    }
 
+                    $current_date = $year.'-'.$month.'-'.$custom_today;
 
-            // check attendance
-            if($day == 1){
-                $custom_today = '01';
-            }elseif($day == 2){
-                $custom_today = '02';
-            }elseif($day == 3){
-                $custom_today = '03';
-            }elseif($day == 4){
-                $custom_today = '04';
-            }elseif($day == 5){
-                $custom_today = '05';
-            }elseif($day == 6){
-                $custom_today = '06';
-            }elseif($day == 7){
-                $custom_today = '07';
-            }elseif($day == 8){
-                $custom_today = '08';
-            }elseif($day == 9){
-                $custom_today = '09';
-            }else{
-                $custom_today = $day;
-            }
+                    $attendance_data_check = getExcelAttendanceData($attendance_datas,$current_date,$employee_card_no);
+                    $date_match_or_not = $attendance_data_check['date_match_or_not'];
+                    $attendance_data = $attendance_data_check['attendance_data'];
 
-            $current_date = $year.'-'.$month.'-'.$custom_today;
+                    if($date_match_or_not !== ''){
+                        //echo ' => found ----';
+                        if($attendance_data['clock_in'] > $attendance_data['on_duty']){
+                            //$late = $attendance_data['clock_in'] - $attendance_data['on_duty'];
+                            $late = $attendance_data['late'];
+                            $status = 'Late';
+                        }else{
+                            $late = NULL;
+                            $status = 'Present';
+                        }
 
-            $attendance_data_check = getExcelAttendanceData($attendance_datas,$current_date);
-            $date_match_or_not = $attendance_data_check['date_match_or_not'];
-            $employee_data = $attendance_data_check['employee_data'];
-            $attendance_data = $attendance_data_check['attendance_data'];
-            //return response()->json(['success'=>true,'response' => $attendance_data['on_duty']], $this->successStatus);
+                        $on_duty = $attendance_data['on_duty'];
+                        $off_duty = $attendance_data['off_duty'];
+                        $clock_in = $attendance_data['clock_in'];
+                        $clock_out = $attendance_data['clock_out'];
+                    }else{
+                        //echo ' => not found ----';
+                        $on_duty = NULL;
+                        $off_duty = NULL;
+                        $clock_in = NULL;
+                        $clock_out = NULL;
+                        $late = NULL;
 
-            if($date_match_or_not !== ''){
-                //echo ' => found ----';
+                        $weekend_check = getWeekendThisDate($current_date);
+                        $holiday_check = getHolidayThisDate($current_date);
+                        $leave_check = getLeaveThisDate($current_date);
+                        if(!empty($weekend_check)){
+                            $status = 'Weekend';
+                        }elseif(!empty($holiday_check)){
+                            $status = 'Holiday';
+                        }elseif(!empty($leave_check)){
+                            $status = 'Leave';
+                        }else{
+                            $status = 'Absent';
+                        }
+                    }
 
-                if($attendance_data['clock_in'] > $attendance_data['on_duty']){
-                    //$late = $attendance_data['clock_in'] - $attendance_data['on_duty'];
-                    $late = $attendance_data['late'];
-                    $status = 'Late';
-                }else{
-                    $late = NULL;
-                    $status = 'Present';
+                    $attendance = new Attendance();
+                    $attendance->warehouse_id = $employee_data->warehouse_id;
+                    $attendance->store_id = $employee_data->store_id;
+                    $attendance->employee_id = $employee_data->id;
+                    $attendance->card_no = $employee_card_no;
+                    $attendance->employee_name = $employee_data->name;
+                    $attendance->date = $current_date;
+                    $attendance->year = $year;
+                    $attendance->month = $month;
+                    $attendance->day = $custom_today;
+                    $attendance->on_duty = $on_duty;
+                    $attendance->off_duty = $off_duty;
+                    $attendance->clock_in = $clock_in;
+                    $attendance->clock_out = $clock_out;
+                    $attendance->late = $late;
+                    $attendance->early = NULL;
+                    $attendance->absent = NULL;
+                    $attendance->work_time = NULL;
+                    $attendance->att_time = NULL;
+                    $attendance->status = $status;
+                    $attendance->note = $date_match_or_not;
+                    $attendance->save();
+
+                    $day ++;
                 }
-
-                $on_duty = $attendance_data['on_duty'];
-                $off_duty = $attendance_data['off_duty'];
-                $clock_in = $attendance_data['clock_in'];
-                $clock_out = $attendance_data['clock_out'];
-            }else{
-                //echo ' => not found ----';
-
-                $on_duty = NULL;
-                $off_duty = NULL;
-                $clock_in = NULL;
-                $clock_out = NULL;
-                $late = NULL;
-
-                $weekend_check = getWeekendThisDate($current_date);
-                $holiday_check = getHolidayThisDate($current_date);
-                $leave_check = getLeaveThisDate($current_date);
-                if(!empty($weekend_check)){
-                    $status = 'Weekend';
-                }elseif(!empty($holiday_check)){
-                    $status = 'Holiday';
-                }elseif(!empty($leave_check)){
-                    $status = 'Leave';
-//                    if($leave_check == 'Pending'){
-//
-//                    }
-                }else{
-                    $status = '';
-                }
-
-
             }
-
-            $attendance = new Attendance();
-            $attendance->warehouse_id = $employee_data->warehouse_id;
-            $attendance->store_id = $employee_data->store_id;
-            $attendance->employee_id = $employee_data->id;
-            $attendance->card_no = $data['card_no'];
-            $attendance->employee_name = $employee_data->name;
-            $attendance->date = $current_date;
-            $attendance->year = $year;
-            $attendance->month = $month;
-            $attendance->day = $custom_today;
-            $attendance->on_duty = $on_duty;
-            $attendance->off_duty = $off_duty;
-            $attendance->clock_in = $clock_in;
-            $attendance->clock_out = $clock_out;
-            $attendance->late = $late;
-            $attendance->early = NULL;
-            $attendance->absent = NULL;
-            $attendance->work_time = NULL;
-            $attendance->att_time = NULL;
-            $attendance->status = $status;
-            $attendance->save();
-
-            $day ++;
         }
-
-
 
         if($success_insert_flag == true){
             return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);

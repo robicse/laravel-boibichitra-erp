@@ -462,16 +462,50 @@ if (! function_exists('countLateAbsentThisMonth')) {
 }
 
 
+//if (! function_exists('getExcelAttendanceData')) {
+//    function getExcelAttendanceData($datas, $current_date, $employee_card_no)
+//    {
+//        $employeeInfoData = [
+//            'date_match_or_not' => '',
+//            'employee_data' => '',
+//            'attendance_data' => '',
+//        ];
+//
+//        foreach ($datas as $data){
+//            $attendance_date = $data['date'];
+//
+//            $attendance_year = date('Y', strtotime($attendance_date));
+//            $attendance_month = date('m', strtotime($attendance_date));
+//            $attendance_day = date('d', strtotime($attendance_date));
+//            $attendance_update_date = $attendance_year . '-' . $attendance_month . '-' . $attendance_day;
+//            if ($employee_card_no === $data['card_no']) {
+//                $employeeInfoData['attendance_data'] = $data;
+//            }
+//            $employeeInfoData['employee_data'] = DB::table('employees')
+//                ->join('employee_office_informations','employees.id','=','employee_office_informations.employee_id')
+//                ->where('employee_office_informations.card_no',$employee_card_no)
+//                ->select('employees.id','employees.name','employee_office_informations.card_no','employees.warehouse_id','employees.store_id')
+//                ->first();
+//
+//            if ($attendance_update_date === $current_date) {
+//                $employeeInfoData['date_match_or_not'] = $current_date;
+//                break;
+//            }
+//        }
+//        return $employeeInfoData;
+//    }
+//
+//}
+
 if (! function_exists('getExcelAttendanceData')) {
-    function getExcelAttendanceData($datas, $current_date)
+    function getExcelAttendanceData($datas, $current_date, $employee_card_no)
     {
         $employeeInfoData = [
             'date_match_or_not' => '',
-            'employee_data' => '',
             'attendance_data' => '',
         ];
-        $match_or_not = '';
-        foreach ($datas as $data){
+
+        foreach ($datas as $data) {
             $attendance_date = $data['date'];
 
             $attendance_year = date('Y', strtotime($attendance_date));
@@ -479,21 +513,13 @@ if (! function_exists('getExcelAttendanceData')) {
             $attendance_day = date('d', strtotime($attendance_date));
             $attendance_update_date = $attendance_year . '-' . $attendance_month . '-' . $attendance_day;
 
-            $employeeInfoData['attendance_data'] = $data;
-            $employeeInfoData['employee_data'] = DB::table('employees')
-                ->join('employee_office_informations','employees.id','=','employee_office_informations.employee_id')
-                ->where('employee_office_informations.card_no',$data['card_no'])
-                ->select('employees.id','employees.name','employee_office_informations.card_no','employees.warehouse_id','employees.store_id')
-                ->first();
-
-            if ($attendance_update_date === $current_date) {
-                $employeeInfoData['date_match_or_not'] = $current_date;
-                break;
+            if (($attendance_update_date === $current_date) && ($data['card_no'] === $employee_card_no)) {
+                $employeeInfoData['date_match_or_not'] = $data['card_no'];
+                $employeeInfoData['attendance_data'] = $data;
             }
         }
         return $employeeInfoData;
     }
-
 }
 
 if (! function_exists('getWeekendThisDate')) {
