@@ -27,6 +27,17 @@ class DepartmentController extends Controller
             return response()->json(['success'=>false,'response'=>'No Departments List Found!'], $this->failStatus);
         }
     }
+    public function departmentListActive(){
+        $departments = DB::table('departments')->select('id','name','status')->where('status',1)->orderBy('id','desc')->get();
+
+        if($departments)
+        {
+            $success['departments'] =  $departments;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Departments List Found!'], $this->failStatus);
+        }
+    }
 
     public function departmentCreate(Request $request){
 

@@ -28,6 +28,18 @@ class DesignationController extends Controller
         }
     }
 
+    public function designationListActive(){
+        $designations = DB::table('designations')->select('id','name','status')->where('status',1)->orderBy('id','desc')->get();
+
+        if($designations)
+        {
+            $success['designations'] =  $designations;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Designations List Found!'], $this->failStatus);
+        }
+    }
+
     public function designationCreate(Request $request){
 
         $validator = Validator::make($request->all(), [

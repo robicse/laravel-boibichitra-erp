@@ -390,12 +390,14 @@ Route::get('/ssl/redirect/{status}','API\PublicSslCommerzPaymentController@statu
 
 // department
 Route::middleware('auth:api')->get('/department_list', 'API\DepartmentController@departmentList');
+Route::middleware('auth:api')->get('/department_list_active', 'API\DepartmentController@departmentListActive');
 Route::middleware('auth:api')->post('/department_create', 'API\DepartmentController@departmentCreate');
 Route::middleware('auth:api')->post('/department_edit', 'API\DepartmentController@departmentEdit');
 Route::middleware('auth:api')->post('/department_delete', 'API\DepartmentController@departmentDelete');
 
 // designation
 Route::middleware('auth:api')->get('/designation_list', 'API\DesignationController@designationList');
+Route::middleware('auth:api')->get('/designation_list_active', 'API\DesignationController@designationListActive');
 Route::middleware('auth:api')->post('/designation_create', 'API\DesignationController@designationCreate');
 Route::middleware('auth:api')->post('/designation_edit', 'API\DesignationController@designationEdit');
 Route::middleware('auth:api')->post('/designation_delete', 'API\DesignationController@designationDelete');
@@ -420,6 +422,7 @@ Route::middleware('auth:api')->post('/leave_category_delete', 'API\LeaveControll
 
 // Employee
 Route::middleware('auth:api')->get('/employee_list', 'API\EmployeeController@employeeList');
+Route::middleware('auth:api')->get('/employee_list_active', 'API\EmployeeController@employeeListActive');
 Route::middleware('auth:api')->post('/employee_create', 'API\EmployeeController@employeeCreate');
 Route::middleware('auth:api')->post('/employee_edit', 'API\EmployeeController@employeeEdit');
 Route::middleware('auth:api')->post('/employee_delete', 'API\EmployeeController@employeeDelete');

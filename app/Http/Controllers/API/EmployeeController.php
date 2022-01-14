@@ -26,14 +26,45 @@ class EmployeeController extends Controller
 
     // Employee
     public function employeeList(){
-//        $employees = DB::table('employees')
-//            ->select('id','name','email','phone','gender','date_of_birth','blood_group','national_id','marital_status','present_address','permanent_address','status')
-//            ->orderBy('id','desc')
-//            ->get();
-
         $employees = DB::table('employees')
             ->join('warehouses','employees.warehouse_id','warehouses.id')
             ->leftJoin('stores','employees.store_id','stores.id')
+            ->select(
+                'employees.id',
+                'employees.name',
+                'employees.email',
+                'employees.phone',
+                'employees.gender',
+                'employees.date_of_birth',
+                'employees.blood_group',
+                'employees.national_id',
+                'employees.marital_status',
+                'employees.present_address',
+                'employees.permanent_address',
+                'employees.status',
+                'employees.image',
+                'warehouses.id as warehouse_id',
+                'warehouses.name as warehouse_name',
+                'stores.id as store_id',
+                'stores.name as store_name'
+            )
+            ->orderBy('id','desc')
+            ->get();
+
+        if($employees)
+        {
+            $success['employees'] =  $employees;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Employees List Found!'], $this->failStatus);
+        }
+    }
+
+    public function employeeListActive(){
+        $employees = DB::table('employees')
+            ->join('warehouses','employees.warehouse_id','warehouses.id')
+            ->leftJoin('stores','employees.store_id','stores.id')
+            ->where('employees.status',1)
             ->select(
                 'employees.id',
                 'employees.name',
