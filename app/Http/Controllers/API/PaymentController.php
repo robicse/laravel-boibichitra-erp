@@ -114,7 +114,7 @@ class PaymentController extends Controller
             $order_by = $request->order_by;
 
             if($order_by == 'asc'){
-                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
                     ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
                     ->where('parties.customer_type','Whole Sale')
                     ->where('name','like','%'.$search.'%')
@@ -123,7 +123,7 @@ class PaymentController extends Controller
                     ->orderBy('total_amount', 'ASC')
                     ->paginate(12);
             }else{
-                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
                     ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
                     ->where('parties.customer_type','Whole Sale')
                     ->where('name','like','%'.$search.'%')
@@ -136,14 +136,14 @@ class PaymentController extends Controller
         }else{
             $order_by = $request->order_by;
             if($order_by == 'asc'){
-                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
                     ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
                     ->where('parties.customer_type','Whole Sale')
                     ->groupBy('parties.id')
                     ->orderBy('total_amount', 'ASC')
                     ->paginate(12);
             }else{
-                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
                     ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
                     ->where('parties.customer_type','Whole Sale')
                     ->groupBy('parties.id')
@@ -209,7 +209,7 @@ class PaymentController extends Controller
             $order_by = $request->order_by;
 
             if($order_by == 'asc'){
-                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
                     ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
                     ->where('parties.customer_type','POS Sale')
                     ->where('name','like','%'.$search.'%')
@@ -218,7 +218,7 @@ class PaymentController extends Controller
                     ->orderBy('total_amount', 'ASC')
                     ->paginate(12);
             }else{
-                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
                     ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
                     ->where('parties.customer_type','POS Sale')
                     ->where('name','like','%'.$search.'%')
@@ -231,14 +231,14 @@ class PaymentController extends Controller
         }else{
             $order_by = $request->order_by;
             if($order_by == 'asc'){
-                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
                     ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
                     ->where('parties.customer_type','POS Sale')
                     ->groupBy('parties.id')
                     ->orderBy('total_amount', 'ASC')
                     ->paginate(12);
             }else{
-                $parties = ProductSale::join('parties','product_sales.party_id','parties.id')
+                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
                     ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
                     ->where('parties.customer_type','POS Sale')
                     ->groupBy('parties.id')
