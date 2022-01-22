@@ -45,7 +45,7 @@ class ProductWholeSaleCollection extends ResourceCollection
     {
         return [
             'success' => true,
-            'status' => 200
+            'code' => 200
         ];
     }
 }

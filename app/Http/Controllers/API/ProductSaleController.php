@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\ChartOfAccount;
 use App\ChartOfAccountTransaction;
 use App\ChartOfAccountTransactionDetail;
+use App\Helpers\APIHelpers;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductWholeSaleCollection;
 use App\Party;
@@ -26,6 +27,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class ProductSaleController extends Controller
 {
@@ -138,682 +140,219 @@ class ProductSaleController extends Controller
     }
 
     public function productWholeSaleListPaginationWithSearch(Request $request){
-        if($request->search){
-            $product_whole_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
-                ->where('product_sales.sale_type','whole_sale')
-                ->where('product_sales.invoice_no','like','%'.$request->search.'%')
-                ->orWhere('parties.name','like','%'.$request->search.'%')
-                ->select(
-                    'product_sales.id',
-                    'product_sales.invoice_no',
-                    'product_sales.sale_date',
-                    'product_sales.sub_total',
-                    'product_sales.miscellaneous_comment',
-                    'product_sales.miscellaneous_charge',
-                    'product_sales.discount_type',
-                    'product_sales.discount_percent',
-                    'product_sales.discount_amount',
-                    'product_sales.total_vat_amount',
-                    'product_sales.after_discount_amount',
-                    'product_sales.total_amount',
-                    'product_sales.paid_amount',
-                    'product_sales.due_amount',
-                    'product_sales.sale_date_time',
-                    'product_sales.user_id',
-                    'product_sales.party_id',
-                    'product_sales.warehouse_id'
-                //'warehouses.id as warehouse_id',
-                //'warehouses.name as warehouse_name'
-                //'users.name as user_name',
-                //'parties.id as customer_id',
-                //'parties.name as customer_name',
-                //'parties.phone as customer_phone',
-                //'parties.email as customer_email',
-                //'parties.address as customer_address',
-                )
-                ->orderBy('product_sales.id','desc')
-                ->paginate(12);
-            return new ProductWholeSaleCollection($product_whole_sales);
-        }else{
-            return new ProductWholeSaleCollection(ProductSale::where('sale_type','whole_sale')->latest()->paginate(12));
-        }
+        try {
+            if($request->search){
+                $product_whole_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
+                    ->where('product_sales.sale_type','whole_sale')
+                    ->where('product_sales.invoice_no','like','%'.$request->search.'%')
+                    ->orWhere('parties.name','like','%'.$request->search.'%')
+                    ->select(
+                        'product_sales.id',
+                        'product_sales.invoice_no',
+                        'product_sales.sale_date',
+                        'product_sales.sub_total',
+                        'product_sales.miscellaneous_comment',
+                        'product_sales.miscellaneous_charge',
+                        'product_sales.discount_type',
+                        'product_sales.discount_percent',
+                        'product_sales.discount_amount',
+                        'product_sales.total_vat_amount',
+                        'product_sales.after_discount_amount',
+                        'product_sales.total_amount',
+                        'product_sales.paid_amount',
+                        'product_sales.due_amount',
+                        'product_sales.sale_date_time',
+                        'product_sales.user_id',
+                        'product_sales.party_id',
+                        'product_sales.warehouse_id'
+                    )
+                    ->orderBy('product_sales.id','desc')
+                    ->paginate(12);
 
+            }else{
+                $product_whole_sales = ProductSale::where('sale_type','whole_sale')->latest()->paginate(12);
+            }
+
+            if($product_whole_sales === null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Product Sale Found.',null);
+                return response()->json($response,404);
+            }else{
+                return new ProductWholeSaleCollection($product_whole_sales);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
+        }
     }
 
     public function productWholeSaleDetails(Request $request){
-        $product_sale_details = DB::table('product_sales')
-            ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
-            ->leftJoin('products','product_sale_details.product_id','products.id')
-            ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
-            ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
-            ->where('product_sales.id',$request->product_sale_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sales.paid_amount','product_sales.due_amount','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as whole_sale_price','product_sale_details.vat_amount')
-            ->get();
+        try {
+            $product_sale_details = DB::table('product_sales')
+                ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
+                ->leftJoin('products','product_sale_details.product_id','products.id')
+                ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
+                ->where('product_sales.id',$request->product_sale_id)
+                ->select(
+                    'products.id as product_id',
+                    'products.name as product_name',
+                    'product_units.id as product_unit_id',
+                    'product_units.name as product_unit_name',
+                    'product_brands.id as product_brand_id',
+                    'product_brands.name as product_brand_name',
+                    'product_sales.warehouse_id',
+                    'product_sales.paid_amount',
+                    'product_sales.due_amount',
+                    'product_sale_details.qty',
+                    'product_sale_details.id as product_sale_detail_id',
+                    'product_sale_details.price as whole_sale_price',
+                    'product_sale_details.vat_amount'
+                )
+                ->get();
 
-        if($product_sale_details)
-        {
-            $success['product_whole_sale_details'] =  $product_sale_details;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Product Whole Sale Detail Found!'], $this->failStatus);
+            $sale_product = [];
+            if(count($product_sale_details) > 0){
+                foreach ($product_sale_details as $product_sale_detail){
+                    $current_stock = warehouseProductCurrentStock($product_sale_detail->warehouse_id,$product_sale_detail->product_id);
+
+                    $nested_data['product_id']=$product_sale_detail->product_id;
+                    $nested_data['product_name']=$product_sale_detail->product_name;
+                    $nested_data['product_unit_id']=$product_sale_detail->product_unit_id;
+                    $nested_data['product_unit_name']=$product_sale_detail->product_unit_name;
+                    $nested_data['product_brand_id']=$product_sale_detail->product_brand_id;
+                    $nested_data['product_brand_name']=$product_sale_detail->product_brand_name;
+                    $nested_data['paid_amount']=$product_sale_detail->paid_amount;
+                    $nested_data['due_amount']=$product_sale_detail->due_amount;
+                    $nested_data['qty']=$product_sale_detail->qty;
+                    $nested_data['product_sale_detail_id']=$product_sale_detail->product_sale_detail_id;
+                    $nested_data['whole_sale_price']=$product_sale_detail->whole_sale_price;
+                    $nested_data['vat_amount']=$product_sale_detail->vat_amount;
+                    $nested_data['current_stock']=$current_stock;
+
+                    array_push($sale_product, $nested_data);
+                }
+            }
+
+            if($product_sale_details === null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Product Whole Sale Detail Found.',null);
+                return response()->json($response,404);
+            }else{
+                $response = APIHelpers::createAPIResponse(false,200,'',$sale_product);
+                return response()->json($response,200);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function productWholeSaleCreate(Request $request){
 
-        //dd($request->all());
-        //return response()->json(['success'=>true,'response' => $request->all()], $this->successStatus);
-        $this->validate($request, [
-            'party_id'=> 'required',
-            //'store_id'=> 'required',
-            'warehouse_id'=> 'required',
-            'paid_amount'=> 'required',
-            'due_amount'=> 'required',
-            'total_amount'=> 'required',
-            'payment_type'=> 'required',
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'party_id'=> 'required',
+                //'store_id'=> 'required',
+                'warehouse_id'=> 'required',
+                'paid_amount'=> 'required',
+                'due_amount'=> 'required',
+                'total_amount'=> 'required',
+                'payment_type'=> 'required',
+            ]);
 
-        $get_invoice_no = ProductSale::latest()->pluck('invoice_no')->first();
-        if(!empty($get_invoice_no)){
-            $get_invoice = str_replace("sale-","",$get_invoice_no);
-            $invoice_no = $get_invoice+1;
-        }else{
-            $invoice_no = 100000;
-        }
-        $final_invoice = 'sale-'.$invoice_no;
-//        $final_invoice = $request->invoice_no;
-
-        $date = $request->date;
-        $date_time = $date." ".date('h:i:s');
-        $add_two_day_date =  date('Y-m-d', strtotime($date. ' + 2 days'));
-
-        $user_id = Auth::user()->id;
-        $warehouse_id = $request->warehouse_id;
-
-
-
-        // product purchase
-        $productSale = new ProductSale();
-        $productSale->invoice_no = $final_invoice;
-        $productSale->user_id = $user_id;
-        $productSale->store_id = NULL;
-        $productSale->warehouse_id = $warehouse_id;
-        $productSale->party_id = $request->party_id;
-        $productSale->sale_type = 'whole_sale';
-        $productSale->sub_total = $request->sub_total;
-        $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
-        $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
-        $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
-        $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
-        $productSale->miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
-        $productSale->total_vat_amount = $request->total_vat_amount;
-        $productSale->total_amount = $request->total_amount;
-        $productSale->paid_amount = $request->paid_amount;
-        $productSale->due_amount = $request->due_amount;
-        $productSale->sale_date = $date;
-        $productSale->sale_date_time = $date_time;
-        $productSale->save();
-        $insert_id = $productSale->id;
-
-        if($insert_id)
-        {
-            // for postman testing
-
-            // for live testing
-            foreach ($request->products as $data) {
-
-                $product_id =  $data['product_id'];
-
-                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
-                $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
-
-                // discount start
-                $price = $data['mrp_price'];
-                $discount_amount = $request->discount_amount;
-                $total_amount = $request->total_amount;
-
-                $final_discount_amount = (float)$discount_amount * (float)$price;
-                $final_total_amount = (float)$discount_amount + (float)$total_amount;
-                $discount_type = $request->discount_type;
-                $discount = (float)$final_discount_amount/(float)$final_total_amount;
-                if($discount_type != NULL){
-                    if($discount_type == 'Flat'){
-                        $discount = round($discount);
-                    }
-                }
-                // discount end
-
-                // product sale detail
-                $product_sale_detail = new ProductSaleDetail();
-                $product_sale_detail->product_sale_id = $insert_id;
-                $product_sale_detail->product_unit_id = $data['product_unit_id'];
-                $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $product_sale_detail->product_id = $product_id;
-                $product_sale_detail->purchase_price = $get_purchase_price;
-                $product_sale_detail->qty = $data['qty'];
-                $product_sale_detail->price = $data['mrp_price'];
-                $product_sale_detail->discount = $discount;
-                //$product_sale_detail->vat_amount = $data['vat_amount'];
-                $product_sale_detail->vat_amount = 0;
-                //$product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
-                $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']);
-                $product_sale_detail->barcode = $barcode;
-                $product_sale_detail->sale_date = $date;
-                $product_sale_detail->return_among_day = 2;
-                $product_sale_detail->return_last_date = $add_two_day_date;
-                $product_sale_detail->save();
-
-                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('stock_where','warehouse')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
-                if(!empty($check_previous_stock)){
-                    $previous_stock = $check_previous_stock;
-                }else{
-                    $previous_stock = 0;
-                }
-
-                // product stock
-                $stock = new Stock();
-                $stock->ref_id = $insert_id;
-                $stock->user_id = $user_id;
-                $stock->warehouse_id = $warehouse_id;
-                $stock->store_id = NULL;
-                $stock->product_id = $product_id;
-                $stock->product_unit_id = $data['product_unit_id'];
-                $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $stock->stock_type = 'whole_sale';
-                $stock->stock_where = 'warehouse';
-                $stock->stock_in_out = 'stock_out';
-                $stock->previous_stock = $previous_stock;
-                $stock->stock_in = 0;
-                $stock->stock_out = $data['qty'];
-                $stock->current_stock = $previous_stock - $data['qty'];
-                $stock->stock_date = $date;
-                $stock->stock_date_time = $date_time;
-                $stock->save();
-
-
-                // warehouse current stock
-                $update_warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)
-                    ->where('product_id',$product_id)
-                    ->first();
-
-                $exists_current_stock = $update_warehouse_current_stock->current_stock;
-                $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
-                $update_warehouse_current_stock->current_stock=$final_warehouse_current_stock;
-                $update_warehouse_current_stock->save();
-
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
             }
 
-            // N.B: whole sale kono paid hobe na
-
-            // transaction
-//            $transaction = new Transaction();
-//            $transaction->ref_id = $insert_id;
-//            $transaction->invoice_no = $final_invoice;
-//            $transaction->user_id = $user_id;
-//            $transaction->warehouse_id = $warehouse_id;
-//            $transaction->store_id = NULL;
-//            $transaction->party_id = $request->party_id;
-//            $transaction->transaction_type = 'whole_sale';
-//            $transaction->payment_type = $request->payment_type;
-//            $transaction->amount = $request->paid_amount;
-//            $transaction->transaction_date = $date;
-//            $transaction->transaction_date_time = $date_time;
-//            $transaction->save();
-//            $transaction_id = $transaction->id;
-//
-//            // payment paid
-//            $payment_collection = new PaymentCollection();
-//            $payment_collection->invoice_no = $final_invoice;
-//            $payment_collection->product_sale_id = $insert_id;
-//            $payment_collection->user_id = $user_id;
-//            $payment_collection->party_id = $request->party_id;
-//            $payment_collection->warehouse_id = $warehouse_id;
-//            $payment_collection->collection_type = 'Sale';
-//            $payment_collection->collection_amount = $request->paid_amount;
-//            $payment_collection->due_amount = $request->due_amount;
-//            $payment_collection->current_collection_amount = $request->paid_amount;
-//            $payment_collection->collection_date = $date;
-//            $payment_collection->collection_date_time = $date_time;
-//            $payment_collection->save();
-//
-//            if($request->paid_amount > 0){
-//                // posting
-//                $month = date('m', strtotime($request->date));
-//                $year = date('Y', strtotime($request->date));
-//                $transaction_date_time = date('Y-m-d H:i:s');
-//
-//                $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
-//                $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
-//                if(!empty($get_voucher_no)){
-//                    $get_voucher_name_str = $get_voucher_name."-";
-//                    $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
-//                    $voucher_no = $get_voucher+1;
-//                }else{
-//                    $voucher_no = 8000;
-//                }
-//                $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
-//                $chart_of_account_transactions = new ChartOfAccountTransaction();
-//                $chart_of_account_transactions->ref_id = $insert_id;
-//                $chart_of_account_transactions->transaction_type = 'Sales';
-//                $chart_of_account_transactions->user_id = $user_id;
-//                $chart_of_account_transactions->store_id = NULL;
-//                $chart_of_account_transactions->voucher_type_id = 2;
-//                $chart_of_account_transactions->voucher_no = $final_voucher_no;
-//                $chart_of_account_transactions->is_approved = 'approved';
-//                $chart_of_account_transactions->transaction_date = $date;
-//                $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
-//                $chart_of_account_transactions->save();
-//                $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
-//
-//                if($chart_of_account_transactions_insert_id){
-//
-//                    // sales
-//                    $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
-//                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                    $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
-//                    $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
-//                    $chart_of_account_transaction_details->chart_of_account_name = 'Sales';
-//                    $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
-//                    $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
-//                    $chart_of_account_transaction_details->debit = NULL;
-//                    $chart_of_account_transaction_details->credit = $request->paid_amount;
-//                    $chart_of_account_transaction_details->description = 'Income From Sales';
-//                    $chart_of_account_transaction_details->year = $year;
-//                    $chart_of_account_transaction_details->month = $month;
-//                    $chart_of_account_transaction_details->transaction_date = $date;
-//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                    $chart_of_account_transaction_details->save();
-//
-//                    // cash
-//                    if($request->payment_type == 'Cash'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Cash In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Check'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Check';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Check In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Card'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Card';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Card In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Bkash'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Bkash In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Nogod'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Nogod In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Rocket'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Rocket In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Upay'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Upay In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }else{
-//
-//                    }
-//                }
-//            }
-
-
-            if($request->payment_type == 'SSL Commerz'){
-                return response()->json(['success'=>true,'transaction_id' => '','payment_type' => $request->payment_type], $this->successStatus);
+            $get_invoice_no = ProductSale::latest()->pluck('invoice_no')->first();
+            if(!empty($get_invoice_no)){
+                $get_invoice = str_replace("sale-","",$get_invoice_no);
+                $invoice_no = $get_invoice+1;
             }else{
-                return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+                $invoice_no = 100000;
             }
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
-        }
-    }
+            $final_invoice = 'sale-'.$invoice_no;
 
-    public function productWholeSaleEdit(Request $request){
-        //dd($request->all());
-        $this->validate($request, [
-            'product_sale_id'=> 'required',
-            'party_id'=> 'required',
-            //'store_id'=> 'required',
-            'warehouse_id'=> 'required',
-            'paid_amount'=> 'required',
-            'due_amount'=> 'required',
-            'total_amount'=> 'required',
-            'payment_type'=> 'required',
-        ]);
+            $date = $request->date;
+            $date_time = $date." ".date('h:i:s');
+            $add_two_day_date =  date('Y-m-d', strtotime($date. ' + 2 days'));
 
-        $date = $request->date;
-        $date_time = $date." ".date('h:i:s');
-        $add_two_day_date =  date('Y-m-d', strtotime($date. ' + 2 days'));
+            $user_id = Auth::user()->id;
+            $warehouse_id = $request->warehouse_id;
 
-        $user_id = Auth::user()->id;
-        $warehouse_id = $request->warehouse_id;
+            // product purchase
+            $productSale = new ProductSale();
+            $productSale->invoice_no = $final_invoice;
+            $productSale->user_id = $user_id;
+            $productSale->store_id = NULL;
+            $productSale->warehouse_id = $warehouse_id;
+            $productSale->party_id = $request->party_id;
+            $productSale->sale_type = 'whole_sale';
+            $productSale->sub_total = $request->sub_total;
+            $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
+            $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
+            $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+            $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
+            $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
+            $productSale->miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
+            $productSale->total_vat_amount = $request->total_vat_amount;
+            $productSale->total_amount = $request->total_amount;
+            $productSale->paid_amount = $request->paid_amount;
+            $productSale->due_amount = $request->due_amount;
+            $productSale->sale_date = $date;
+            $productSale->sale_date_time = $date_time;
+            $productSale->save();
+            $insert_id = $productSale->id;
 
+            if($insert_id)
+            {
+                // for postman testing
 
-        // product purchase
-        $productSale = ProductSale::find($request->product_sale_id);
-        $previous_paid_amount = $productSale->paid_amount;
-        $productSale->user_id = $user_id;
-        $productSale->party_id = $request->party_id;
-        $productSale->warehouse_id = $warehouse_id;
-        $productSale->store_id = NULL;
-        $productSale->sub_total = $request->sub_total;
-        $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
-        $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
-        $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
-        $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
-        $productSale->miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
-        $productSale->paid_amount = $request->paid_amount;
-        $productSale->due_amount = $request->due_amount;
-        $productSale->total_vat_amount = $request->total_vat_amount;
-        $productSale->total_amount = $request->total_amount;
-        $productSale->update();
-        $affectedRows = $productSale->id;
-        if($affectedRows)
-        {
-            foreach ($request->products as $data) {
+                // for live testing
+                foreach ($request->products as $data) {
 
-//                $product_id = $data['product_id'];
-//                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
-//
-//                $product_sale_detail_id = $data['product_sale_detail_id'];
-//                // product purchase detail
-//                $product_sale_detail = ProductSaleDetail::find($product_sale_detail_id);
-//                $previous_sale_qty = $product_sale_detail->qty;
-//                $product_sale_detail->product_unit_id = $data['product_unit_id'];
-//                $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-//                $product_sale_detail->product_id = $product_id;
-//                $product_sale_detail->qty = $data['qty'];
-//                $product_sale_detail->vat_amount = $data['vat_amount'];
-//                $product_sale_detail->price = $data['mrp_price'];
-//                $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
-//                $product_sale_detail->barcode = $barcode;
-//                $product_sale_detail->return_last_date = $add_two_day_date;
-//                $product_sale_detail->update();
-//
-//
-//                // product stock
-//                // product stock
-//                $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
-//                $current_stock = $stock_row->current_stock;
-//
-//                // warehouse current stock
-//                $update_warehouse_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
-//                    ->where('product_id',$product_id)
-//                    ->first();
-//                $exists_current_stock = $update_warehouse_current_stock->current_stock;
-//
-//                if($stock_row->stock_out != $data['qty']){
-//
-//                    if($data['qty'] > $stock_row->stock_in){
-//                        $new_stock_out = $data['qty'] - $previous_sale_qty;
-//
-//                        $stock = new Stock();
-//                        $stock->ref_id=$request->product_sale_id;
-//                        $stock->user_id=$user_id;
-//                        $stock->product_unit_id= $data['product_unit_id'];
-//                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-//                        $stock->product_id= $product_id;
-//                        $stock->stock_type='whole_sale_increase';
-//                        $stock->warehouse_id= $warehouse_id;
-//                        $stock->store_id=NULL;
-//                        $stock->stock_where='warehouse';
-//                        $stock->stock_in_out='stock_out';
-//                        $stock->previous_stock=$current_stock;
-//                        $stock->stock_in=0;
-//                        $stock->stock_out=$new_stock_out;
-//                        $stock->current_stock=$current_stock - $new_stock_out;
-//                        $stock->stock_date=$date;
-//                        $stock->stock_date_time=$date_time;
-//                        $stock->save();
-//
-//                        // warehouse current stock
-//                        $update_warehouse_current_stock->current_stock=$exists_current_stock - $new_stock_out;
-//                        $update_warehouse_current_stock->save();
-//                    }else{
-//                        $new_stock_in = $previous_sale_qty - $data['qty'];
-//
-//                        $stock = new Stock();
-//                        $stock->ref_id=$request->product_sale_id;
-//                        $stock->user_id=$user_id;
-//                        $stock->product_unit_id= $data['product_unit_id'];
-//                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-//                        $stock->product_id= $product_id;
-//                        $stock->stock_type='whole_sale_decrease';
-//                        $stock->warehouse_id= $warehouse_id;
-//                        $stock->store_id=NULL;
-//                        $stock->stock_where='warehouse';
-//                        $stock->stock_in_out='stock_in';
-//                        $stock->previous_stock=$current_stock;
-//                        $stock->stock_in=$new_stock_in;
-//                        $stock->stock_out=0;
-//                        $stock->current_stock=$current_stock + $new_stock_in;
-//                        $stock->stock_date=$date;
-//                        $stock->stock_date_time=$date_time;
-//                        $stock->save();
-//
-//                        // warehouse current stock
-//                        $update_warehouse_current_stock->current_stock=$exists_current_stock + $new_stock_in;
-//                        $update_warehouse_current_stock->save();
-//                    }
-//                }
+                    $product_id =  $data['product_id'];
 
-
-
-
-
-
-
-
-
-
-                //previous product
-                if($data['new_status'] == 0){
-                    $product_id = $data['product_id'];
                     $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
                     $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
 
-                    $product_sale_detail_id = $data['product_sale_detail_id'];
-                    // product purchase detail
-                    $product_sale_detail = ProductSaleDetail::find($product_sale_detail_id);
-                    $previous_sale_qty = $product_sale_detail->qty;
+                    // discount start
+                    $price = $data['mrp_price'];
+                    $discount_amount = $request->discount_amount;
+                    $total_amount = $request->total_amount;
+
+                    $final_discount_amount = (float)$discount_amount * (float)$price;
+                    $final_total_amount = (float)$discount_amount + (float)$total_amount;
+                    $discount_type = $request->discount_type;
+                    $discount = (float)$final_discount_amount/(float)$final_total_amount;
+                    if($discount_type != NULL){
+                        if($discount_type == 'Flat'){
+                            $discount = round($discount);
+                        }
+                    }
+                    // discount end
+
+                    // product sale detail
+                    $product_sale_detail = new ProductSaleDetail();
+                    $product_sale_detail->product_sale_id = $insert_id;
                     $product_sale_detail->product_unit_id = $data['product_unit_id'];
                     $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
                     $product_sale_detail->product_id = $product_id;
                     $product_sale_detail->purchase_price = $get_purchase_price;
                     $product_sale_detail->qty = $data['qty'];
+                    $product_sale_detail->price = $data['mrp_price'];
+                    $product_sale_detail->discount = $discount;
                     //$product_sale_detail->vat_amount = $data['vat_amount'];
                     $product_sale_detail->vat_amount = 0;
-                    $product_sale_detail->price = $data['mrp_price'];
                     //$product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
                     $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']);
-                    $product_sale_detail->barcode = $barcode;
-                    $product_sale_detail->return_last_date = $add_two_day_date;
-                    $product_sale_detail->update();
-
-
-                    // product stock
-                    // product stock
-                    $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
-                    $current_stock = $stock_row->current_stock;
-
-                    // warehouse current stock
-                    $update_warehouse_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
-                        ->where('product_id',$product_id)
-                        ->first();
-                    $exists_current_stock = $update_warehouse_current_stock->current_stock;
-
-                    if($stock_row->stock_out != $data['qty']){
-
-                        if($data['qty'] > $stock_row->stock_in){
-                            $new_stock_out = $data['qty'] - $previous_sale_qty;
-
-                            $stock = new Stock();
-                            $stock->ref_id=$request->product_sale_id;
-                            $stock->user_id=$user_id;
-                            $stock->product_unit_id= $data['product_unit_id'];
-                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                            $stock->product_id= $product_id;
-                            $stock->stock_type='whole_sale_increase';
-                            $stock->warehouse_id= $warehouse_id;
-                            $stock->store_id=NULL;
-                            $stock->stock_where='warehouse';
-                            $stock->stock_in_out='stock_out';
-                            $stock->previous_stock=$current_stock;
-                            $stock->stock_in=0;
-                            $stock->stock_out=$new_stock_out;
-                            $stock->current_stock=$current_stock - $new_stock_out;
-                            $stock->stock_date=$date;
-                            $stock->stock_date_time=$date_time;
-                            $stock->save();
-
-                            // warehouse current stock
-                            $update_warehouse_current_stock->current_stock=$exists_current_stock - $new_stock_out;
-                            $update_warehouse_current_stock->save();
-                        }else{
-                            $new_stock_in = $previous_sale_qty - $data['qty'];
-
-                            $stock = new Stock();
-                            $stock->ref_id=$request->product_sale_id;
-                            $stock->user_id=$user_id;
-                            $stock->product_unit_id= $data['product_unit_id'];
-                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                            $stock->product_id= $product_id;
-                            $stock->stock_type='whole_sale_decrease';
-                            $stock->warehouse_id= $warehouse_id;
-                            $stock->store_id=NULL;
-                            $stock->stock_where='warehouse';
-                            $stock->stock_in_out='stock_in';
-                            $stock->previous_stock=$current_stock;
-                            $stock->stock_in=$new_stock_in;
-                            $stock->stock_out=0;
-                            $stock->current_stock=$current_stock + $new_stock_in;
-                            $stock->stock_date=$date;
-                            $stock->stock_date_time=$date_time;
-                            $stock->save();
-
-                            // warehouse current stock
-                            $update_warehouse_current_stock->current_stock=$exists_current_stock + $new_stock_in;
-                            $update_warehouse_current_stock->save();
-                        }
-                    }
-                }
-                //add new product
-                elseif($data['new_status'] == 1){
-                    $product_id =  $data['product_id'];
-                    $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
-
-                    // product sale detail
-                    $product_sale_detail = new ProductSaleDetail();
-                    $product_sale_detail->product_sale_id = $request->product_sale_id;
-                    $product_sale_detail->product_unit_id = $data['product_unit_id'];
-                    $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                    $product_sale_detail->product_id = $product_id;
-                    $product_sale_detail->qty = $data['qty'];
-                    $product_sale_detail->price = $data['mrp_price'];
-                    $product_sale_detail->vat_amount = $data['vat_amount'];
-                    $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
                     $product_sale_detail->barcode = $barcode;
                     $product_sale_detail->sale_date = $date;
                     $product_sale_detail->return_among_day = 2;
                     $product_sale_detail->return_last_date = $add_two_day_date;
                     $product_sale_detail->save();
-
 
                     $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('stock_where','warehouse')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
                     if(!empty($check_previous_stock)){
@@ -824,7 +363,7 @@ class ProductSaleController extends Controller
 
                     // product stock
                     $stock = new Stock();
-                    $stock->ref_id = $request->product_sale_id;
+                    $stock->ref_id = $insert_id;
                     $stock->user_id = $user_id;
                     $stock->warehouse_id = $warehouse_id;
                     $stock->store_id = NULL;
@@ -852,291 +391,825 @@ class ProductSaleController extends Controller
                     $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
                     $update_warehouse_current_stock->current_stock=$final_warehouse_current_stock;
                     $update_warehouse_current_stock->save();
-                }else{
-                    return response()->json(['success'=>false,'response'=>'No Found Previous or New Product!'], $this->failStatus);
+
+                }
+
+                // N.B: whole sale kono paid hobe na
+
+                // transaction
+    //            $transaction = new Transaction();
+    //            $transaction->ref_id = $insert_id;
+    //            $transaction->invoice_no = $final_invoice;
+    //            $transaction->user_id = $user_id;
+    //            $transaction->warehouse_id = $warehouse_id;
+    //            $transaction->store_id = NULL;
+    //            $transaction->party_id = $request->party_id;
+    //            $transaction->transaction_type = 'whole_sale';
+    //            $transaction->payment_type = $request->payment_type;
+    //            $transaction->amount = $request->paid_amount;
+    //            $transaction->transaction_date = $date;
+    //            $transaction->transaction_date_time = $date_time;
+    //            $transaction->save();
+    //            $transaction_id = $transaction->id;
+    //
+    //            // payment paid
+    //            $payment_collection = new PaymentCollection();
+    //            $payment_collection->invoice_no = $final_invoice;
+    //            $payment_collection->product_sale_id = $insert_id;
+    //            $payment_collection->user_id = $user_id;
+    //            $payment_collection->party_id = $request->party_id;
+    //            $payment_collection->warehouse_id = $warehouse_id;
+    //            $payment_collection->collection_type = 'Sale';
+    //            $payment_collection->collection_amount = $request->paid_amount;
+    //            $payment_collection->due_amount = $request->due_amount;
+    //            $payment_collection->current_collection_amount = $request->paid_amount;
+    //            $payment_collection->collection_date = $date;
+    //            $payment_collection->collection_date_time = $date_time;
+    //            $payment_collection->save();
+    //
+    //            if($request->paid_amount > 0){
+    //                // posting
+    //                $month = date('m', strtotime($request->date));
+    //                $year = date('Y', strtotime($request->date));
+    //                $transaction_date_time = date('Y-m-d H:i:s');
+    //
+    //                $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
+    //                $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
+    //                if(!empty($get_voucher_no)){
+    //                    $get_voucher_name_str = $get_voucher_name."-";
+    //                    $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+    //                    $voucher_no = $get_voucher+1;
+    //                }else{
+    //                    $voucher_no = 8000;
+    //                }
+    //                $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+    //                $chart_of_account_transactions = new ChartOfAccountTransaction();
+    //                $chart_of_account_transactions->ref_id = $insert_id;
+    //                $chart_of_account_transactions->transaction_type = 'Sales';
+    //                $chart_of_account_transactions->user_id = $user_id;
+    //                $chart_of_account_transactions->store_id = NULL;
+    //                $chart_of_account_transactions->voucher_type_id = 2;
+    //                $chart_of_account_transactions->voucher_no = $final_voucher_no;
+    //                $chart_of_account_transactions->is_approved = 'approved';
+    //                $chart_of_account_transactions->transaction_date = $date;
+    //                $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+    //                $chart_of_account_transactions->save();
+    //                $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
+    //
+    //                if($chart_of_account_transactions_insert_id){
+    //
+    //                    // sales
+    //                    $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
+    //                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                    $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
+    //                    $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
+    //                    $chart_of_account_transaction_details->chart_of_account_name = 'Sales';
+    //                    $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
+    //                    $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
+    //                    $chart_of_account_transaction_details->debit = NULL;
+    //                    $chart_of_account_transaction_details->credit = $request->paid_amount;
+    //                    $chart_of_account_transaction_details->description = 'Income From Sales';
+    //                    $chart_of_account_transaction_details->year = $year;
+    //                    $chart_of_account_transaction_details->month = $month;
+    //                    $chart_of_account_transaction_details->transaction_date = $date;
+    //                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                    $chart_of_account_transaction_details->save();
+    //
+    //                    // cash
+    //                    if($request->payment_type == 'Cash'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Cash In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Check'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Check';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Check In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Card'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Card';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Card In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Bkash'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Bkash In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Nogod'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Nogod In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Rocket'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Rocket In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Upay'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Upay In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }else{
+    //
+    //                    }
+    //                }
+    //            }
+
+
+//                if($request->payment_type == 'SSL Commerz'){
+//                    return response()->json(['success'=>true,'transaction_id' => '','payment_type' => $request->payment_type], $this->successStatus);
+//                }else{
+//                    return response()->json(['success'=>true,'response' => 'Inserted Successfully.'], $this->successStatus);
+//                }
+                $response = APIHelpers::createAPIResponse(false,201,'Product Whole Sale Added Successfully.',null);
+                return response()->json($response,201);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Product Whole Sale Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
+        }
+    }
+
+    public function productWholeSaleEdit(Request $request){
+        try {
+            $this->validate($request, [
+                'product_sale_id'=> 'required',
+                'party_id'=> 'required',
+                //'store_id'=> 'required',
+                'warehouse_id'=> 'required',
+                'paid_amount'=> 'required',
+                'due_amount'=> 'required',
+                'total_amount'=> 'required',
+                'payment_type'=> 'required',
+            ]);
+
+            $date = $request->date;
+            $date_time = $date." ".date('h:i:s');
+            $add_two_day_date =  date('Y-m-d', strtotime($date. ' + 2 days'));
+
+            $user_id = Auth::user()->id;
+            $warehouse_id = $request->warehouse_id;
+
+
+            // product purchase
+            $productSale = ProductSale::find($request->product_sale_id);
+            $previous_paid_amount = $productSale->paid_amount;
+            $productSale->user_id = $user_id;
+            $productSale->party_id = $request->party_id;
+            $productSale->warehouse_id = $warehouse_id;
+            $productSale->store_id = NULL;
+            $productSale->sub_total = $request->sub_total;
+            $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
+            $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
+            $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+            $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
+            $productSale->miscellaneous_comment = $request->miscellaneous_comment ? $request->miscellaneous_comment : NULL;
+            $productSale->miscellaneous_charge = $request->miscellaneous_charge ? $request->miscellaneous_charge : 0;
+            $productSale->paid_amount = $request->paid_amount;
+            $productSale->due_amount = $request->due_amount;
+            $productSale->total_vat_amount = $request->total_vat_amount;
+            $productSale->total_amount = $request->total_amount;
+            $productSale->update();
+            $affectedRows = $productSale->id;
+            if($affectedRows)
+            {
+                foreach ($request->products as $data) {
+
+    //                $product_id = $data['product_id'];
+    //                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+    //
+    //                $product_sale_detail_id = $data['product_sale_detail_id'];
+    //                // product purchase detail
+    //                $product_sale_detail = ProductSaleDetail::find($product_sale_detail_id);
+    //                $previous_sale_qty = $product_sale_detail->qty;
+    //                $product_sale_detail->product_unit_id = $data['product_unit_id'];
+    //                $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+    //                $product_sale_detail->product_id = $product_id;
+    //                $product_sale_detail->qty = $data['qty'];
+    //                $product_sale_detail->vat_amount = $data['vat_amount'];
+    //                $product_sale_detail->price = $data['mrp_price'];
+    //                $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+    //                $product_sale_detail->barcode = $barcode;
+    //                $product_sale_detail->return_last_date = $add_two_day_date;
+    //                $product_sale_detail->update();
+    //
+    //
+    //                // product stock
+    //                // product stock
+    //                $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
+    //                $current_stock = $stock_row->current_stock;
+    //
+    //                // warehouse current stock
+    //                $update_warehouse_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+    //                    ->where('product_id',$product_id)
+    //                    ->first();
+    //                $exists_current_stock = $update_warehouse_current_stock->current_stock;
+    //
+    //                if($stock_row->stock_out != $data['qty']){
+    //
+    //                    if($data['qty'] > $stock_row->stock_in){
+    //                        $new_stock_out = $data['qty'] - $previous_sale_qty;
+    //
+    //                        $stock = new Stock();
+    //                        $stock->ref_id=$request->product_sale_id;
+    //                        $stock->user_id=$user_id;
+    //                        $stock->product_unit_id= $data['product_unit_id'];
+    //                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+    //                        $stock->product_id= $product_id;
+    //                        $stock->stock_type='whole_sale_increase';
+    //                        $stock->warehouse_id= $warehouse_id;
+    //                        $stock->store_id=NULL;
+    //                        $stock->stock_where='warehouse';
+    //                        $stock->stock_in_out='stock_out';
+    //                        $stock->previous_stock=$current_stock;
+    //                        $stock->stock_in=0;
+    //                        $stock->stock_out=$new_stock_out;
+    //                        $stock->current_stock=$current_stock - $new_stock_out;
+    //                        $stock->stock_date=$date;
+    //                        $stock->stock_date_time=$date_time;
+    //                        $stock->save();
+    //
+    //                        // warehouse current stock
+    //                        $update_warehouse_current_stock->current_stock=$exists_current_stock - $new_stock_out;
+    //                        $update_warehouse_current_stock->save();
+    //                    }else{
+    //                        $new_stock_in = $previous_sale_qty - $data['qty'];
+    //
+    //                        $stock = new Stock();
+    //                        $stock->ref_id=$request->product_sale_id;
+    //                        $stock->user_id=$user_id;
+    //                        $stock->product_unit_id= $data['product_unit_id'];
+    //                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+    //                        $stock->product_id= $product_id;
+    //                        $stock->stock_type='whole_sale_decrease';
+    //                        $stock->warehouse_id= $warehouse_id;
+    //                        $stock->store_id=NULL;
+    //                        $stock->stock_where='warehouse';
+    //                        $stock->stock_in_out='stock_in';
+    //                        $stock->previous_stock=$current_stock;
+    //                        $stock->stock_in=$new_stock_in;
+    //                        $stock->stock_out=0;
+    //                        $stock->current_stock=$current_stock + $new_stock_in;
+    //                        $stock->stock_date=$date;
+    //                        $stock->stock_date_time=$date_time;
+    //                        $stock->save();
+    //
+    //                        // warehouse current stock
+    //                        $update_warehouse_current_stock->current_stock=$exists_current_stock + $new_stock_in;
+    //                        $update_warehouse_current_stock->save();
+    //                    }
+    //                }
+
+
+
+
+
+
+
+
+
+
+                    //previous product
+                    if($data['new_status'] == 0){
+                        $product_id = $data['product_id'];
+                        $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+                        $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
+
+                        $product_sale_detail_id = $data['product_sale_detail_id'];
+                        // product purchase detail
+                        $product_sale_detail = ProductSaleDetail::find($product_sale_detail_id);
+                        $previous_sale_qty = $product_sale_detail->qty;
+                        $product_sale_detail->product_unit_id = $data['product_unit_id'];
+                        $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $product_sale_detail->product_id = $product_id;
+                        $product_sale_detail->purchase_price = $get_purchase_price;
+                        $product_sale_detail->qty = $data['qty'];
+                        //$product_sale_detail->vat_amount = $data['vat_amount'];
+                        $product_sale_detail->vat_amount = 0;
+                        $product_sale_detail->price = $data['mrp_price'];
+                        //$product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                        $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']);
+                        $product_sale_detail->barcode = $barcode;
+                        $product_sale_detail->return_last_date = $add_two_day_date;
+                        $product_sale_detail->update();
+
+
+                        // product stock
+                        // product stock
+                        $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
+                        $current_stock = $stock_row->current_stock;
+
+                        // warehouse current stock
+                        $update_warehouse_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                            ->where('product_id',$product_id)
+                            ->first();
+                        $exists_current_stock = $update_warehouse_current_stock->current_stock;
+
+                        if($stock_row->stock_out != $data['qty']){
+
+                            if($data['qty'] > $stock_row->stock_in){
+                                $new_stock_out = $data['qty'] - $previous_sale_qty;
+
+                                $stock = new Stock();
+                                $stock->ref_id=$request->product_sale_id;
+                                $stock->user_id=$user_id;
+                                $stock->product_unit_id= $data['product_unit_id'];
+                                $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                                $stock->product_id= $product_id;
+                                $stock->stock_type='whole_sale_increase';
+                                $stock->warehouse_id= $warehouse_id;
+                                $stock->store_id=NULL;
+                                $stock->stock_where='warehouse';
+                                $stock->stock_in_out='stock_out';
+                                $stock->previous_stock=$current_stock;
+                                $stock->stock_in=0;
+                                $stock->stock_out=$new_stock_out;
+                                $stock->current_stock=$current_stock - $new_stock_out;
+                                $stock->stock_date=$date;
+                                $stock->stock_date_time=$date_time;
+                                $stock->save();
+
+                                // warehouse current stock
+                                $update_warehouse_current_stock->current_stock=$exists_current_stock - $new_stock_out;
+                                $update_warehouse_current_stock->save();
+                            }else{
+                                $new_stock_in = $previous_sale_qty - $data['qty'];
+
+                                $stock = new Stock();
+                                $stock->ref_id=$request->product_sale_id;
+                                $stock->user_id=$user_id;
+                                $stock->product_unit_id= $data['product_unit_id'];
+                                $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                                $stock->product_id= $product_id;
+                                $stock->stock_type='whole_sale_decrease';
+                                $stock->warehouse_id= $warehouse_id;
+                                $stock->store_id=NULL;
+                                $stock->stock_where='warehouse';
+                                $stock->stock_in_out='stock_in';
+                                $stock->previous_stock=$current_stock;
+                                $stock->stock_in=$new_stock_in;
+                                $stock->stock_out=0;
+                                $stock->current_stock=$current_stock + $new_stock_in;
+                                $stock->stock_date=$date;
+                                $stock->stock_date_time=$date_time;
+                                $stock->save();
+
+                                // warehouse current stock
+                                $update_warehouse_current_stock->current_stock=$exists_current_stock + $new_stock_in;
+                                $update_warehouse_current_stock->save();
+                            }
+                        }
+                    }
+                    //add new product
+                    elseif($data['new_status'] == 1){
+                        $product_id =  $data['product_id'];
+                        $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+
+                        // product sale detail
+                        $product_sale_detail = new ProductSaleDetail();
+                        $product_sale_detail->product_sale_id = $request->product_sale_id;
+                        $product_sale_detail->product_unit_id = $data['product_unit_id'];
+                        $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $product_sale_detail->product_id = $product_id;
+                        $product_sale_detail->qty = $data['qty'];
+                        $product_sale_detail->price = $data['mrp_price'];
+                        $product_sale_detail->vat_amount = $data['vat_amount'];
+                        $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                        $product_sale_detail->barcode = $barcode;
+                        $product_sale_detail->sale_date = $date;
+                        $product_sale_detail->return_among_day = 2;
+                        $product_sale_detail->return_last_date = $add_two_day_date;
+                        $product_sale_detail->save();
+
+
+                        $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('stock_where','warehouse')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                        if(!empty($check_previous_stock)){
+                            $previous_stock = $check_previous_stock;
+                        }else{
+                            $previous_stock = 0;
+                        }
+
+                        // product stock
+                        $stock = new Stock();
+                        $stock->ref_id = $request->product_sale_id;
+                        $stock->user_id = $user_id;
+                        $stock->warehouse_id = $warehouse_id;
+                        $stock->store_id = NULL;
+                        $stock->product_id = $product_id;
+                        $stock->product_unit_id = $data['product_unit_id'];
+                        $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->stock_type = 'whole_sale';
+                        $stock->stock_where = 'warehouse';
+                        $stock->stock_in_out = 'stock_out';
+                        $stock->previous_stock = $previous_stock;
+                        $stock->stock_in = 0;
+                        $stock->stock_out = $data['qty'];
+                        $stock->current_stock = $previous_stock - $data['qty'];
+                        $stock->stock_date = $date;
+                        $stock->stock_date_time = $date_time;
+                        $stock->save();
+
+
+                        // warehouse current stock
+                        $update_warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)
+                            ->where('product_id',$product_id)
+                            ->first();
+
+                        $exists_current_stock = $update_warehouse_current_stock->current_stock;
+                        $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
+                        $update_warehouse_current_stock->current_stock=$final_warehouse_current_stock;
+                        $update_warehouse_current_stock->save();
+                    }else{
+                        return response()->json(['success'=>false,'response'=>'No Found Previous or New Product!'], $this->failStatus);
+                    }
+
+
                 }
 
 
+
+
+
+
+
+
+
+                // posting deyer somoi porbe
+
+                // product whole sale e kono paid amount hobe na
+                // transaction
+    //            $transaction = Transaction::where('ref_id',$request->product_sale_id)->first();
+    //            $transaction->user_id = $user_id;
+    //            $transaction->warehouse_id = $warehouse_id;
+    //            $transaction->store_id = NULL;
+    //            $transaction->party_id = $request->party_id;
+    //            $transaction->payment_type = $request->payment_type;
+    //            $transaction->amount = $request->paid_amount;
+    //            $transaction->update();
+    //
+    //            // payment paid
+    //            $payment_collection = PaymentCollection::where('product_sale_id',$request->product_sale_id)->first();
+    //            $payment_collection->user_id = $user_id;
+    //            $payment_collection->party_id = $request->party_id;
+    //            $payment_collection->warehouse_id = $warehouse_id;
+    //            $payment_collection->store_id = NULL;
+    //            $payment_collection->collection_amount = $request->paid_amount;
+    //            $payment_collection->due_amount = $request->due_amount;
+    //            $payment_collection->current_collection_amount = $request->paid_amount;
+    //            $payment_collection->update();
+    //
+    //            $new_paid_amount = $request->paid_amount - $previous_paid_amount;
+    //
+    //            if($request->paid_amount > 0 && $new_paid_amount){
+    //                // posting
+    //                $month = date('m', strtotime($request->date));
+    //                $year = date('Y', strtotime($request->date));
+    //                $transaction_date_time = date('Y-m-d H:i:s');
+    //
+    //                $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
+    //                $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
+    //                if(!empty($get_voucher_no)){
+    //                    $get_voucher_name_str = $get_voucher_name."-";
+    //                    $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+    //                    $voucher_no = $get_voucher+1;
+    //                }else{
+    //                    $voucher_no = 8000;
+    //                }
+    //                $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+    //                $chart_of_account_transactions = new ChartOfAccountTransaction();
+    //                $chart_of_account_transactions->ref_id = $request->product_sale_id;
+    //                $chart_of_account_transactions->transaction_type = 'Sales';
+    //                $chart_of_account_transactions->user_id = $user_id;
+    //                $chart_of_account_transactions->store_id = NULL;
+    //                $chart_of_account_transactions->voucher_type_id = 2;
+    //                $chart_of_account_transactions->voucher_no = $final_voucher_no;
+    //                $chart_of_account_transactions->is_approved = 'approved';
+    //                $chart_of_account_transactions->transaction_date = $date;
+    //                $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+    //                $chart_of_account_transactions->save();
+    //                $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
+    //
+    //                if($chart_of_account_transactions_insert_id){
+    //
+    //                    // sales
+    //                    $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
+    //                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                    $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
+    //                    $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
+    //                    $chart_of_account_transaction_details->chart_of_account_name = 'Sales';
+    //                    $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
+    //                    $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
+    //                    $chart_of_account_transaction_details->debit = NULL;
+    //                    $chart_of_account_transaction_details->credit = $new_paid_amount;
+    //                    $chart_of_account_transaction_details->description = 'Income From Sales';
+    //                    $chart_of_account_transaction_details->year = $year;
+    //                    $chart_of_account_transaction_details->month = $month;
+    //                    $chart_of_account_transaction_details->transaction_date = $date;
+    //                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                    $chart_of_account_transaction_details->save();
+    //
+    //                    // cash
+    //                    if($request->payment_type == 'Cash'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Cash In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Check'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Check';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Check In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Card'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Card';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Card In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Bkash'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Bkash In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Nogod'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Nogod In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Rocket'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Rocket In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }elseif($request->payment_type == 'Upay'){
+    //                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
+    //                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+    //                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+    //                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+    //                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+    //                        $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
+    //                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+    //                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+    //                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+    //                        $chart_of_account_transaction_details->credit = NULL;
+    //                        $chart_of_account_transaction_details->description = 'Upay In For Sales';
+    //                        $chart_of_account_transaction_details->year = $year;
+    //                        $chart_of_account_transaction_details->month = $month;
+    //                        $chart_of_account_transaction_details->transaction_date = $date;
+    //                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                        $chart_of_account_transaction_details->save();
+    //                    }else{
+    //
+    //                    }
+    //                }
+    //            }
+
+
+                $response = APIHelpers::createAPIResponse(false,200,'Product Whole Sale Updated Successfully.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Product Whole Sale Updated Failed.',null);
+                return response()->json($response,400);
             }
-
-
-
-
-
-
-
-
-
-            // posting deyer somoi porbe
-
-            // product whole sale e kono paid amount hobe na
-            // transaction
-//            $transaction = Transaction::where('ref_id',$request->product_sale_id)->first();
-//            $transaction->user_id = $user_id;
-//            $transaction->warehouse_id = $warehouse_id;
-//            $transaction->store_id = NULL;
-//            $transaction->party_id = $request->party_id;
-//            $transaction->payment_type = $request->payment_type;
-//            $transaction->amount = $request->paid_amount;
-//            $transaction->update();
-//
-//            // payment paid
-//            $payment_collection = PaymentCollection::where('product_sale_id',$request->product_sale_id)->first();
-//            $payment_collection->user_id = $user_id;
-//            $payment_collection->party_id = $request->party_id;
-//            $payment_collection->warehouse_id = $warehouse_id;
-//            $payment_collection->store_id = NULL;
-//            $payment_collection->collection_amount = $request->paid_amount;
-//            $payment_collection->due_amount = $request->due_amount;
-//            $payment_collection->current_collection_amount = $request->paid_amount;
-//            $payment_collection->update();
-//
-//            $new_paid_amount = $request->paid_amount - $previous_paid_amount;
-//
-//            if($request->paid_amount > 0 && $new_paid_amount){
-//                // posting
-//                $month = date('m', strtotime($request->date));
-//                $year = date('Y', strtotime($request->date));
-//                $transaction_date_time = date('Y-m-d H:i:s');
-//
-//                $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
-//                $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
-//                if(!empty($get_voucher_no)){
-//                    $get_voucher_name_str = $get_voucher_name."-";
-//                    $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
-//                    $voucher_no = $get_voucher+1;
-//                }else{
-//                    $voucher_no = 8000;
-//                }
-//                $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
-//                $chart_of_account_transactions = new ChartOfAccountTransaction();
-//                $chart_of_account_transactions->ref_id = $request->product_sale_id;
-//                $chart_of_account_transactions->transaction_type = 'Sales';
-//                $chart_of_account_transactions->user_id = $user_id;
-//                $chart_of_account_transactions->store_id = NULL;
-//                $chart_of_account_transactions->voucher_type_id = 2;
-//                $chart_of_account_transactions->voucher_no = $final_voucher_no;
-//                $chart_of_account_transactions->is_approved = 'approved';
-//                $chart_of_account_transactions->transaction_date = $date;
-//                $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
-//                $chart_of_account_transactions->save();
-//                $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
-//
-//                if($chart_of_account_transactions_insert_id){
-//
-//                    // sales
-//                    $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
-//                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                    $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
-//                    $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
-//                    $chart_of_account_transaction_details->chart_of_account_name = 'Sales';
-//                    $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
-//                    $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
-//                    $chart_of_account_transaction_details->debit = NULL;
-//                    $chart_of_account_transaction_details->credit = $new_paid_amount;
-//                    $chart_of_account_transaction_details->description = 'Income From Sales';
-//                    $chart_of_account_transaction_details->year = $year;
-//                    $chart_of_account_transaction_details->month = $month;
-//                    $chart_of_account_transaction_details->transaction_date = $date;
-//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                    $chart_of_account_transaction_details->save();
-//
-//                    // cash
-//                    if($request->payment_type == 'Cash'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $new_paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Cash In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Check'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Check';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $new_paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Check In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Card'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Card';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $new_paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Card In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Bkash'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $new_paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Bkash In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Nogod'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $new_paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Nogod In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Rocket'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $new_paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Rocket In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }elseif($request->payment_type == 'Upay'){
-//                        $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
-//                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-//                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-//                        $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-//                        $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-//                        $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
-//                        $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-//                        $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-//                        $chart_of_account_transaction_details->debit = $new_paid_amount;
-//                        $chart_of_account_transaction_details->credit = NULL;
-//                        $chart_of_account_transaction_details->description = 'Upay In For Sales';
-//                        $chart_of_account_transaction_details->year = $year;
-//                        $chart_of_account_transaction_details->month = $month;
-//                        $chart_of_account_transaction_details->transaction_date = $date;
-//                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                        $chart_of_account_transaction_details->save();
-//                    }else{
-//
-//                    }
-//                }
-//            }
-
-
-            return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function productWholeSaleDelete(Request $request){
+        try {
         $check_exists_product_sale = DB::table("product_sales")->where('id',$request->product_sale_id)->pluck('id')->first();
         if($check_exists_product_sale == null){
             return response()->json(['success'=>false,'response'=>'No Product Sale Found!'], $this->failStatus);
         }
 
         $productSale = ProductSale::find($request->product_sale_id);
-        if($productSale){
-            $user_id = Auth::user()->id;
-            $date = date('Y-m-d');
-            $date_time = date('Y-m-d H:i:s');
+            if($productSale){
+                $user_id = Auth::user()->id;
+                $date = date('Y-m-d');
+                $date_time = date('Y-m-d H:i:s');
 
-            $product_sale_details = DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->get();
+                $product_sale_details = DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->get();
 
-            if(count($product_sale_details) > 0){
-                foreach ($product_sale_details as $product_sale_detail){
-                    // current stock
-                    $stock_row = Stock::where('stock_where','warehouse')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
-                    $current_stock = $stock_row->current_stock;
+                if(count($product_sale_details) > 0){
+                    foreach ($product_sale_details as $product_sale_detail){
+                        // current stock
+                        $stock_row = Stock::where('stock_where','warehouse')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
+                        $current_stock = $stock_row->current_stock;
 
-                    $stock = new Stock();
-                    $stock->ref_id=$productSale->id;
-                    $stock->user_id=$user_id;
-                    $stock->product_unit_id= $product_sale_detail->product_unit_id;
-                    $stock->product_brand_id= $product_sale_detail->product_brand_id;
-                    $stock->product_id= $product_sale_detail->product_id;
-                    $stock->stock_type='whole_sale_delete';
-                    $stock->warehouse_id= $productSale->warehouse_id;
-                    $stock->store_id=NULL;
-                    $stock->stock_where='warehouse';
-                    $stock->stock_in_out='stock_in';
-                    $stock->previous_stock=$current_stock;
-                    $stock->stock_in=$product_sale_detail->qty;
-                    $stock->stock_out=0;
-                    $stock->current_stock=$current_stock + $product_sale_detail->qty;
-                    $stock->stock_date=$date;
-                    $stock->stock_date_time=$date_time;
-                    $stock->save();
+                        $stock = new Stock();
+                        $stock->ref_id=$productSale->id;
+                        $stock->user_id=$user_id;
+                        $stock->product_unit_id= $product_sale_detail->product_unit_id;
+                        $stock->product_brand_id= $product_sale_detail->product_brand_id;
+                        $stock->product_id= $product_sale_detail->product_id;
+                        $stock->stock_type='whole_sale_delete';
+                        $stock->warehouse_id= $productSale->warehouse_id;
+                        $stock->store_id=NULL;
+                        $stock->stock_where='warehouse';
+                        $stock->stock_in_out='stock_in';
+                        $stock->previous_stock=$current_stock;
+                        $stock->stock_in=$product_sale_detail->qty;
+                        $stock->stock_out=0;
+                        $stock->current_stock=$current_stock + $product_sale_detail->qty;
+                        $stock->stock_date=$date;
+                        $stock->stock_date_time=$date_time;
+                        $stock->save();
 
 
-                    $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->first();
-                    $exists_current_stock = $warehouse_current_stock->current_stock;
-                    $warehouse_current_stock->current_stock=$exists_current_stock + $product_sale_detail->qty;
-                    $warehouse_current_stock->update();
+                        $warehouse_current_stock = WarehouseCurrentStock::where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->first();
+                        $exists_current_stock = $warehouse_current_stock->current_stock;
+                        $warehouse_current_stock->current_stock=$exists_current_stock + $product_sale_detail->qty;
+                        $warehouse_current_stock->update();
+                    }
                 }
             }
-        }
-        $delete_sale = $productSale->delete();
+            $delete_sale = $productSale->delete();
 
-        //DB::table('stocks')->where('ref_id',$request->product_sale_id)->delete();
-        DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->delete();
+            //DB::table('stocks')->where('ref_id',$request->product_sale_id)->delete();
+            DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->delete();
 
-        // product whole sale e kono paid amount hobe na
-        //DB::table('transactions')->where('ref_id',$request->product_sale_id)->delete();
-        //DB::table('payment_collections')->where('product_sale_id',$request->product_sale_id)->delete();
+            // product whole sale e kono paid amount hobe na
+            //DB::table('transactions')->where('ref_id',$request->product_sale_id)->delete();
+            //DB::table('payment_collections')->where('product_sale_id',$request->product_sale_id)->delete();
 
 
-        if($delete_sale)
-        {
-            return response()->json(['success'=>true,'response' =>'Sale Successfully Deleted!'], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Sale Not Deleted!'], $this->failStatus);
+            if($delete_sale)
+            {
+                $response = APIHelpers::createAPIResponse(false,200,'Product Whole Sale Successfully Soft Deleted.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Product Whole Sale Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
@@ -1356,687 +1429,247 @@ class ProductSaleController extends Controller
     }
 
     public function productPOSSaleDetails(Request $request){
-        $product_sale_details = DB::table('product_sales')
-            ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
-            ->leftJoin('products','product_sale_details.product_id','products.id')
-            ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
-            ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
-            ->where('product_sales.id',$request->product_sale_id)
-            ->select('products.id as product_id','products.name as product_name','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name','product_sale_details.qty','product_sale_details.id as product_sale_detail_id','product_sale_details.price as mrp_price','product_sale_details.vat_amount')
-            ->get();
+        try {
+            $product_sale_details = DB::table('product_sales')
+                ->join('product_sale_details','product_sales.id','product_sale_details.product_sale_id')
+                ->leftJoin('products','product_sale_details.product_id','products.id')
+                ->leftJoin('product_units','product_sale_details.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','product_sale_details.product_brand_id','product_brands.id')
+                ->where('product_sales.id',$request->product_sale_id)
+                ->select(
+                    'products.id as product_id',
+                    'products.name as product_name',
+                    'product_units.id as product_unit_id',
+                    'product_units.name as product_unit_name',
+                    'product_brands.id as product_brand_id',
+                    'product_brands.name as product_brand_name',
+                    'product_sales.warehouse_id',
+                    'product_sales.store_id',
+                    'product_sale_details.qty',
+                    'product_sale_details.id as product_sale_detail_id',
+                    'product_sale_details.price as mrp_price',
+                    'product_sale_details.vat_amount'
+                )
+                ->get();
 
-        if($product_sale_details)
-        {
-            $success['product_pos_sale_details'] =  $product_sale_details;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Product POS Sale Detail Found!'], $this->failStatus);
+            $sale_product = [];
+            if(count($product_sale_details) > 0){
+                foreach ($product_sale_details as $product_sale_detail){
+                    $current_stock = warehouseStoreProductCurrentStock($product_sale_detail->warehouse_id,$product_sale_detail->store_id,$product_sale_detail->product_id);
+
+                    $nested_data['product_id']=$product_sale_detail->product_id;
+                    $nested_data['product_name']=$product_sale_detail->product_name;
+                    $nested_data['product_unit_id']=$product_sale_detail->product_unit_id;
+                    $nested_data['product_unit_name']=$product_sale_detail->product_unit_name;
+                    $nested_data['product_brand_id']=$product_sale_detail->product_brand_id;
+                    $nested_data['product_brand_name']=$product_sale_detail->product_brand_name;
+                    $nested_data['qty']=$product_sale_detail->qty;
+                    $nested_data['product_sale_detail_id']=$product_sale_detail->product_sale_detail_id;
+                    $nested_data['mrp_price']=$product_sale_detail->mrp_price;
+                    $nested_data['vat_amount']=$product_sale_detail->vat_amount;
+                    $nested_data['current_stock']=$current_stock;
+
+                    array_push($sale_product, $nested_data);
+                }
+            }
+
+            if($product_sale_details === null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Product POS Sale Detail Found.',null);
+                return response()->json($response,404);
+            }else{
+                $response = APIHelpers::createAPIResponse(false,200,'',$sale_product);
+                return response()->json($response,200);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
 
     public function productPOSSaleCreate(Request $request){
+        try {
+            $validator = Validator::make($request->all(), [
+                'party_id'=> 'required',
+                'store_id'=> 'required',
+                'paid_amount'=> 'required',
+                'due_amount'=> 'required',
+                'total_amount'=> 'required',
+                'payment_type'=> 'required',
+            ]);
 
-        $this->validate($request, [
-            'party_id'=> 'required',
-            'store_id'=> 'required',
-            'paid_amount'=> 'required',
-            'due_amount'=> 'required',
-            'total_amount'=> 'required',
-            'payment_type'=> 'required',
-        ]);
-
-        $get_invoice_no = ProductSale::latest('id','desc')->pluck('invoice_no')->first();
-        if(!empty($get_invoice_no)){
-            $get_invoice = str_replace("sale-","",$get_invoice_no);
-            $invoice_no = $get_invoice+1;
-        }else{
-            $invoice_no = 100000;
-        }
-        $final_invoice = 'sale-'.$invoice_no;
-
-        $date = date('Y-m-d');
-        $date_time = date('Y-m-d h:i:s');
-        $add_two_day_date =  date('Y-m-d', strtotime("+2 days"));
-
-        $user_id = Auth::user()->id;
-        $store_id = $request->store_id;
-        $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
-
-        // product purchase
-        $productSale = new ProductSale();
-        $productSale->invoice_no = $final_invoice;
-        $productSale->user_id = $user_id;
-        $productSale->party_id = $request->party_id;
-        $productSale->warehouse_id = $warehouse_id;
-        $productSale->store_id = $store_id;
-        $productSale->sub_total = $request->sub_total;
-        $productSale->sale_type = 'pos_sale';
-        $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
-        $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
-        $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
-        $productSale->paid_amount = $request->paid_amount;
-        $productSale->due_amount = $request->due_amount;
-        $productSale->total_vat_amount = $request->total_vat_amount;
-        $productSale->total_amount = $request->total_amount;
-        $productSale->sale_date = $date;
-        $productSale->sale_date_time = $date_time;
-        $productSale->save();
-        $insert_id = $productSale->id;
-
-        if($insert_id)
-        {
-            // for live testing
-            foreach ($request->products as $data) {
-
-                $product_id =  $data['product_id'];
-
-                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
-                $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
-
-
-
-                // discount start
-                $price = $data['mrp_price'];
-                $discount_amount = $request->discount_amount;
-                $total_amount = $request->total_amount;
-
-                $final_discount_amount = (float)$discount_amount * (float)$price;
-                $final_total_amount = (float)$discount_amount + (float)$total_amount;
-                $discount_type = $request->discount_type;
-                $discount = (float)$final_discount_amount/(float)$final_total_amount;
-                if($discount_type != NULL){
-                    if($discount_type == 'Flat'){
-                        $discount = round($discount);
-                    }
-                }
-                // discount end
-
-
-
-                // product purchase detail
-                $product_sale_detail = new ProductSaleDetail();
-                $product_sale_detail->product_sale_id = $insert_id;
-                $product_sale_detail->product_unit_id = $data['product_unit_id'];
-                $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $product_sale_detail->product_id = $product_id;
-                $product_sale_detail->barcode = $barcode;
-                $product_sale_detail->purchase_price = $get_purchase_price;
-                $product_sale_detail->qty = $data['qty'];
-                $product_sale_detail->discount = $discount;
-                $product_sale_detail->price = $data['mrp_price'];
-                $product_sale_detail->vat_amount = $data['vat_amount'];
-                $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
-                $product_sale_detail->sale_date = $date;
-                $product_sale_detail->return_among_day = 2;
-                $product_sale_detail->return_last_date = $add_two_day_date;
-                $product_sale_detail->save();
-
-                $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
-                if(!empty($check_previous_stock)){
-                    $previous_stock = $check_previous_stock;
-                }else{
-                    $previous_stock = 0;
-                }
-
-                // product stock
-                $stock = new Stock();
-                $stock->ref_id = $insert_id;
-                $stock->user_id = $user_id;
-                $stock->warehouse_id = $warehouse_id;
-                $stock->store_id = $store_id;
-                $stock->product_id = $product_id;
-                $stock->product_unit_id = $data['product_unit_id'];
-                $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $stock->stock_type = 'pos_sale';
-                $stock->stock_where = 'store';
-                $stock->stock_in_out = 'stock_out';
-                $stock->previous_stock = $previous_stock;
-                $stock->stock_in = 0;
-                $stock->stock_out = $data['qty'];
-                $stock->current_stock = $previous_stock - $data['qty'];
-                $stock->stock_date = $date;
-                $stock->stock_date_time = $date_time;
-                $stock->save();
-
-                // warehouse store current stock
-                $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
-                    ->where('store_id',$store_id)
-                    ->where('product_id',$product_id)
-                    ->first();
-
-                $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
-                $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
-                $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
-                $update_warehouse_store_current_stock->save();
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
             }
 
-            // transaction
-            $transaction = new Transaction();
-            $transaction->ref_id = $insert_id;
-            $transaction->invoice_no = $final_invoice;
-            $transaction->user_id = $user_id;
-            $transaction->warehouse_id = $warehouse_id;
-            $transaction->store_id = $store_id;
-            $transaction->party_id = $request->party_id;
-            $transaction->transaction_type = 'pos_sale';
-            $transaction->payment_type = $request->payment_type;
-            $transaction->amount = $request->total_amount;
-            $transaction->transaction_date = $date;
-            $transaction->transaction_date_time = $date_time;
-            $transaction->save();
-            $transaction_id = $transaction->id;
-
-            // payment paid
-            $payment_collection = new PaymentCollection();
-            $payment_collection->invoice_no = $final_invoice;
-            $payment_collection->product_sale_id = $insert_id;
-            $payment_collection->user_id = $user_id;
-            $payment_collection->party_id = $request->party_id;
-            $payment_collection->warehouse_id = $warehouse_id;
-            $payment_collection->store_id = $store_id;
-            $payment_collection->collection_type = 'Sale';
-            $payment_collection->collection_amount = $request->total_amount;
-            $payment_collection->due_amount = $request->due_amount;
-            $payment_collection->current_collection_amount = $request->total_amount;
-            $payment_collection->collection_date = $date;
-            $payment_collection->collection_date_time = $date_time;
-            $payment_collection->save();
-
-
-
-
-
-
-            // posting
-            $month = date('m');
-            $year = date('Y');
-            $transaction_date_time = date('Y-m-d H:i:s');
-
-            $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
-            $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
-            if(!empty($get_voucher_no)){
-                $get_voucher_name_str = $get_voucher_name."-";
-                $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
-                $voucher_no = $get_voucher+1;
+            $get_invoice_no = ProductSale::latest('id','desc')->pluck('invoice_no')->first();
+            if(!empty($get_invoice_no)){
+                $get_invoice = str_replace("sale-","",$get_invoice_no);
+                $invoice_no = $get_invoice+1;
             }else{
-                $voucher_no = 8000;
+                $invoice_no = 100000;
             }
-            $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
-            $chart_of_account_transactions = new ChartOfAccountTransaction();
-            $chart_of_account_transactions->ref_id = $insert_id;
-            $chart_of_account_transactions->transaction_type = 'Sales';
-            $chart_of_account_transactions->user_id = $user_id;
-            $chart_of_account_transactions->warehouse_id = $warehouse_id;
-            $chart_of_account_transactions->store_id = $store_id;
-            $chart_of_account_transactions->voucher_type_id = 2;
-            $chart_of_account_transactions->voucher_no = $final_voucher_no;
-            $chart_of_account_transactions->is_approved = 'approved';
-            $chart_of_account_transactions->transaction_date = $date;
-            $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
-            $chart_of_account_transactions->save();
-            $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
+            $final_invoice = 'sale-'.$invoice_no;
 
-            if($chart_of_account_transactions_insert_id){
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d h:i:s');
+            $add_two_day_date =  date('Y-m-d', strtotime("+2 days"));
 
-                // sales
-                $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
-                $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
-                $chart_of_account_transaction_details->store_id = $store_id;
-                $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-                $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
-                $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
-                $chart_of_account_transaction_details->chart_of_account_name = 'Sales';
-                $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
-                $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
-                $chart_of_account_transaction_details->debit = NULL;
-                $chart_of_account_transaction_details->credit = $request->total_amount;
-                $chart_of_account_transaction_details->description = 'Income From Sales';
-                $chart_of_account_transaction_details->year = $year;
-                $chart_of_account_transaction_details->month = $month;
-                $chart_of_account_transaction_details->transaction_date = $date;
-                $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-                $chart_of_account_transaction_details->save();
+            $user_id = Auth::user()->id;
+            $store_id = $request->store_id;
+            $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
 
-                // cash
-                if($request->payment_type == 'Cash'){
-                    $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
-                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
-                    $chart_of_account_transaction_details->store_id = $store_id;
-                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-                    $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-                    $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-                    $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
-                    $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-                    $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->total_amount;
-                    $chart_of_account_transaction_details->credit = NULL;
-                    $chart_of_account_transaction_details->description = 'Cash In For Sales';
-                    $chart_of_account_transaction_details->year = $year;
-                    $chart_of_account_transaction_details->month = $month;
-                    $chart_of_account_transaction_details->transaction_date = $date;
-                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-                    $chart_of_account_transaction_details->save();
-                }elseif($request->payment_type == 'Check'){
-                    $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
-                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
-                    $chart_of_account_transaction_details->store_id = $store_id;
-                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-                    $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-                    $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-                    $chart_of_account_transaction_details->chart_of_account_name = 'Check';
-                    $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-                    $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->total_amount;
-                    $chart_of_account_transaction_details->credit = NULL;
-                    $chart_of_account_transaction_details->description = 'Check In For Sales';
-                    $chart_of_account_transaction_details->year = $year;
-                    $chart_of_account_transaction_details->month = $month;
-                    $chart_of_account_transaction_details->transaction_date = $date;
-                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-                    $chart_of_account_transaction_details->save();
-                }elseif($request->payment_type == 'Card'){
-                    $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
-                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
-                    $chart_of_account_transaction_details->store_id = $store_id;
-                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-                    $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-                    $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-                    $chart_of_account_transaction_details->chart_of_account_name = 'Card';
-                    $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-                    $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->total_amount;
-                    $chart_of_account_transaction_details->credit = NULL;
-                    $chart_of_account_transaction_details->description = 'Card In For Sales';
-                    $chart_of_account_transaction_details->year = $year;
-                    $chart_of_account_transaction_details->month = $month;
-                    $chart_of_account_transaction_details->transaction_date = $date;
-                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-                    $chart_of_account_transaction_details->save();
-                }elseif($request->payment_type == 'Bkash'){
-                    $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
-                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
-                    $chart_of_account_transaction_details->store_id = $store_id;
-                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-                    $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-                    $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-                    $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
-                    $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-                    $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->total_amount;
-                    $chart_of_account_transaction_details->credit = NULL;
-                    $chart_of_account_transaction_details->description = 'Bkash In For Sales';
-                    $chart_of_account_transaction_details->year = $year;
-                    $chart_of_account_transaction_details->month = $month;
-                    $chart_of_account_transaction_details->transaction_date = $date;
-                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-                    $chart_of_account_transaction_details->save();
-                }elseif($request->payment_type == 'Nogod'){
-                    $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
-                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
-                    $chart_of_account_transaction_details->store_id = $store_id;
-                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-                    $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-                    $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-                    $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
-                    $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-                    $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->total_amount;
-                    $chart_of_account_transaction_details->credit = NULL;
-                    $chart_of_account_transaction_details->description = 'Nogod In For Sales';
-                    $chart_of_account_transaction_details->year = $year;
-                    $chart_of_account_transaction_details->month = $month;
-                    $chart_of_account_transaction_details->transaction_date = $date;
-                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-                    $chart_of_account_transaction_details->save();
-                }elseif($request->payment_type == 'Rocket'){
-                    $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
-                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
-                    $chart_of_account_transaction_details->store_id = $store_id;
-                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-                    $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-                    $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-                    $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
-                    $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-                    $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->total_amount;
-                    $chart_of_account_transaction_details->credit = NULL;
-                    $chart_of_account_transaction_details->description = 'Rocket In For Sales';
-                    $chart_of_account_transaction_details->year = $year;
-                    $chart_of_account_transaction_details->month = $month;
-                    $chart_of_account_transaction_details->transaction_date = $date;
-                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-                    $chart_of_account_transaction_details->save();
-                }elseif($request->payment_type == 'Upay'){
-                    $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
-                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
-                    $chart_of_account_transaction_details->store_id = $store_id;
-                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-                    $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-                    $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-                    $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
-                    $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-                    $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = $request->total_amount;
-                    $chart_of_account_transaction_details->credit = NULL;
-                    $chart_of_account_transaction_details->description = 'Upay In For Sales';
-                    $chart_of_account_transaction_details->year = $year;
-                    $chart_of_account_transaction_details->month = $month;
-                    $chart_of_account_transaction_details->transaction_date = $date;
-                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-                    $chart_of_account_transaction_details->save();
-                }else{
+            // product purchase
+            $productSale = new ProductSale();
+            $productSale->invoice_no = $final_invoice;
+            $productSale->user_id = $user_id;
+            $productSale->party_id = $request->party_id;
+            $productSale->warehouse_id = $warehouse_id;
+            $productSale->store_id = $store_id;
+            $productSale->sub_total = $request->sub_total;
+            $productSale->sale_type = 'pos_sale';
+            $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
+            $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
+            $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+            $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
+            $productSale->paid_amount = $request->paid_amount;
+            $productSale->due_amount = $request->due_amount;
+            $productSale->total_vat_amount = $request->total_vat_amount;
+            $productSale->total_amount = $request->total_amount;
+            $productSale->sale_date = $date;
+            $productSale->sale_date_time = $date_time;
+            $productSale->save();
+            $insert_id = $productSale->id;
 
-                }
-            }
+            if($insert_id)
+            {
+                // for live testing
+                foreach ($request->products as $data) {
+
+                    $product_id =  $data['product_id'];
+
+                    $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+                    $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
 
 
 
+                    // discount start
+                    $price = $data['mrp_price'];
+                    $discount_amount = $request->discount_amount;
+                    $total_amount = $request->total_amount;
 
-
-
-            if($request->payment_type == 'SSL Commerz'){
-                $product_pos_sale = DB::table('product_sales')
-                    ->leftJoin('users','product_sales.user_id','users.id')
-                    ->leftJoin('parties','product_sales.party_id','parties.id')
-                    ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
-                    ->leftJoin('stores','product_sales.store_id','stores.id')
-                    ->leftJoin('transactions','product_sales.invoice_no','transactions.invoice_no')
-                    ->where('product_sales.sale_type','pos_sale')
-                    ->where('product_sales.id',$insert_id)
-                    ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone','transactions.payment_type')
-                    ->first();
-
-                return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => $request->payment_type,'product_pos_sale' => $product_pos_sale], $this->successStatus);
-            }else{
-
-                $product_pos_sale = DB::table('product_sales')
-                    ->leftJoin('users','product_sales.user_id','users.id')
-                    ->leftJoin('parties','product_sales.party_id','parties.id')
-                    ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
-                    ->leftJoin('stores','product_sales.store_id','stores.id')
-                    ->leftJoin('transactions','product_sales.invoice_no','transactions.invoice_no')
-                    ->where('product_sales.sale_type','pos_sale')
-                    ->where('product_sales.id',$insert_id)
-                    ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone','transactions.payment_type')
-                    ->first();
-
-                return response()->json(['success'=>true,'product_pos_sale' => $product_pos_sale], $this->successStatus);
-            }
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Inserted Successfully!'], $this->failStatus);
-        }
-    }
-
-    public function productPOSSaleEdit(Request $request){
-        //dd($request->all());
-        $this->validate($request, [
-            'product_sale_id'=> 'required',
-            'party_id'=> 'required',
-            'store_id'=> 'required',
-            'paid_amount'=> 'required',
-            'due_amount'=> 'required',
-            'total_amount'=> 'required',
-            'payment_type'=> 'required',
-        ]);
-
-        $user_id = Auth::user()->id;
-        $date = date('Y-m-d');
-        $date_time = date('Y-m-d H:i:s');
-        $store_id = $request->store_id;
-        $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
-
-
-        // product purchase
-        $productSale = ProductSale::find($request->product_sale_id);
-        $previous_paid_amount = $productSale ->paid_amount;
-        $productSale->user_id = $user_id;
-        $productSale->party_id = $request->party_id;
-        $productSale->warehouse_id = $warehouse_id;
-        $productSale->store_id = $store_id;
-        $productSale->sub_total = $request->sub_total;
-        $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
-        $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
-        $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
-        $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
-        $productSale->paid_amount = $request->paid_amount;
-        $productSale->due_amount = $request->due_amount;
-        $productSale->total_vat_amount = $request->total_vat_amount;
-        $productSale->total_amount = $request->total_amount;
-        $productSale->update();
-        $affectedRows = $productSale->id;
-        if($affectedRows)
-        {
-            foreach ($request->products as $data) {
-                $product_id = $data['product_id'];
-                $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
-                $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
-
-                // discount start
-                $price = $data['mrp_price'];
-                $discount_amount = $request->discount_amount;
-                $total_amount = $request->total_amount;
-
-                $final_discount_amount = (float)$discount_amount * (float)$price;
-                $final_total_amount = (float)$discount_amount + (float)$total_amount;
-                $discount_type = $request->discount_type;
-                $discount = (float)$final_discount_amount/(float)$final_total_amount;
-                if($discount_type != NULL){
-                    if($discount_type == 'Flat'){
-                        $discount = round($discount);
+                    $final_discount_amount = (float)$discount_amount * (float)$price;
+                    $final_total_amount = (float)$discount_amount + (float)$total_amount;
+                    $discount_type = $request->discount_type;
+                    $discount = (float)$final_discount_amount/(float)$final_total_amount;
+                    if($discount_type != NULL){
+                        if($discount_type == 'Flat'){
+                            $discount = round($discount);
+                        }
                     }
-                }
-                // discount end
-
-                $product_sale_detail_id = $data['product_sale_detail_id'];
-                // product purchase detail
-                $purchase_sale_detail = ProductSaleDetail::find($product_sale_detail_id);
-                $previous_sale_qty = $purchase_sale_detail->qty;
-                $purchase_sale_detail->product_unit_id = $data['product_unit_id'];
-                $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                $purchase_sale_detail->product_id = $product_id;
-                $purchase_sale_detail->purchase_price = $get_purchase_price;
-                $purchase_sale_detail->qty = $data['qty'];
-                $purchase_sale_detail->discount = $discount;
-                $purchase_sale_detail->price = $data['mrp_price'];
-                $purchase_sale_detail->vat_amount = $data['vat_amount'];
-                $purchase_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
-                $purchase_sale_detail->barcode = $barcode;
-                $purchase_sale_detail->update();
+                    // discount end
 
 
-                // product stock
-                $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest()->first();
-                $current_stock = $stock_row->current_stock;
 
-                // warehouse store current stock
-                $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
-                    ->where('store_id',$store_id)
-                    ->where('product_id',$product_id)
-                    ->first();
-                $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+                    // product purchase detail
+                    $product_sale_detail = new ProductSaleDetail();
+                    $product_sale_detail->product_sale_id = $insert_id;
+                    $product_sale_detail->product_unit_id = $data['product_unit_id'];
+                    $product_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                    $product_sale_detail->product_id = $product_id;
+                    $product_sale_detail->barcode = $barcode;
+                    $product_sale_detail->purchase_price = $get_purchase_price;
+                    $product_sale_detail->qty = $data['qty'];
+                    $product_sale_detail->discount = $discount;
+                    $product_sale_detail->price = $data['mrp_price'];
+                    $product_sale_detail->vat_amount = $data['vat_amount'];
+                    $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                    $product_sale_detail->sale_date = $date;
+                    $product_sale_detail->return_among_day = 2;
+                    $product_sale_detail->return_last_date = $add_two_day_date;
+                    $product_sale_detail->save();
 
-                if($stock_row->stock_out != $data['qty']){
-
-                    if($data['qty'] > $stock_row->stock_in){
-                        $new_stock_out = $data['qty'] - $previous_sale_qty;
-
-                        $stock = new Stock();
-                        $stock->ref_id=$request->product_sale_id;
-                        $stock->user_id=$user_id;
-                        $stock->product_unit_id= $data['product_unit_id'];
-                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                        $stock->product_id= $product_id;
-                        $stock->stock_type='pos_sale_increase';
-                        $stock->warehouse_id= $warehouse_id;
-                        $stock->store_id=$store_id;
-                        $stock->stock_where='store';
-                        $stock->stock_in_out='stock_out';
-                        $stock->previous_stock=$current_stock;
-                        $stock->stock_in=0;
-                        $stock->stock_out=$new_stock_out;
-                        $stock->current_stock=$current_stock - $new_stock_out;
-                        $stock->stock_date=$date;
-                        $stock->stock_date_time=$date_time;
-                        $stock->save();
-
-                        // warehouse current stock
-                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock - $new_stock_out;
-                        $update_warehouse_store_current_stock->save();
+                    $check_previous_stock = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('stock_where','store')->where('product_id',$product_id)->latest()->pluck('current_stock')->first();
+                    if(!empty($check_previous_stock)){
+                        $previous_stock = $check_previous_stock;
                     }else{
-                        $new_stock_in = $previous_sale_qty - $data['qty'];
-
-                        $stock = new Stock();
-                        $stock->ref_id=$request->product_sale_id;
-                        $stock->user_id=$user_id;
-                        $stock->product_unit_id= $data['product_unit_id'];
-                        $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                        $stock->product_id= $product_id;
-                        $stock->stock_type='pos_sale_decrease';
-                        $stock->warehouse_id= $warehouse_id;
-                        $stock->store_id=$store_id;
-                        $stock->stock_where='store';
-                        $stock->stock_in_out='stock_in';
-                        $stock->previous_stock=$current_stock;
-                        $stock->stock_in=$new_stock_in;
-                        $stock->stock_out=0;
-                        $stock->current_stock=$current_stock + $new_stock_in;
-                        $stock->stock_date=$date;
-                        $stock->stock_date_time=$date_time;
-                        $stock->save();
-
-                        // warehouse current stock
-                        $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $new_stock_in;
-                        $update_warehouse_store_current_stock->save();
+                        $previous_stock = 0;
                     }
+
+                    // product stock
+                    $stock = new Stock();
+                    $stock->ref_id = $insert_id;
+                    $stock->user_id = $user_id;
+                    $stock->warehouse_id = $warehouse_id;
+                    $stock->store_id = $store_id;
+                    $stock->product_id = $product_id;
+                    $stock->product_unit_id = $data['product_unit_id'];
+                    $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                    $stock->stock_type = 'pos_sale';
+                    $stock->stock_where = 'store';
+                    $stock->stock_in_out = 'stock_out';
+                    $stock->previous_stock = $previous_stock;
+                    $stock->stock_in = 0;
+                    $stock->stock_out = $data['qty'];
+                    $stock->current_stock = $previous_stock - $data['qty'];
+                    $stock->stock_date = $date;
+                    $stock->stock_date_time = $date_time;
+                    $stock->save();
+
+                    // warehouse store current stock
+                    $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                        ->where('store_id',$store_id)
+                        ->where('product_id',$product_id)
+                        ->first();
+
+                    $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+                    $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
+                    $update_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
+                    $update_warehouse_store_current_stock->save();
                 }
-            }
 
-            // transaction
-            $transaction = Transaction::where('ref_id',$request->product_sale_id)->first();
-            $transaction->user_id = $user_id;
-            $transaction->warehouse_id = $warehouse_id;
-            $transaction->store_id = $store_id;
-            $transaction->party_id = $request->party_id;
-            $transaction->payment_type = $request->payment_type;
-            $transaction->amount = $request->total_amount;
-            $transaction->update();
+                // transaction
+                $transaction = new Transaction();
+                $transaction->ref_id = $insert_id;
+                $transaction->invoice_no = $final_invoice;
+                $transaction->user_id = $user_id;
+                $transaction->warehouse_id = $warehouse_id;
+                $transaction->store_id = $store_id;
+                $transaction->party_id = $request->party_id;
+                $transaction->transaction_type = 'pos_sale';
+                $transaction->payment_type = $request->payment_type;
+                $transaction->amount = $request->total_amount;
+                $transaction->transaction_date = $date;
+                $transaction->transaction_date_time = $date_time;
+                $transaction->save();
+                $transaction_id = $transaction->id;
 
-            // payment paid
-            $payment_collection = PaymentCollection::where('product_sale_id',$request->product_sale_id)->first();
-            $payment_collection->user_id = $user_id;
-            $payment_collection->party_id = $request->party_id;
-            $payment_collection->warehouse_id = $warehouse_id;
-            $payment_collection->store_id = $store_id;
-            $payment_collection->collection_amount = $request->total_amount;
-            $payment_collection->due_amount = $request->due_amount;
-            $payment_collection->current_collection_amount = $request->total_amount;
-            $payment_collection->update();
+                // payment paid
+                $payment_collection = new PaymentCollection();
+                $payment_collection->invoice_no = $final_invoice;
+                $payment_collection->product_sale_id = $insert_id;
+                $payment_collection->user_id = $user_id;
+                $payment_collection->party_id = $request->party_id;
+                $payment_collection->warehouse_id = $warehouse_id;
+                $payment_collection->store_id = $store_id;
+                $payment_collection->collection_type = 'Sale';
+                $payment_collection->collection_amount = $request->total_amount;
+                $payment_collection->due_amount = $request->due_amount;
+                $payment_collection->current_collection_amount = $request->total_amount;
+                $payment_collection->collection_date = $date;
+                $payment_collection->collection_date_time = $date_time;
+                $payment_collection->save();
 
 
-            // posting update
-//            $month = date('m', strtotime($request->date));
-//            $year = date('Y', strtotime($request->date));
-//            $transaction_date_time = date('Y-m-d H:i:s');
-//
-//            $chart_of_account_transactions = ChartOfAccountTransaction::where('ref_id',$request->product_sale_id)->where('transaction_type','Sales')->first();
-//
-//            $chart_of_account_transactions_id = $chart_of_account_transactions->id;
-//
-//            $chart_of_account_transactions->user_id = $user_id;
-//            $chart_of_account_transactions->store_id = $store_id;
-//            $chart_of_account_transactions->transaction_date = $date;
-//            $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
-//            $chart_of_account_transactions->update();
-//            $affectedRows = $chart_of_account_transactions->id;
-//
-//            if($affectedRows){
-//                // sales
-//                $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Sales')->first();
-//                $chart_of_account_transaction_details->credit = $request->paid_amount;
-//                $chart_of_account_transaction_details->year = $year;
-//                $chart_of_account_transaction_details->month = $month;
-//                $chart_of_account_transaction_details->transaction_date = $date;
-//                $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                $chart_of_account_transaction_details->save();
-//
-//                // cash
-//                if($request->payment_type == 'Cash'){
-//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Cash')->first();
-//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                    $chart_of_account_transaction_details->year = $year;
-//                    $chart_of_account_transaction_details->month = $month;
-//                    $chart_of_account_transaction_details->transaction_date = $date;
-//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                    $chart_of_account_transaction_details->save();
-//                }elseif($request->payment_type == 'Check'){
-//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Check')->first();
-//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                    $chart_of_account_transaction_details->year = $year;
-//                    $chart_of_account_transaction_details->month = $month;
-//                    $chart_of_account_transaction_details->transaction_date = $date;
-//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                    $chart_of_account_transaction_details->save();
-//                }elseif($request->payment_type == 'Card'){
-//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Card')->first();
-//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                    $chart_of_account_transaction_details->year = $year;
-//                    $chart_of_account_transaction_details->month = $month;
-//                    $chart_of_account_transaction_details->transaction_date = $date;
-//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                    $chart_of_account_transaction_details->save();
-//                }elseif($request->payment_type == 'Bkash'){
-//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Bkash')->first();
-//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                    $chart_of_account_transaction_details->year = $year;
-//                    $chart_of_account_transaction_details->month = $month;
-//                    $chart_of_account_transaction_details->transaction_date = $date;
-//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                    $chart_of_account_transaction_details->save();
-//                }elseif($request->payment_type == 'Nogod'){
-//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Nogod')->first();
-//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                    $chart_of_account_transaction_details->year = $year;
-//                    $chart_of_account_transaction_details->month = $month;
-//                    $chart_of_account_transaction_details->transaction_date = $date;
-//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                    $chart_of_account_transaction_details->save();
-//                }elseif($request->payment_type == 'Rocket'){
-//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Rocket')->first();
-//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                    $chart_of_account_transaction_details->year = $year;
-//                    $chart_of_account_transaction_details->month = $month;
-//                    $chart_of_account_transaction_details->transaction_date = $date;
-//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                    $chart_of_account_transaction_details->save();
-//                }elseif($request->payment_type == 'Upay'){
-//                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Upay')->first();
-//                    $chart_of_account_transaction_details->debit = $request->paid_amount;
-//                    $chart_of_account_transaction_details->year = $year;
-//                    $chart_of_account_transaction_details->month = $month;
-//                    $chart_of_account_transaction_details->transaction_date = $date;
-//                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
-//                    $chart_of_account_transaction_details->save();
-//                }else{
-//
-//                }
-//            }
 
-            $new_paid_amount = $request->paid_amount - $previous_paid_amount;
 
-            if($request->paid_amount > 0 && $new_paid_amount){
+
+
                 // posting
-                $month = date('m', strtotime($request->date));
-                $year = date('Y', strtotime($request->date));
+                $month = date('m');
+                $year = date('Y');
                 $transaction_date_time = date('Y-m-d H:i:s');
 
                 $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
@@ -2050,10 +1683,11 @@ class ProductSaleController extends Controller
                 }
                 $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
                 $chart_of_account_transactions = new ChartOfAccountTransaction();
-                $chart_of_account_transactions->ref_id = $request->product_sale_id;
+                $chart_of_account_transactions->ref_id = $insert_id;
                 $chart_of_account_transactions->transaction_type = 'Sales';
                 $chart_of_account_transactions->user_id = $user_id;
-                $chart_of_account_transactions->store_id = NULL;
+                $chart_of_account_transactions->warehouse_id = $warehouse_id;
+                $chart_of_account_transactions->store_id = $store_id;
                 $chart_of_account_transactions->voucher_type_id = 2;
                 $chart_of_account_transactions->voucher_no = $final_voucher_no;
                 $chart_of_account_transactions->is_approved = 'approved';
@@ -2067,6 +1701,8 @@ class ProductSaleController extends Controller
                     // sales
                     $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
                     $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                    $chart_of_account_transaction_details->store_id = $store_id;
                     $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                     $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
                     $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
@@ -2074,7 +1710,7 @@ class ProductSaleController extends Controller
                     $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
                     $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
                     $chart_of_account_transaction_details->debit = NULL;
-                    $chart_of_account_transaction_details->credit = $new_paid_amount;
+                    $chart_of_account_transaction_details->credit = $request->total_amount;
                     $chart_of_account_transaction_details->description = 'Income From Sales';
                     $chart_of_account_transaction_details->year = $year;
                     $chart_of_account_transaction_details->month = $month;
@@ -2086,13 +1722,15 @@ class ProductSaleController extends Controller
                     if($request->payment_type == 'Cash'){
                         $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
                         $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                        $chart_of_account_transaction_details->store_id = $store_id;
                         $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                         $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                         $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                         $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
                         $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                         $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->debit = $request->total_amount;
                         $chart_of_account_transaction_details->credit = NULL;
                         $chart_of_account_transaction_details->description = 'Cash In For Sales';
                         $chart_of_account_transaction_details->year = $year;
@@ -2103,13 +1741,15 @@ class ProductSaleController extends Controller
                     }elseif($request->payment_type == 'Check'){
                         $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
                         $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                        $chart_of_account_transaction_details->store_id = $store_id;
                         $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                         $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                         $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                         $chart_of_account_transaction_details->chart_of_account_name = 'Check';
                         $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                         $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->debit = $request->total_amount;
                         $chart_of_account_transaction_details->credit = NULL;
                         $chart_of_account_transaction_details->description = 'Check In For Sales';
                         $chart_of_account_transaction_details->year = $year;
@@ -2120,13 +1760,15 @@ class ProductSaleController extends Controller
                     }elseif($request->payment_type == 'Card'){
                         $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
                         $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                        $chart_of_account_transaction_details->store_id = $store_id;
                         $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                         $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                         $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                         $chart_of_account_transaction_details->chart_of_account_name = 'Card';
                         $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                         $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->debit = $request->total_amount;
                         $chart_of_account_transaction_details->credit = NULL;
                         $chart_of_account_transaction_details->description = 'Card In For Sales';
                         $chart_of_account_transaction_details->year = $year;
@@ -2137,13 +1779,15 @@ class ProductSaleController extends Controller
                     }elseif($request->payment_type == 'Bkash'){
                         $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
                         $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                        $chart_of_account_transaction_details->store_id = $store_id;
                         $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                         $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                         $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                         $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
                         $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                         $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->debit = $request->total_amount;
                         $chart_of_account_transaction_details->credit = NULL;
                         $chart_of_account_transaction_details->description = 'Bkash In For Sales';
                         $chart_of_account_transaction_details->year = $year;
@@ -2154,13 +1798,15 @@ class ProductSaleController extends Controller
                     }elseif($request->payment_type == 'Nogod'){
                         $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
                         $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                        $chart_of_account_transaction_details->store_id = $store_id;
                         $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                         $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                         $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                         $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
                         $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                         $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->debit = $request->total_amount;
                         $chart_of_account_transaction_details->credit = NULL;
                         $chart_of_account_transaction_details->description = 'Nogod In For Sales';
                         $chart_of_account_transaction_details->year = $year;
@@ -2171,13 +1817,15 @@ class ProductSaleController extends Controller
                     }elseif($request->payment_type == 'Rocket'){
                         $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
                         $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                        $chart_of_account_transaction_details->store_id = $store_id;
                         $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                         $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                         $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                         $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
                         $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                         $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->debit = $request->total_amount;
                         $chart_of_account_transaction_details->credit = NULL;
                         $chart_of_account_transaction_details->description = 'Rocket In For Sales';
                         $chart_of_account_transaction_details->year = $year;
@@ -2188,13 +1836,15 @@ class ProductSaleController extends Controller
                     }elseif($request->payment_type == 'Upay'){
                         $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
                         $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                        $chart_of_account_transaction_details->store_id = $store_id;
                         $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
                         $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
                         $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
                         $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
                         $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
                         $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                        $chart_of_account_transaction_details->debit = $new_paid_amount;
+                        $chart_of_account_transaction_details->debit = $request->total_amount;
                         $chart_of_account_transaction_details->credit = NULL;
                         $chart_of_account_transaction_details->description = 'Upay In For Sales';
                         $chart_of_account_transaction_details->year = $year;
@@ -2206,74 +1856,585 @@ class ProductSaleController extends Controller
 
                     }
                 }
+
+
+
+
+
+
+//                if($request->payment_type == 'SSL Commerz'){
+//                    $product_pos_sale = DB::table('product_sales')
+//                        ->leftJoin('users','product_sales.user_id','users.id')
+//                        ->leftJoin('parties','product_sales.party_id','parties.id')
+//                        ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+//                        ->leftJoin('stores','product_sales.store_id','stores.id')
+//                        ->leftJoin('transactions','product_sales.invoice_no','transactions.invoice_no')
+//                        ->where('product_sales.sale_type','pos_sale')
+//                        ->where('product_sales.id',$insert_id)
+//                        ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone','transactions.payment_type')
+//                        ->first();
+//
+//                    return response()->json(['success'=>true,'transaction_id' => $transaction_id,'payment_type' => $request->payment_type,'product_pos_sale' => $product_pos_sale], $this->successStatus);
+//                }else{
+//
+//                    $product_pos_sale = DB::table('product_sales')
+//                        ->leftJoin('users','product_sales.user_id','users.id')
+//                        ->leftJoin('parties','product_sales.party_id','parties.id')
+//                        ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+//                        ->leftJoin('stores','product_sales.store_id','stores.id')
+//                        ->leftJoin('transactions','product_sales.invoice_no','transactions.invoice_no')
+//                        ->where('product_sales.sale_type','pos_sale')
+//                        ->where('product_sales.id',$insert_id)
+//                        ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone','transactions.payment_type')
+//                        ->first();
+//
+//                    return response()->json(['success'=>true,'product_pos_sale' => $product_pos_sale], $this->successStatus);
+//                }
+
+
+                $product_pos_sale = DB::table('product_sales')
+                    ->leftJoin('users','product_sales.user_id','users.id')
+                    ->leftJoin('parties','product_sales.party_id','parties.id')
+                    ->leftJoin('warehouses','product_sales.warehouse_id','warehouses.id')
+                    ->leftJoin('stores','product_sales.store_id','stores.id')
+                    ->leftJoin('transactions','product_sales.invoice_no','transactions.invoice_no')
+                    ->where('product_sales.sale_type','pos_sale')
+                    ->where('product_sales.id',$insert_id)
+                    ->select('product_sales.id','product_sales.invoice_no','product_sales.sub_total','product_sales.discount_type','product_sales.discount_amount','product_sales.total_vat_amount','product_sales.total_amount','product_sales.paid_amount','product_sales.due_amount','product_sales.sale_date_time','users.name as user_name','parties.id as customer_id','parties.name as customer_name','parties.phone as customer_phone','warehouses.id as warehouse_id','warehouses.name as warehouse_name','stores.id as store_id','stores.name as store_name','stores.address as store_address','stores.phone as phone','transactions.payment_type')
+                    ->first();
+
+                $response = APIHelpers::createAPIResponse(false,201,'Product POS Sale Added Successfully.',$product_pos_sale);
+                return response()->json($response,201);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Product POS Sale Sdded Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
+        }
+    }
+
+    public function productPOSSaleEdit(Request $request){
+        try {
+
+            $validator = Validator::make($request->all(), [
+                'product_sale_id'=> 'required',
+                'party_id'=> 'required',
+                'store_id'=> 'required',
+                'paid_amount'=> 'required',
+                'due_amount'=> 'required',
+                'total_amount'=> 'required',
+                'payment_type'=> 'required',
+            ]);
+
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
             }
 
+            $user_id = Auth::user()->id;
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d H:i:s');
+            $store_id = $request->store_id;
+            $warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
 
-            return response()->json(['success'=>true,'response' => 'Updated Successfully.'], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Updated Successfully!'], $this->failStatus);
+
+            // product purchase
+            $productSale = ProductSale::find($request->product_sale_id);
+            $previous_paid_amount = $productSale ->paid_amount;
+            $productSale->user_id = $user_id;
+            $productSale->party_id = $request->party_id;
+            $productSale->warehouse_id = $warehouse_id;
+            $productSale->store_id = $store_id;
+            $productSale->sub_total = $request->sub_total;
+            $productSale->discount_type = $request->discount_type ? $request->discount_type : NULL;
+            $productSale->discount_percent = $request->discount_percent ? $request->discount_percent : 0;
+            $productSale->discount_amount = $request->discount_amount ? $request->discount_amount : 0;
+            $productSale->after_discount_amount = $request->after_discount_amount ? $request->after_discount_amount : 0;
+            $productSale->paid_amount = $request->paid_amount;
+            $productSale->due_amount = $request->due_amount;
+            $productSale->total_vat_amount = $request->total_vat_amount;
+            $productSale->total_amount = $request->total_amount;
+            $productSale->update();
+            $affectedRows = $productSale->id;
+            if($affectedRows)
+            {
+                foreach ($request->products as $data) {
+                    $product_id = $data['product_id'];
+                    $barcode = Product::where('id',$product_id)->pluck('barcode')->first();
+                    $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
+
+                    // discount start
+                    $price = $data['mrp_price'];
+                    $discount_amount = $request->discount_amount;
+                    $total_amount = $request->total_amount;
+
+                    $final_discount_amount = (float)$discount_amount * (float)$price;
+                    $final_total_amount = (float)$discount_amount + (float)$total_amount;
+                    $discount_type = $request->discount_type;
+                    $discount = (float)$final_discount_amount/(float)$final_total_amount;
+                    if($discount_type != NULL){
+                        if($discount_type == 'Flat'){
+                            $discount = round($discount);
+                        }
+                    }
+                    // discount end
+
+                    $product_sale_detail_id = $data['product_sale_detail_id'];
+                    // product purchase detail
+                    $purchase_sale_detail = ProductSaleDetail::find($product_sale_detail_id);
+                    $previous_sale_qty = $purchase_sale_detail->qty;
+                    $purchase_sale_detail->product_unit_id = $data['product_unit_id'];
+                    $purchase_sale_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                    $purchase_sale_detail->product_id = $product_id;
+                    $purchase_sale_detail->purchase_price = $get_purchase_price;
+                    $purchase_sale_detail->qty = $data['qty'];
+                    $purchase_sale_detail->discount = $discount;
+                    $purchase_sale_detail->price = $data['mrp_price'];
+                    $purchase_sale_detail->vat_amount = $data['vat_amount'];
+                    $purchase_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                    $purchase_sale_detail->barcode = $barcode;
+                    $purchase_sale_detail->update();
+
+
+                    // product stock
+                    $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('store_id',$store_id)->where('product_id',$product_id)->latest()->first();
+                    $current_stock = $stock_row->current_stock;
+
+                    // warehouse store current stock
+                    $update_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                        ->where('store_id',$store_id)
+                        ->where('product_id',$product_id)
+                        ->first();
+                    $exists_current_stock = $update_warehouse_store_current_stock->current_stock;
+
+                    if($stock_row->stock_out != $data['qty']){
+
+                        if($data['qty'] > $stock_row->stock_in){
+                            $new_stock_out = $data['qty'] - $previous_sale_qty;
+
+                            $stock = new Stock();
+                            $stock->ref_id=$request->product_sale_id;
+                            $stock->user_id=$user_id;
+                            $stock->product_unit_id= $data['product_unit_id'];
+                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                            $stock->product_id= $product_id;
+                            $stock->stock_type='pos_sale_increase';
+                            $stock->warehouse_id= $warehouse_id;
+                            $stock->store_id=$store_id;
+                            $stock->stock_where='store';
+                            $stock->stock_in_out='stock_out';
+                            $stock->previous_stock=$current_stock;
+                            $stock->stock_in=0;
+                            $stock->stock_out=$new_stock_out;
+                            $stock->current_stock=$current_stock - $new_stock_out;
+                            $stock->stock_date=$date;
+                            $stock->stock_date_time=$date_time;
+                            $stock->save();
+
+                            // warehouse current stock
+                            $update_warehouse_store_current_stock->current_stock=$exists_current_stock - $new_stock_out;
+                            $update_warehouse_store_current_stock->save();
+                        }else{
+                            $new_stock_in = $previous_sale_qty - $data['qty'];
+
+                            $stock = new Stock();
+                            $stock->ref_id=$request->product_sale_id;
+                            $stock->user_id=$user_id;
+                            $stock->product_unit_id= $data['product_unit_id'];
+                            $stock->product_brand_id= $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                            $stock->product_id= $product_id;
+                            $stock->stock_type='pos_sale_decrease';
+                            $stock->warehouse_id= $warehouse_id;
+                            $stock->store_id=$store_id;
+                            $stock->stock_where='store';
+                            $stock->stock_in_out='stock_in';
+                            $stock->previous_stock=$current_stock;
+                            $stock->stock_in=$new_stock_in;
+                            $stock->stock_out=0;
+                            $stock->current_stock=$current_stock + $new_stock_in;
+                            $stock->stock_date=$date;
+                            $stock->stock_date_time=$date_time;
+                            $stock->save();
+
+                            // warehouse current stock
+                            $update_warehouse_store_current_stock->current_stock=$exists_current_stock + $new_stock_in;
+                            $update_warehouse_store_current_stock->save();
+                        }
+                    }
+                }
+
+                // transaction
+                $transaction = Transaction::where('ref_id',$request->product_sale_id)->first();
+                $transaction->user_id = $user_id;
+                $transaction->warehouse_id = $warehouse_id;
+                $transaction->store_id = $store_id;
+                $transaction->party_id = $request->party_id;
+                $transaction->payment_type = $request->payment_type;
+                $transaction->amount = $request->total_amount;
+                $transaction->update();
+
+                // payment paid
+                $payment_collection = PaymentCollection::where('product_sale_id',$request->product_sale_id)->first();
+                $payment_collection->user_id = $user_id;
+                $payment_collection->party_id = $request->party_id;
+                $payment_collection->warehouse_id = $warehouse_id;
+                $payment_collection->store_id = $store_id;
+                $payment_collection->collection_amount = $request->total_amount;
+                $payment_collection->due_amount = $request->due_amount;
+                $payment_collection->current_collection_amount = $request->total_amount;
+                $payment_collection->update();
+
+
+                // posting update
+    //            $month = date('m', strtotime($request->date));
+    //            $year = date('Y', strtotime($request->date));
+    //            $transaction_date_time = date('Y-m-d H:i:s');
+    //
+    //            $chart_of_account_transactions = ChartOfAccountTransaction::where('ref_id',$request->product_sale_id)->where('transaction_type','Sales')->first();
+    //
+    //            $chart_of_account_transactions_id = $chart_of_account_transactions->id;
+    //
+    //            $chart_of_account_transactions->user_id = $user_id;
+    //            $chart_of_account_transactions->store_id = $store_id;
+    //            $chart_of_account_transactions->transaction_date = $date;
+    //            $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+    //            $chart_of_account_transactions->update();
+    //            $affectedRows = $chart_of_account_transactions->id;
+    //
+    //            if($affectedRows){
+    //                // sales
+    //                $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Sales')->first();
+    //                $chart_of_account_transaction_details->credit = $request->paid_amount;
+    //                $chart_of_account_transaction_details->year = $year;
+    //                $chart_of_account_transaction_details->month = $month;
+    //                $chart_of_account_transaction_details->transaction_date = $date;
+    //                $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                $chart_of_account_transaction_details->save();
+    //
+    //                // cash
+    //                if($request->payment_type == 'Cash'){
+    //                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Cash')->first();
+    //                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                    $chart_of_account_transaction_details->year = $year;
+    //                    $chart_of_account_transaction_details->month = $month;
+    //                    $chart_of_account_transaction_details->transaction_date = $date;
+    //                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                    $chart_of_account_transaction_details->save();
+    //                }elseif($request->payment_type == 'Check'){
+    //                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Check')->first();
+    //                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                    $chart_of_account_transaction_details->year = $year;
+    //                    $chart_of_account_transaction_details->month = $month;
+    //                    $chart_of_account_transaction_details->transaction_date = $date;
+    //                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                    $chart_of_account_transaction_details->save();
+    //                }elseif($request->payment_type == 'Card'){
+    //                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Card')->first();
+    //                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                    $chart_of_account_transaction_details->year = $year;
+    //                    $chart_of_account_transaction_details->month = $month;
+    //                    $chart_of_account_transaction_details->transaction_date = $date;
+    //                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                    $chart_of_account_transaction_details->save();
+    //                }elseif($request->payment_type == 'Bkash'){
+    //                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Bkash')->first();
+    //                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                    $chart_of_account_transaction_details->year = $year;
+    //                    $chart_of_account_transaction_details->month = $month;
+    //                    $chart_of_account_transaction_details->transaction_date = $date;
+    //                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                    $chart_of_account_transaction_details->save();
+    //                }elseif($request->payment_type == 'Nogod'){
+    //                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Nogod')->first();
+    //                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                    $chart_of_account_transaction_details->year = $year;
+    //                    $chart_of_account_transaction_details->month = $month;
+    //                    $chart_of_account_transaction_details->transaction_date = $date;
+    //                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                    $chart_of_account_transaction_details->save();
+    //                }elseif($request->payment_type == 'Rocket'){
+    //                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Rocket')->first();
+    //                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                    $chart_of_account_transaction_details->year = $year;
+    //                    $chart_of_account_transaction_details->month = $month;
+    //                    $chart_of_account_transaction_details->transaction_date = $date;
+    //                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                    $chart_of_account_transaction_details->save();
+    //                }elseif($request->payment_type == 'Upay'){
+    //                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_transaction_id',$chart_of_account_transactions_id)->where('chart_of_account_name','Upay')->first();
+    //                    $chart_of_account_transaction_details->debit = $request->paid_amount;
+    //                    $chart_of_account_transaction_details->year = $year;
+    //                    $chart_of_account_transaction_details->month = $month;
+    //                    $chart_of_account_transaction_details->transaction_date = $date;
+    //                    $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+    //                    $chart_of_account_transaction_details->save();
+    //                }else{
+    //
+    //                }
+    //            }
+
+                $new_paid_amount = $request->paid_amount - $previous_paid_amount;
+
+                if($request->paid_amount > 0 && $new_paid_amount){
+                    // posting
+                    $month = date('m', strtotime($request->date));
+                    $year = date('Y', strtotime($request->date));
+                    $transaction_date_time = date('Y-m-d H:i:s');
+
+                    $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
+                    $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
+                    if(!empty($get_voucher_no)){
+                        $get_voucher_name_str = $get_voucher_name."-";
+                        $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+                        $voucher_no = $get_voucher+1;
+                    }else{
+                        $voucher_no = 8000;
+                    }
+                    $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+                    $chart_of_account_transactions = new ChartOfAccountTransaction();
+                    $chart_of_account_transactions->ref_id = $request->product_sale_id;
+                    $chart_of_account_transactions->transaction_type = 'Sales';
+                    $chart_of_account_transactions->user_id = $user_id;
+                    $chart_of_account_transactions->store_id = NULL;
+                    $chart_of_account_transactions->voucher_type_id = 2;
+                    $chart_of_account_transactions->voucher_no = $final_voucher_no;
+                    $chart_of_account_transactions->is_approved = 'approved';
+                    $chart_of_account_transactions->transaction_date = $date;
+                    $chart_of_account_transactions->transaction_date_time = $transaction_date_time;
+                    $chart_of_account_transactions->save();
+                    $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
+
+                    if($chart_of_account_transactions_insert_id){
+
+                        // sales
+                        $sales_chart_of_account_info = ChartOfAccount::where('head_name','Sales')->first();
+                        $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                        $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                        $chart_of_account_transaction_details->chart_of_account_id = $sales_chart_of_account_info->id;
+                        $chart_of_account_transaction_details->chart_of_account_number = $sales_chart_of_account_info->head_code;
+                        $chart_of_account_transaction_details->chart_of_account_name = 'Sales';
+                        $chart_of_account_transaction_details->chart_of_account_parent_name = $sales_chart_of_account_info->parent_head_name;
+                        $chart_of_account_transaction_details->chart_of_account_type = $sales_chart_of_account_info->head_type;
+                        $chart_of_account_transaction_details->debit = NULL;
+                        $chart_of_account_transaction_details->credit = $new_paid_amount;
+                        $chart_of_account_transaction_details->description = 'Income From Sales';
+                        $chart_of_account_transaction_details->year = $year;
+                        $chart_of_account_transaction_details->month = $month;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                        $chart_of_account_transaction_details->save();
+
+                        // cash
+                        if($request->payment_type == 'Cash'){
+                            $cash_chart_of_account_info = ChartOfAccount::where('head_name','Cash')->first();
+                            $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                            $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                            $chart_of_account_transaction_details->chart_of_account_name = 'Cash';
+                            $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                            $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                            $chart_of_account_transaction_details->debit = $new_paid_amount;
+                            $chart_of_account_transaction_details->credit = NULL;
+                            $chart_of_account_transaction_details->description = 'Cash In For Sales';
+                            $chart_of_account_transaction_details->year = $year;
+                            $chart_of_account_transaction_details->month = $month;
+                            $chart_of_account_transaction_details->transaction_date = $date;
+                            $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                            $chart_of_account_transaction_details->save();
+                        }elseif($request->payment_type == 'Check'){
+                            $cash_chart_of_account_info = ChartOfAccount::where('head_name','Check')->first();
+                            $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                            $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                            $chart_of_account_transaction_details->chart_of_account_name = 'Check';
+                            $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                            $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                            $chart_of_account_transaction_details->debit = $new_paid_amount;
+                            $chart_of_account_transaction_details->credit = NULL;
+                            $chart_of_account_transaction_details->description = 'Check In For Sales';
+                            $chart_of_account_transaction_details->year = $year;
+                            $chart_of_account_transaction_details->month = $month;
+                            $chart_of_account_transaction_details->transaction_date = $date;
+                            $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                            $chart_of_account_transaction_details->save();
+                        }elseif($request->payment_type == 'Card'){
+                            $cash_chart_of_account_info = ChartOfAccount::where('head_name','Card')->first();
+                            $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                            $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                            $chart_of_account_transaction_details->chart_of_account_name = 'Card';
+                            $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                            $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                            $chart_of_account_transaction_details->debit = $new_paid_amount;
+                            $chart_of_account_transaction_details->credit = NULL;
+                            $chart_of_account_transaction_details->description = 'Card In For Sales';
+                            $chart_of_account_transaction_details->year = $year;
+                            $chart_of_account_transaction_details->month = $month;
+                            $chart_of_account_transaction_details->transaction_date = $date;
+                            $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                            $chart_of_account_transaction_details->save();
+                        }elseif($request->payment_type == 'Bkash'){
+                            $cash_chart_of_account_info = ChartOfAccount::where('head_name','Bkash')->first();
+                            $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                            $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                            $chart_of_account_transaction_details->chart_of_account_name = 'Bkash';
+                            $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                            $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                            $chart_of_account_transaction_details->debit = $new_paid_amount;
+                            $chart_of_account_transaction_details->credit = NULL;
+                            $chart_of_account_transaction_details->description = 'Bkash In For Sales';
+                            $chart_of_account_transaction_details->year = $year;
+                            $chart_of_account_transaction_details->month = $month;
+                            $chart_of_account_transaction_details->transaction_date = $date;
+                            $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                            $chart_of_account_transaction_details->save();
+                        }elseif($request->payment_type == 'Nogod'){
+                            $cash_chart_of_account_info = ChartOfAccount::where('head_name','Nogod')->first();
+                            $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                            $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                            $chart_of_account_transaction_details->chart_of_account_name = 'Nogod';
+                            $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                            $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                            $chart_of_account_transaction_details->debit = $new_paid_amount;
+                            $chart_of_account_transaction_details->credit = NULL;
+                            $chart_of_account_transaction_details->description = 'Nogod In For Sales';
+                            $chart_of_account_transaction_details->year = $year;
+                            $chart_of_account_transaction_details->month = $month;
+                            $chart_of_account_transaction_details->transaction_date = $date;
+                            $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                            $chart_of_account_transaction_details->save();
+                        }elseif($request->payment_type == 'Rocket'){
+                            $cash_chart_of_account_info = ChartOfAccount::where('head_name','Rocket')->first();
+                            $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                            $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                            $chart_of_account_transaction_details->chart_of_account_name = 'Rocket';
+                            $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                            $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                            $chart_of_account_transaction_details->debit = $new_paid_amount;
+                            $chart_of_account_transaction_details->credit = NULL;
+                            $chart_of_account_transaction_details->description = 'Rocket In For Sales';
+                            $chart_of_account_transaction_details->year = $year;
+                            $chart_of_account_transaction_details->month = $month;
+                            $chart_of_account_transaction_details->transaction_date = $date;
+                            $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                            $chart_of_account_transaction_details->save();
+                        }elseif($request->payment_type == 'Upay'){
+                            $cash_chart_of_account_info = ChartOfAccount::where('head_name','Upay')->first();
+                            $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                            $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                            $chart_of_account_transaction_details->chart_of_account_name = 'Upay';
+                            $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                            $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                            $chart_of_account_transaction_details->debit = $new_paid_amount;
+                            $chart_of_account_transaction_details->credit = NULL;
+                            $chart_of_account_transaction_details->description = 'Upay In For Sales';
+                            $chart_of_account_transaction_details->year = $year;
+                            $chart_of_account_transaction_details->month = $month;
+                            $chart_of_account_transaction_details->transaction_date = $date;
+                            $chart_of_account_transaction_details->transaction_date_time = $transaction_date_time;
+                            $chart_of_account_transaction_details->save();
+                        }else{
+
+                        }
+                    }
+                }
+
+
+                $response = APIHelpers::createAPIResponse(false,200,'Product POS Sale Updated Successfully.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Product POS Sale Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function productPOSSaleDelete(Request $request){
-        $check_exists_product_sale = DB::table("product_sales")->where('id',$request->product_sale_id)->pluck('id')->first();
-        if($check_exists_product_sale == null){
-            return response()->json(['success'=>false,'response'=>'No Product Sale Found!'], $this->failStatus);
-        }
+        try {
+            $check_exists_product_sale = DB::table("product_sales")->where('id',$request->product_sale_id)->pluck('id')->first();
+            if($check_exists_product_sale == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Product POS Sale Found.',null);
+                return response()->json($response,404);
+            }
 
-        $productSale = ProductSale::find($request->product_sale_id);
-        if($productSale){
-            $user_id = Auth::user()->id;
-            $date = date('Y-m-d');
-            $date_time = date('Y-m-d H:i:s');
+            $productSale = ProductSale::find($request->product_sale_id);
+            if($productSale){
+                $user_id = Auth::user()->id;
+                $date = date('Y-m-d');
+                $date_time = date('Y-m-d H:i:s');
 
-            $product_sale_details = DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->get();
+                $product_sale_details = DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->get();
 
-            if(count($product_sale_details) > 0){
-                foreach ($product_sale_details as $product_sale_detail){
-                    // current stock
-                    $stock_row = Stock::where('stock_where','store')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
-                    $current_stock = $stock_row->current_stock;
+                if(count($product_sale_details) > 0){
+                    foreach ($product_sale_details as $product_sale_detail){
+                        // current stock
+                        $stock_row = Stock::where('stock_where','store')->where('warehouse_id',$productSale->warehouse_id)->where('product_id',$product_sale_detail->product_id)->latest('id')->first();
+                        $current_stock = $stock_row->current_stock;
 
-                    $stock = new Stock();
-                    $stock->ref_id=$productSale->id;
-                    $stock->user_id=$user_id;
-                    $stock->product_unit_id= $product_sale_detail->product_unit_id;
-                    $stock->product_brand_id= $product_sale_detail->product_brand_id;
-                    $stock->product_id= $product_sale_detail->product_id;
-                    $stock->stock_type='pos_sale_delete';
-                    $stock->warehouse_id= $productSale->warehouse_id;
-                    $stock->store_id=$productSale->store_id;
-                    $stock->stock_where='store';
-                    $stock->stock_in_out='stock_in';
-                    $stock->previous_stock=$current_stock;
-                    $stock->stock_in=$product_sale_detail->qty;
-                    $stock->stock_out=0;
-                    $stock->current_stock=$current_stock + $product_sale_detail->qty;
-                    $stock->stock_date=$date;
-                    $stock->stock_date_time=$date_time;
-                    $stock->save();
+                        $stock = new Stock();
+                        $stock->ref_id=$productSale->id;
+                        $stock->user_id=$user_id;
+                        $stock->product_unit_id= $product_sale_detail->product_unit_id;
+                        $stock->product_brand_id= $product_sale_detail->product_brand_id;
+                        $stock->product_id= $product_sale_detail->product_id;
+                        $stock->stock_type='pos_sale_delete';
+                        $stock->warehouse_id= $productSale->warehouse_id;
+                        $stock->store_id=$productSale->store_id;
+                        $stock->stock_where='store';
+                        $stock->stock_in_out='stock_in';
+                        $stock->previous_stock=$current_stock;
+                        $stock->stock_in=$product_sale_detail->qty;
+                        $stock->stock_out=0;
+                        $stock->current_stock=$current_stock + $product_sale_detail->qty;
+                        $stock->stock_date=$date;
+                        $stock->stock_date_time=$date_time;
+                        $stock->save();
 
 
-                    $warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$productSale->warehouse_id)->where('store_id',$productSale->store_id)->where('product_id',$product_sale_detail->product_id)->first();
-                    $exists_current_stock = $warehouse_store_current_stock->current_stock;
-                    $warehouse_store_current_stock->current_stock=$exists_current_stock + $product_sale_detail->qty;
-                    $warehouse_store_current_stock->update();
+                        $warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$productSale->warehouse_id)->where('store_id',$productSale->store_id)->where('product_id',$product_sale_detail->product_id)->first();
+                        $exists_current_stock = $warehouse_store_current_stock->current_stock;
+                        $warehouse_store_current_stock->current_stock=$exists_current_stock + $product_sale_detail->qty;
+                        $warehouse_store_current_stock->update();
+                    }
                 }
             }
-        }
-        $delete_sale = $productSale->delete();
+            $delete_sale = $productSale->delete();
 
-        DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->delete();
-        //DB::table('stocks')->where('ref_id',$request->product_sale_id)->delete();
-        DB::table('transactions')->where('ref_id',$request->product_sale_id)->delete();
-        DB::table('payment_collections')->where('product_sale_id',$request->product_sale_id)->delete();
+            DB::table('product_sale_details')->where('product_sale_id',$request->product_sale_id)->delete();
+            //DB::table('stocks')->where('ref_id',$request->product_sale_id)->delete();
+            DB::table('transactions')->where('ref_id',$request->product_sale_id)->delete();
+            DB::table('payment_collections')->where('product_sale_id',$request->product_sale_id)->delete();
 
-        if($delete_sale)
-        {
-            return response()->json(['success'=>true,'response' =>'Sale Successfully Deleted!'], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Sale Not Deleted!'], $this->failStatus);
+            if($delete_sale)
+            {
+                $response = APIHelpers::createAPIResponse(false,200,'Product POS Sale Successfully Soft Deleted.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Product POS Sale Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 
+use App\Helpers\APIHelpers;
 use App\Http\Controllers\Controller;
 
 use App\Http\Resources\CustomerCollection;
@@ -108,49 +109,57 @@ class PaymentController extends Controller
     }
 
     public function wholeSaleCustomerListPaginationWithSearch(Request $request){
+        try {
+            if($request->search){
+                $search = $request->search;
+                $order_by = $request->order_by;
 
-        if($request->search){
-            $search = $request->search;
-            $order_by = $request->order_by;
-
-            if($order_by == 'asc'){
-                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
-                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
-                    ->where('parties.customer_type','Whole Sale')
-                    ->where('name','like','%'.$search.'%')
-                    ->orWhere('phone', 'like', '%'.$search.'%')
-                    ->groupBy('parties.id')
-                    ->orderBy('total_amount', 'ASC')
-                    ->paginate(12);
+                if($order_by == 'asc'){
+                    $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
+                        ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                        ->where('parties.customer_type','Whole Sale')
+                        ->where('name','like','%'.$search.'%')
+                        ->orWhere('phone', 'like', '%'.$search.'%')
+                        ->groupBy('parties.id')
+                        ->orderBy('total_amount', 'ASC')
+                        ->paginate(12);
+                }else{
+                    $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
+                        ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                        ->where('parties.customer_type','Whole Sale')
+                        ->where('name','like','%'.$search.'%')
+                        ->orWhere('phone', 'like', '%'.$search.'%')
+                        ->groupBy('parties.id')
+                        ->orderBy('total_amount', 'DESC')
+                        ->paginate(12);
+                }
             }else{
-                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
-                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
-                    ->where('parties.customer_type','Whole Sale')
-                    ->where('name','like','%'.$search.'%')
-                    ->orWhere('phone', 'like', '%'.$search.'%')
-                    ->groupBy('parties.id')
-                    ->orderBy('total_amount', 'DESC')
-                    ->paginate(12);
+                $order_by = $request->order_by;
+                if($order_by == 'asc'){
+                    $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
+                        ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                        ->where('parties.customer_type','Whole Sale')
+                        ->groupBy('parties.id')
+                        ->orderBy('total_amount', 'ASC')
+                        ->paginate(12);
+                }else{
+                    $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
+                        ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
+                        ->where('parties.customer_type','Whole Sale')
+                        ->groupBy('parties.id')
+                        ->orderBy('total_amount', 'DESC')
+                        ->paginate(12);
+                }
+            }
+            if($parties == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Whole Sale Customer Found.',null);
+                return response()->json($response,404);
             }
             return new CustomerCollection($parties);
-        }else{
-            $order_by = $request->order_by;
-            if($order_by == 'asc'){
-                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
-                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
-                    ->where('parties.customer_type','Whole Sale')
-                    ->groupBy('parties.id')
-                    ->orderBy('total_amount', 'ASC')
-                    ->paginate(12);
-            }else{
-                $parties = ProductSale::rightJoin('parties','product_sales.party_id','parties.id')
-                    ->select('parties.id', DB::raw('sum(total_amount) as total_amount'))
-                    ->where('parties.customer_type','Whole Sale')
-                    ->groupBy('parties.id')
-                    ->orderBy('total_amount', 'DESC')
-                    ->paginate(12);
-            }
-            return new CustomerCollection($parties);
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 

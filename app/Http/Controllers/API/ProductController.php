@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Helpers\APIHelpers;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductCollection;
 use App\Product;
@@ -106,17 +107,28 @@ class ProductController extends Controller
     }
 
     public function productListWithSearch(Request $request){
-        if($request->search){
-            $products = Product::where('name','like','%'.$request->search.'%')
-                ->orWhere('name','like','%'.$request->search.'%')
-                ->orWhere('item_code','like','%'.$request->search.'%')
-                ->orWhere('barcode','like','%'.$request->search.'%')
-                ->orWhere('whole_sale_price','like','%'.$request->search.'%')
-                ->orWhere('selling_price','like','%'.$request->search.'%')
-                ->latest()->paginate(12);
-            return new ProductCollection($products);
-        }else{
-            return new ProductCollection(Product::latest()->paginate(12));
+        try {
+            if($request->search){
+                $products = Product::where('name','like','%'.$request->search.'%')
+                    ->orWhere('name','like','%'.$request->search.'%')
+                    ->orWhere('item_code','like','%'.$request->search.'%')
+                    ->orWhere('barcode','like','%'.$request->search.'%')
+                    ->orWhere('whole_sale_price','like','%'.$request->search.'%')
+                    ->orWhere('selling_price','like','%'.$request->search.'%')
+                    ->latest()->paginate(12);
+                if($products === null){
+                    $response = APIHelpers::createAPIResponse(true,404,'No Product Found.',null);
+                    return response()->json($response,404);
+                }else{
+                    return new ProductCollection($products);
+                }
+            }else{
+                return new ProductCollection(Product::latest()->paginate(12));
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
@@ -204,187 +216,184 @@ class ProductController extends Controller
     }
 
     public function productCreate(Request $request){
+        try {
+            $fourRandomDigit = rand(1000,9999);
+            $barcode = time().$fourRandomDigit;
 
-        $fourRandomDigit = rand(1000,9999);
-        $barcode = time().$fourRandomDigit;
+            $validator = Validator::make($request->all(), [
+                'name' => 'required|unique:products,name',
+                'product_unit_id'=> 'required',
+                //'barcode'=> 'required',
+                //'barcode' => 'required|unique:products,barcode',
+                'purchase_price'=> 'required',
+                'whole_sale_price'=> 'required',
+                'selling_price'=> 'required',
+                'date'=> 'required',
+                'status'=> 'required',
+                'vat_status'=> 'required',
+            ]);
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|unique:products,name',
-            'product_unit_id'=> 'required',
-            //'barcode'=> 'required',
-            //'barcode' => 'required|unique:products,barcode',
-            'purchase_price'=> 'required',
-            'whole_sale_price'=> 'required',
-            'selling_price'=> 'required',
-            'date'=> 'required',
-            'status'=> 'required',
-            'vat_status'=> 'required',
-        ]);
-
-        if ($validator->fails()) {
-            $response = [
-                'success' => false,
-                'data' => 'Validation Error.',
-                'message' => $validator->errors()
-            ];
-
-            return response()->json($response, $this-> validationStatus);
-        }
-
-        $item_code = isset($request->item_code) ? $request->item_code : '';
-        if($item_code){
-            $check_exists = Product::where('item_code',$item_code)->pluck('id')->first();
-            if($check_exists){
-                $response = [
-                    'success' => false,
-                    'data' => 'Validation Error.',
-                    'message' => ['This Item Code Is Already exists!']
-                ];
-                return response()->json($response, $this-> validationStatus);
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
             }
-        }
 
-        $product_vat = ProductVat::latest()->first();
-        $vat_percentage = 0;
-        $vat_amount = 0;
-        $vat_whole_amount = 0;
-        if($product_vat && ($request->vat_status == 1)){
-            $vat_percentage = $product_vat->vat_percentage;
-            if($request->selling_price > 0){
-                $vat_amount = $request->selling_price*$vat_percentage/100;
+            $item_code = isset($request->item_code) ? $request->item_code : '';
+            if($item_code){
+                $check_exists = Product::where('item_code',$item_code)->pluck('id')->first();
+                if($check_exists){
+                    $response = APIHelpers::createAPIResponse(true,409,'This Item Code Is Already exists!',null);
+                    return response()->json($response,409);
+                }
             }
-            if($request->whole_sale_price > 0){
-                $vat_whole_amount = $request->whole_sale_price*$vat_percentage/100;
+
+            $product_vat = ProductVat::latest()->first();
+            $vat_percentage = 0;
+            $vat_amount = 0;
+            $vat_whole_amount = 0;
+            if($product_vat && ($request->vat_status == 1)){
+                $vat_percentage = $product_vat->vat_percentage;
+                if($request->selling_price > 0){
+                    $vat_amount = $request->selling_price*$vat_percentage/100;
+                }
+                if($request->whole_sale_price > 0){
+                    $vat_whole_amount = $request->whole_sale_price*$vat_percentage/100;
+                }
             }
-        }
 
-        $product = new Product();
-        $product->name = $request->name;
-        $product->product_unit_id = $request->product_unit_id;
-        $product->item_code = $request->item_code ? $request->item_code : NULL;
-        //$product->barcode = $request->barcode;
-        $product->barcode = $barcode;
-        $product->self_no = $request->self_no ? $request->self_no : NULL;
-        $product->low_inventory_alert = $request->low_inventory_alert ? $request->low_inventory_alert : NULL;
-        $product->product_brand_id = $request->product_brand_id ? $request->product_brand_id : NULL;
-        $product->purchase_price = $request->purchase_price;
-        $product->whole_sale_price = $request->whole_sale_price;
-        $product->selling_price = $request->selling_price;
-        $product->vat_status = $request->vat_status;
-        $product->vat_percentage = $vat_percentage;
-        $product->vat_amount = $vat_amount;
-        $product->vat_whole_amount = $vat_whole_amount;
-        $product->note = $request->note ? $request->note : NULL;
-        $product->date = $request->date;
-        $product->status = $request->status;
-        $product->image = 'default.png';
-        $product->save();
-        $insert_id = $product->id;
+            $product = new Product();
+            $product->name = $request->name;
+            $product->product_unit_id = $request->product_unit_id;
+            $product->item_code = $request->item_code ? $request->item_code : NULL;
+            //$product->barcode = $request->barcode;
+            $product->barcode = $barcode;
+            $product->self_no = $request->self_no ? $request->self_no : NULL;
+            $product->low_inventory_alert = $request->low_inventory_alert ? $request->low_inventory_alert : NULL;
+            $product->product_brand_id = $request->product_brand_id ? $request->product_brand_id : NULL;
+            $product->purchase_price = $request->purchase_price;
+            $product->whole_sale_price = $request->whole_sale_price;
+            $product->selling_price = $request->selling_price;
+            $product->vat_status = $request->vat_status;
+            $product->vat_percentage = $vat_percentage;
+            $product->vat_amount = $vat_amount;
+            $product->vat_whole_amount = $vat_whole_amount;
+            $product->note = $request->note ? $request->note : NULL;
+            $product->date = $request->date;
+            $product->status = $request->status;
+            $product->image = 'default.png';
+            $product->save();
+            $insert_id = $product->id;
 
-        if($insert_id){
-            return response()->json(['success'=>true,'response' => $product], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Product Not Created Successfully!'], $this->failStatus);
+            $response = APIHelpers::createAPIResponse(false,201,'Warehouse Added Successfully.',null);
+            return response()->json($response,201);
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function productEdit(Request $request){
+        try {
+            $validator = Validator::make($request->all(), [
+                'product_id'=> 'required',
+                'name' => 'required|unique:products,name,'.$request->product_id,
+                'product_unit_id'=> 'required',
+                //'barcode'=> 'required',
+                //'barcode' => 'required|unique:products,barcode,'.$request->product_id,
+                'purchase_price'=> 'required',
+                'whole_sale_price'=> 'required',
+                'selling_price'=> 'required',
+                'date'=> 'required',
+                'status'=> 'required',
+            ]);
 
-        $validator = Validator::make($request->all(), [
-            'product_id'=> 'required',
-            'name' => 'required|unique:products,name,'.$request->product_id,
-            'product_unit_id'=> 'required',
-            //'barcode'=> 'required',
-            //'barcode' => 'required|unique:products,barcode,'.$request->product_id,
-            'purchase_price'=> 'required',
-            'whole_sale_price'=> 'required',
-            'selling_price'=> 'required',
-            'date'=> 'required',
-            'status'=> 'required',
-        ]);
-
-        if ($validator->fails()) {
-            $response = [
-                'success' => false,
-                'data' => 'Validation Error.',
-                'message' => $validator->errors()
-            ];
-
-            return response()->json($response, $this->validationStatus);
-        }
-
-//        $item_code = isset($request->item_code) ? $request->item_code : '';
-//        if($item_code){
-//            $check_exists = Product::where('item_code',$item_code)->where('id','!=',$request->product_id)->get();
-//            if(count($check_exists) > 0){
-//                return response()->json(['success'=>false,'response'=>'Already exists, this item code!'], $this->failStatus);
-//            }
-//        }
-
-        $check_exists_product = DB::table("products")->where('id',$request->product_id)->pluck('id')->first();
-        if($check_exists_product == null){
-            return response()->json(['success'=>false,'response'=>'No Product Found!'], $this->failStatus);
-        }
-
-        $image = Product::where('id',$request->product_id)->pluck('image')->first();
-
-        $product_vat = ProductVat::latest()->first();
-        $vat_percentage = 0;
-        $vat_amount = 0;
-        $vat_whole_amount = 0;
-        if($product_vat && ($request->vat_status == 1)){
-            $vat_percentage = $product_vat->vat_percentage;
-            if($request->selling_price > 0){
-                $vat_amount = $request->selling_price*$vat_percentage/100;
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
             }
-            if($request->whole_sale_price > 0){
-                $vat_whole_amount = $request->whole_sale_price*$vat_percentage/100;
+
+            $check_exists_product = DB::table("products")->where('id',$request->product_id)->pluck('id')->first();
+            if($check_exists_product == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Warehouse Found.',null);
+                return response()->json($response,404);
             }
-        }
 
-        $product = Product::find($request->product_id);
-        $product->name = $request->name;
-        $product->product_unit_id = $request->product_unit_id;
-        $product->item_code = $request->item_code ? $request->item_code : NULL;
-        $product->barcode = $request->barcode;
-        $product->self_no = $request->self_no ? $request->self_no : NULL;
-        $product->low_inventory_alert = $request->low_inventory_alert ? $request->low_inventory_alert : NULL;
-        $product->product_brand_id = $request->product_brand_id ? $request->product_brand_id : NULL;
-        $product->purchase_price = $request->purchase_price;
-        $product->whole_sale_price = $request->whole_sale_price;
-        $product->selling_price = $request->selling_price;
-        $product->vat_status = $request->vat_status;
-        $product->vat_percentage = $vat_percentage;
-        $product->vat_amount = $vat_amount;
-        $product->vat_whole_amount = $vat_whole_amount;
-        $product->note = $request->note ? $request->note : NULL;
-        $product->date = $request->date;
-        $product->status = $request->status;
-        $product->image = $image;
-        $update_product = $product->save();
+            $image = Product::where('id',$request->product_id)->pluck('image')->first();
 
-        if($update_product){
-            return response()->json(['success'=>true,'response' => $product], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Product Not Updated Successfully!'], $this->failStatus);
+            $product_vat = ProductVat::latest()->first();
+            $vat_percentage = 0;
+            $vat_amount = 0;
+            $vat_whole_amount = 0;
+            if($product_vat && ($request->vat_status == 1)){
+                $vat_percentage = $product_vat->vat_percentage;
+                if($request->selling_price > 0){
+                    $vat_amount = $request->selling_price*$vat_percentage/100;
+                }
+                if($request->whole_sale_price > 0){
+                    $vat_whole_amount = $request->whole_sale_price*$vat_percentage/100;
+                }
+            }
+
+            $product = Product::find($request->product_id);
+            $product->name = $request->name;
+            $product->product_unit_id = $request->product_unit_id;
+            $product->item_code = $request->item_code ? $request->item_code : NULL;
+            $product->barcode = $request->barcode;
+            $product->self_no = $request->self_no ? $request->self_no : NULL;
+            $product->low_inventory_alert = $request->low_inventory_alert ? $request->low_inventory_alert : NULL;
+            $product->product_brand_id = $request->product_brand_id ? $request->product_brand_id : NULL;
+            $product->purchase_price = $request->purchase_price;
+            $product->whole_sale_price = $request->whole_sale_price;
+            $product->selling_price = $request->selling_price;
+            $product->vat_status = $request->vat_status;
+            $product->vat_percentage = $vat_percentage;
+            $product->vat_amount = $vat_amount;
+            $product->vat_whole_amount = $vat_whole_amount;
+            $product->note = $request->note ? $request->note : NULL;
+            $product->date = $request->date;
+            $product->status = $request->status;
+            $product->image = $image;
+            $update_product = $product->save();
+
+            if($update_product){
+                $response = APIHelpers::createAPIResponse(false,200,'Product Updated Successfully.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Product Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function productDelete(Request $request){
-        $check_exists_product = DB::table("products")->where('id',$request->product_id)->pluck('id')->first();
-        if($check_exists_product == null){
-            return response()->json(['success'=>false,'response'=>'No Product Found!'], $this->failStatus);
-        }
+        try {
+            $check_exists_product = DB::table("products")->where('id',$request->product_id)->pluck('id')->first();
+            if($check_exists_product == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Product Found.',null);
+                return response()->json($response,404);
+            }
 
-        //$delete_product = DB::table("products")->where('id',$request->product_id)->delete();
-        $soft_delete_product = Product::find($request->product_id);
-        $soft_delete_product->status=0;
-        $affected_row = $soft_delete_product->update();
-        if($affected_row)
-        {
-            return response()->json(['success'=>true,'response' => 'Product Successfully Soft Deleted!'], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Product Deleted!'], $this->failStatus);
+            //$delete_product = DB::table("products")->where('id',$request->product_id)->delete();
+            $soft_delete_product = Product::find($request->product_id);
+            $soft_delete_product->status=0;
+            $affected_row = $soft_delete_product->update();
+            if($affected_row)
+            {
+                $response = APIHelpers::createAPIResponse(false,200,'Product Successfully Soft Deleted.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Product Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 

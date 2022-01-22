@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Helpers\APIHelpers;
 use App\Http\Controllers\Controller;
 use App\Product;
 use App\ProductPurchase;
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class StockController extends Controller
 {
@@ -1232,467 +1234,517 @@ class StockController extends Controller
 
     // store stock return create
     public function storeToWarehouseStockReturnCreate(Request $request){
-        $this->validate($request, [
-            'return_from_store_id'=> 'required',
-            'return_to_warehouse_id'=> 'required',
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'return_from_store_id'=> 'required',
+                'return_to_warehouse_id'=> 'required',
+            ]);
 
-        $date = date('Y-m-d');
-        $date_time = date('Y-m-d h:i:s');
-
-        $user_id = Auth::user()->id;
-        $return_to_warehouse_id = $request->return_to_warehouse_id;
-        $return_from_store_id = $request->return_from_store_id;
-
-
-        $get_invoice_no = StoreStockReturn::latest()->pluck('invoice_no')->first();
-        if(!empty($get_invoice_no)){
-            $get_invoice = str_replace("SSRN-","",$get_invoice_no);
-            $invoice_no = $get_invoice+1;
-        }else{
-            $invoice_no = 4000;
-        }
-
-        $final_invoice = 'SSRN-'.$invoice_no;
-        $store_stock_return = new StoreStockReturn();
-        $store_stock_return->invoice_no=$final_invoice;
-        $store_stock_return->return_by_user_id=$user_id;
-        $store_stock_return->return_from_store_id = $return_from_store_id;
-        $store_stock_return->return_to_warehouse_id = $return_to_warehouse_id;
-        $store_stock_return->return_remarks=$request->return_remarks;
-        $store_stock_return->return_date=$date;
-        $store_stock_return->return_date_time=$date_time;
-        $store_stock_return->return_status='Pending';
-        $store_stock_return->save();
-        $store_stock_return_insert_id = $store_stock_return->id;
-
-
-        foreach ($request->products as $data) {
-
-            $product_id = $data['product_id'];
-            $product_info = Product::where('id',$product_id)->first();
-
-            $store_stock_return_detail = new StoreStockReturnDetail();
-            $store_stock_return_detail->store_stock_return_id = $store_stock_return_insert_id;
-            $store_stock_return_detail->product_unit_id = $data['product_unit_id'];
-            $store_stock_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-            $store_stock_return_detail->product_id = $product_id;
-            $store_stock_return_detail->barcode = $product_info->barcode;
-            $store_stock_return_detail->qty = $data['qty'];
-            $store_stock_return_detail->price = $product_info->purchase_price;
-            $store_stock_return_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
-            $store_stock_return_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
-            $store_stock_return_detail->save();
-
-            $warehouse_id = $request->return_to_warehouse_id;
-            $store_id = $request->return_from_store_id;
-
-            $check_previous_warehouse_current_stock = Stock::where('warehouse_id',$warehouse_id)
-                ->where('product_id',$product_id)
-                ->where('stock_where','warehouse')
-                ->latest('id','desc')
-                ->pluck('current_stock')
-                ->first();
-
-            if($check_previous_warehouse_current_stock){
-                $previous_warehouse_current_stock = $check_previous_warehouse_current_stock;
-            }else{
-                $previous_warehouse_current_stock = 0;
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
             }
 
-            // stock in warehouse product
-            $stock = new Stock();
-            $stock->ref_id = $store_stock_return_insert_id;
-            $stock->user_id = $user_id;
-            $stock->warehouse_id = $warehouse_id;
-            $stock->store_id = NULL;
-            $stock->product_id = $product_id;
-            $stock->product_unit_id = $data['product_unit_id'];
-            $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-            $stock->stock_type = 'from_warehouse_to_store';
-            $stock->stock_where = 'warehouse';
-            $stock->stock_in_out = 'stock_in';
-            $stock->previous_stock = $previous_warehouse_current_stock;
-            $stock->stock_in = $data['qty'];
-            $stock->stock_out = 0;
-            $stock->current_stock = $previous_warehouse_current_stock + $data['qty'];
-            $stock->stock_date = $date;
-            $stock->stock_date_time = $date_time;
-            $stock->save();
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d h:i:s');
+
+            $user_id = Auth::user()->id;
+            $return_to_warehouse_id = $request->return_to_warehouse_id;
+            $return_from_store_id = $request->return_from_store_id;
 
 
-            $check_previous_store_current_stock = Stock::where('warehouse_id',$warehouse_id)
-                ->where('store_id',$store_id)
-                ->where('product_id',$product_id)
-                ->where('stock_where','store')
-                ->latest('id','desc')
-                ->pluck('current_stock')
-                ->first();
-
-            if($check_previous_store_current_stock){
-                $previous_store_current_stock = $check_previous_store_current_stock;
+            $get_invoice_no = StoreStockReturn::latest()->pluck('invoice_no')->first();
+            if(!empty($get_invoice_no)){
+                $get_invoice = str_replace("SSRN-","",$get_invoice_no);
+                $invoice_no = $get_invoice+1;
             }else{
-                $previous_store_current_stock = 0;
+                $invoice_no = 4000;
             }
 
-            // stock out store product
-            $stock = new Stock();
-            $stock->ref_id = $store_stock_return_insert_id;
-            $stock->user_id = $user_id;
-            $stock->warehouse_id = $warehouse_id;
-            $stock->store_id = $store_id;
-            $stock->product_id = $product_id;
-            $stock->product_unit_id = $data['product_unit_id'];
-            $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-            $stock->stock_type = 'from_warehouse_to_store';
-            $stock->stock_where = 'store';
-            $stock->stock_in_out = 'stock_out';
-            $stock->previous_stock = $previous_store_current_stock;
-            $stock->stock_in = 0;
-            $stock->stock_out = $data['qty'];
-            $stock->current_stock = $previous_store_current_stock - $data['qty'];
-            $stock->stock_date = $date;
-            $stock->stock_date_time = $date_time;
-            $stock->save();
-            $insert_id = $stock->id;
+            $final_invoice = 'SSRN-'.$invoice_no;
+            $store_stock_return = new StoreStockReturn();
+            $store_stock_return->invoice_no=$final_invoice;
+            $store_stock_return->return_by_user_id=$user_id;
+            $store_stock_return->return_from_store_id = $return_from_store_id;
+            $store_stock_return->return_to_warehouse_id = $return_to_warehouse_id;
+            $store_stock_return->return_remarks=$request->return_remarks;
+            $store_stock_return->return_date=$date;
+            $store_stock_return->return_date_time=$date_time;
+            $store_stock_return->return_status='Pending';
+            $store_stock_return->save();
+            $store_stock_return_insert_id = $store_stock_return->id;
 
-            // warehouse current stock
-            $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)
-                ->where('product_id',$product_id)
-                ->first();
-            $exists_current_stock = $warehouse_current_stock_update->current_stock;
-            $final_warehouse_current_stock = $exists_current_stock + $data['qty'];
-            $warehouse_current_stock_update->current_stock=$final_warehouse_current_stock;
-            $warehouse_current_stock_update->save();
 
-            // warehouse store current stock
-            $check_exists_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
-                ->where('store_id',$store_id)
-                ->where('product_id',$product_id)
-                ->first();
+            foreach ($request->products as $data) {
 
-            if($check_exists_warehouse_store_current_stock){
-                $exists_current_stock = $check_exists_warehouse_store_current_stock->current_stock;
-                $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
-                $check_exists_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
-                $check_exists_warehouse_store_current_stock->save();
-            }else{
-                $warehouse_store_current_stock = new WarehouseStoreCurrentStock();
-                $warehouse_store_current_stock->warehouse_id=$warehouse_id;
-                $warehouse_store_current_stock->store_id=$store_id;
-                $warehouse_store_current_stock->product_id=$product_id;
-                $warehouse_store_current_stock->current_stock=$data['qty'];
-                $warehouse_store_current_stock->save();
+                $product_id = $data['product_id'];
+                $product_info = Product::where('id',$product_id)->first();
+
+                $store_stock_return_detail = new StoreStockReturnDetail();
+                $store_stock_return_detail->store_stock_return_id = $store_stock_return_insert_id;
+                $store_stock_return_detail->product_unit_id = $data['product_unit_id'];
+                $store_stock_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $store_stock_return_detail->product_id = $product_id;
+                $store_stock_return_detail->barcode = $product_info->barcode;
+                $store_stock_return_detail->qty = $data['qty'];
+                $store_stock_return_detail->price = $product_info->purchase_price;
+                $store_stock_return_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
+                $store_stock_return_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
+                $store_stock_return_detail->save();
+
+                $warehouse_id = $request->return_to_warehouse_id;
+                $store_id = $request->return_from_store_id;
+
+                $check_previous_warehouse_current_stock = Stock::where('warehouse_id',$warehouse_id)
+                    ->where('product_id',$product_id)
+                    ->where('stock_where','warehouse')
+                    ->latest('id','desc')
+                    ->pluck('current_stock')
+                    ->first();
+
+                if($check_previous_warehouse_current_stock){
+                    $previous_warehouse_current_stock = $check_previous_warehouse_current_stock;
+                }else{
+                    $previous_warehouse_current_stock = 0;
+                }
+
+                // stock in warehouse product
+                $stock = new Stock();
+                $stock->ref_id = $store_stock_return_insert_id;
+                $stock->user_id = $user_id;
+                $stock->warehouse_id = $warehouse_id;
+                $stock->store_id = NULL;
+                $stock->product_id = $product_id;
+                $stock->product_unit_id = $data['product_unit_id'];
+                $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $stock->stock_type = 'from_warehouse_to_store';
+                $stock->stock_where = 'warehouse';
+                $stock->stock_in_out = 'stock_in';
+                $stock->previous_stock = $previous_warehouse_current_stock;
+                $stock->stock_in = $data['qty'];
+                $stock->stock_out = 0;
+                $stock->current_stock = $previous_warehouse_current_stock + $data['qty'];
+                $stock->stock_date = $date;
+                $stock->stock_date_time = $date_time;
+                $stock->save();
+
+
+                $check_previous_store_current_stock = Stock::where('warehouse_id',$warehouse_id)
+                    ->where('store_id',$store_id)
+                    ->where('product_id',$product_id)
+                    ->where('stock_where','store')
+                    ->latest('id','desc')
+                    ->pluck('current_stock')
+                    ->first();
+
+                if($check_previous_store_current_stock){
+                    $previous_store_current_stock = $check_previous_store_current_stock;
+                }else{
+                    $previous_store_current_stock = 0;
+                }
+
+                // stock out store product
+                $stock = new Stock();
+                $stock->ref_id = $store_stock_return_insert_id;
+                $stock->user_id = $user_id;
+                $stock->warehouse_id = $warehouse_id;
+                $stock->store_id = $store_id;
+                $stock->product_id = $product_id;
+                $stock->product_unit_id = $data['product_unit_id'];
+                $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $stock->stock_type = 'from_warehouse_to_store';
+                $stock->stock_where = 'store';
+                $stock->stock_in_out = 'stock_out';
+                $stock->previous_stock = $previous_store_current_stock;
+                $stock->stock_in = 0;
+                $stock->stock_out = $data['qty'];
+                $stock->current_stock = $previous_store_current_stock - $data['qty'];
+                $stock->stock_date = $date;
+                $stock->stock_date_time = $date_time;
+                $stock->save();
+                $insert_id = $stock->id;
+
+                // warehouse current stock
+                $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$warehouse_id)
+                    ->where('product_id',$product_id)
+                    ->first();
+                $exists_current_stock = $warehouse_current_stock_update->current_stock;
+                $final_warehouse_current_stock = $exists_current_stock + $data['qty'];
+                $warehouse_current_stock_update->current_stock=$final_warehouse_current_stock;
+                $warehouse_current_stock_update->save();
+
+                // warehouse store current stock
+                $check_exists_warehouse_store_current_stock = WarehouseStoreCurrentStock::where('warehouse_id',$warehouse_id)
+                    ->where('store_id',$store_id)
+                    ->where('product_id',$product_id)
+                    ->first();
+
+                if($check_exists_warehouse_store_current_stock){
+                    $exists_current_stock = $check_exists_warehouse_store_current_stock->current_stock;
+                    $final_warehouse_current_stock = $exists_current_stock - $data['qty'];
+                    $check_exists_warehouse_store_current_stock->current_stock=$final_warehouse_current_stock;
+                    $check_exists_warehouse_store_current_stock->save();
+                }else{
+                    $warehouse_store_current_stock = new WarehouseStoreCurrentStock();
+                    $warehouse_store_current_stock->warehouse_id=$warehouse_id;
+                    $warehouse_store_current_stock->store_id=$store_id;
+                    $warehouse_store_current_stock->product_id=$product_id;
+                    $warehouse_store_current_stock->current_stock=$data['qty'];
+                    $warehouse_store_current_stock->save();
+                }
+
             }
-        }
 
-        if($store_stock_return_insert_id){
-            return response()->json(['success'=>true,'response' => 'Store Stock Return Successfully Inserted.'], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Store Stock Return Successfully Inserted.!'], $this->failStatus);
+            if($store_stock_return_insert_id){
+                $response = APIHelpers::createAPIResponse(false,201,'Stock Transfer Created Added Successfully.',null);
+                return response()->json($response,201);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Stock Transfer Created Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function storeToWarehouseStockReturnEdit(Request $request){
-        $this->validate($request, [
-            'store_stock_return_id'=> 'required',
-            'return_from_store_id'=> 'required',
-            'return_to_warehouse_id'=> 'required',
-        ]);
+        try {
+            // required and unique
+            $validator = Validator::make($request->all(), [
+                'store_stock_return_id'=> 'required',
+                'return_from_store_id'=> 'required',
+                'return_to_warehouse_id'=> 'required',
+            ]);
 
-        $user_id = Auth::user()->id;
-        $date = date('Y-m-d');
-        $date_time = date('Y-m-d h:i:s');
-        $return_from_store_id = $request->return_from_store_id;
-        $return_to_warehouse_id = $request->return_to_warehouse_id;
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
+            }
 
-        $store_stock_return = StoreStockReturn::find($request->store_stock_return_id);
-        $store_stock_return->return_from_store_id = $return_from_store_id;
-        $store_stock_return->return_to_warehouse_id = $return_to_warehouse_id;
-        $store_stock_return->return_by_user_id=$user_id;
-        $store_stock_return->return_remarks=$request->return_remarks;
-        $affectedRow = $store_stock_return->save();
+            $user_id = Auth::user()->id;
+            $date = date('Y-m-d');
+            $date_time = date('Y-m-d h:i:s');
+            $return_from_store_id = $request->return_from_store_id;
+            $return_to_warehouse_id = $request->return_to_warehouse_id;
 
-
-        foreach ($request->products as $data) {
-
-            $product_id = $data['product_id'];
-            $product_info = Product::where('id',$product_id)->first();
-
-            $store_stock_return_detail_id = $data['store_stock_return_detail_id'];
-            $store_stock_return_detail = StoreStockReturnDetail::find($store_stock_return_detail_id);
-            $previous_store_stock_return_qty = $store_stock_return_detail->qty;
-            $store_stock_return_detail->product_unit_id = $data['product_unit_id'];
-            $store_stock_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-            $store_stock_return_detail->product_id = $product_id;
-            $store_stock_return_detail->barcode = $product_info->barcode;
-            $store_stock_return_detail->qty = $data['qty'];
-            $store_stock_return_detail->price = $product_info->purchase_price;
-            $store_stock_return_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
-            $store_stock_return_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
-            $store_stock_return_detail->save();
+            $store_stock_return = StoreStockReturn::find($request->store_stock_return_id);
+            $store_stock_return->return_from_store_id = $return_from_store_id;
+            $store_stock_return->return_to_warehouse_id = $return_to_warehouse_id;
+            $store_stock_return->return_by_user_id=$user_id;
+            $store_stock_return->return_remarks=$request->return_remarks;
+            $affectedRow = $store_stock_return->save();
 
 
+            foreach ($request->products as $data) {
+
+                $product_id = $data['product_id'];
+                $product_info = Product::where('id',$product_id)->first();
+
+                $store_stock_return_detail_id = $data['store_stock_return_detail_id'];
+                $store_stock_return_detail = StoreStockReturnDetail::find($store_stock_return_detail_id);
+                $previous_store_stock_return_qty = $store_stock_return_detail->qty;
+                $store_stock_return_detail->product_unit_id = $data['product_unit_id'];
+                $store_stock_return_detail->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                $store_stock_return_detail->product_id = $product_id;
+                $store_stock_return_detail->barcode = $product_info->barcode;
+                $store_stock_return_detail->qty = $data['qty'];
+                $store_stock_return_detail->price = $product_info->purchase_price;
+                $store_stock_return_detail->vat_amount = $data['qty']*$product_info->whole_sale_price;
+                $store_stock_return_detail->sub_total = ($data['qty']*$product_info->whole_sale_price) + ($data['qty']*$product_info->purchase_price);
+                $store_stock_return_detail->save();
 
 
-            $warehouse_id = $request->return_to_warehouse_id;
-            $store_id = $request->return_from_store_id;
-
-            // product stock
-            $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
-            $current_stock = $stock_row->current_stock;
-
-            // warehouse current stock
-            $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
-                ->where('product_id',$product_id)
-                ->first();
-            $exists_current_stock = $warehouse_current_stock_update->current_stock;
 
 
-            // warehouse store current stock
-            $warehouse_store_current_stock_update = WarehouseStoreCurrentStock::where('warehouse_id',$request->warehouse_id)
-                ->where('store_id',$store_id)
-                ->where('product_id',$product_id)
-                ->first();
-            $exists_warehouse_store_current_stock = $warehouse_store_current_stock_update->current_stock;
-            if($stock_row->stock_in != $data['qty']){
-                if($data['qty'] > $stock_row->stock_in){
-                    $new_stock_in = $data['qty'] - $previous_store_stock_return_qty;
+                $warehouse_id = $request->return_to_warehouse_id;
+                $store_id = $request->return_from_store_id;
 
-                    // stock in warehouse product
-                    $stock = new Stock();
-                    $stock->ref_id = $store_stock_return->id;
-                    $stock->user_id = $user_id;
-                    $stock->warehouse_id = $warehouse_id;
-                    $stock->store_id = NULL;
-                    $stock->product_id = $product_id;
-                    $stock->product_unit_id = $data['product_unit_id'];
-                    $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                    $stock->stock_type = 'from_warehouse_to_store';
-                    $stock->stock_where = 'warehouse';
-                    $stock->stock_in_out = 'stock_in';
-                    $stock->previous_stock = $current_stock;
-                    $stock->stock_in = $new_stock_in;
-                    $stock->stock_out=0;
-                    $stock->current_stock=$current_stock + $new_stock_in;
-                    $stock->stock_date = $date;
-                    $stock->stock_date_time = $date_time;
-                    $stock->save();
+                // product stock
+                $stock_row = Stock::where('warehouse_id',$warehouse_id)->where('product_id',$product_id)->latest()->first();
+                $current_stock = $stock_row->current_stock;
 
-                    // warehouse current stock
-                    $warehouse_current_stock_update->current_stock=$exists_current_stock + $new_stock_in;
-                    $warehouse_current_stock_update->save();
+                // warehouse current stock
+                $warehouse_current_stock_update = WarehouseCurrentStock::where('warehouse_id',$request->warehouse_id)
+                    ->where('product_id',$product_id)
+                    ->first();
+                $exists_current_stock = $warehouse_current_stock_update->current_stock;
 
 
-                    $new_stock_out = $data['qty'] - $previous_store_stock_return_qty;
-                    // stock out store product
-                    $stock = new Stock();
-                    $stock->ref_id = $request->stock_transfer_id;
-                    $stock->user_id = $user_id;
-                    $stock->warehouse_id = $warehouse_id;
-                    $stock->store_id = $store_id;
-                    $stock->product_id = $product_id;
-                    $stock->product_unit_id = $data['product_unit_id'];
-                    $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                    $stock->stock_type = 'from_warehouse_to_store';
-                    $stock->stock_where = 'store';
-                    $stock->stock_in_out = 'stock_in';
-                    $stock->previous_stock = $exists_warehouse_store_current_stock;
-                    $stock->stock_in = 0;
-                    $stock->stock_out = $new_stock_out;
-                    $stock->current_stock = $exists_warehouse_store_current_stock - $new_stock_out;
-                    $stock->stock_date = $date;
-                    $stock->stock_date_time = $date_time;
-                    $stock->save();
+                // warehouse store current stock
+                $warehouse_store_current_stock_update = WarehouseStoreCurrentStock::where('warehouse_id',$request->warehouse_id)
+                    ->where('store_id',$store_id)
+                    ->where('product_id',$product_id)
+                    ->first();
+                $exists_warehouse_store_current_stock = $warehouse_store_current_stock_update->current_stock;
+                if($stock_row->stock_in != $data['qty']){
+                    if($data['qty'] > $stock_row->stock_in){
+                        $new_stock_in = $data['qty'] - $previous_store_stock_return_qty;
 
-                    // warehouse store current stock
-                    $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock - $new_stock_out;
-                    $warehouse_store_current_stock_update->save();
+                        // stock in warehouse product
+                        $stock = new Stock();
+                        $stock->ref_id = $store_stock_return->id;
+                        $stock->user_id = $user_id;
+                        $stock->warehouse_id = $warehouse_id;
+                        $stock->store_id = NULL;
+                        $stock->product_id = $product_id;
+                        $stock->product_unit_id = $data['product_unit_id'];
+                        $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->stock_type = 'from_warehouse_to_store';
+                        $stock->stock_where = 'warehouse';
+                        $stock->stock_in_out = 'stock_in';
+                        $stock->previous_stock = $current_stock;
+                        $stock->stock_in = $new_stock_in;
+                        $stock->stock_out=0;
+                        $stock->current_stock=$current_stock + $new_stock_in;
+                        $stock->stock_date = $date;
+                        $stock->stock_date_time = $date_time;
+                        $stock->save();
 
-                }else{
-                    $new_stock_out = $previous_store_stock_return_qty - $data['qty'];
-
-                    // stock out warehouse product
-                    $stock = new Stock();
-                    $stock->ref_id = $store_stock_return->id;
-                    $stock->user_id = $user_id;
-                    $stock->warehouse_id = $warehouse_id;
-                    $stock->store_id = NULL;
-                    $stock->product_id = $product_id;
-                    $stock->product_unit_id = $data['product_unit_id'];
-                    $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                    $stock->stock_type = 'from_warehouse_to_store';
-                    $stock->stock_where = 'warehouse';
-                    $stock->stock_in_out = 'stock_out';
-                    $stock->previous_stock = $current_stock;
-                    $stock->stock_in=0;
-                    $stock->stock_out = $new_stock_out;
-                    $stock->current_stock=$current_stock - $new_stock_out;
-                    $stock->stock_date = $date;
-                    $stock->stock_date_time = $date_time;
-                    $stock->save();
-
-                    // warehouse current stock
-                    $warehouse_current_stock_update->current_stock=$exists_current_stock - $new_stock_out;
-                    $warehouse_current_stock_update->save();
+                        // warehouse current stock
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock + $new_stock_in;
+                        $warehouse_current_stock_update->save();
 
 
-                    $new_stock_in = $previous_store_stock_return_qty - $data['qty'];
-                    // stock in store product
-                    $stock = new Stock();
-                    $stock->ref_id = $store_stock_return->id;
-                    $stock->user_id = $user_id;
-                    $stock->warehouse_id = $warehouse_id;
-                    $stock->store_id = $store_id;
-                    $stock->product_id = $product_id;
-                    $stock->product_unit_id = $data['product_unit_id'];
-                    $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
-                    $stock->stock_type = 'from_warehouse_to_store';
-                    $stock->stock_where = 'store';
-                    $stock->stock_in_out = 'stock_in';
-                    $stock->previous_stock = $exists_warehouse_store_current_stock;
-                    $stock->stock_in = $new_stock_in;
-                    $stock->stock_out = 0;
-                    $stock->current_stock = $exists_warehouse_store_current_stock + $new_stock_out;
-                    $stock->stock_date = $date;
-                    $stock->stock_date_time = $date_time;
-                    $stock->save();
+                        $new_stock_out = $data['qty'] - $previous_store_stock_return_qty;
+                        // stock out store product
+                        $stock = new Stock();
+                        $stock->ref_id = $request->stock_transfer_id;
+                        $stock->user_id = $user_id;
+                        $stock->warehouse_id = $warehouse_id;
+                        $stock->store_id = $store_id;
+                        $stock->product_id = $product_id;
+                        $stock->product_unit_id = $data['product_unit_id'];
+                        $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->stock_type = 'from_warehouse_to_store';
+                        $stock->stock_where = 'store';
+                        $stock->stock_in_out = 'stock_in';
+                        $stock->previous_stock = $exists_warehouse_store_current_stock;
+                        $stock->stock_in = 0;
+                        $stock->stock_out = $new_stock_out;
+                        $stock->current_stock = $exists_warehouse_store_current_stock - $new_stock_out;
+                        $stock->stock_date = $date;
+                        $stock->stock_date_time = $date_time;
+                        $stock->save();
 
-                    // warehouse store current stock
-                    $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock + $new_stock_out;
-                    $warehouse_store_current_stock_update->save();
+                        // warehouse store current stock
+                        $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock - $new_stock_out;
+                        $warehouse_store_current_stock_update->save();
+
+                    }else{
+                        $new_stock_out = $previous_store_stock_return_qty - $data['qty'];
+
+                        // stock out warehouse product
+                        $stock = new Stock();
+                        $stock->ref_id = $store_stock_return->id;
+                        $stock->user_id = $user_id;
+                        $stock->warehouse_id = $warehouse_id;
+                        $stock->store_id = NULL;
+                        $stock->product_id = $product_id;
+                        $stock->product_unit_id = $data['product_unit_id'];
+                        $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->stock_type = 'from_warehouse_to_store';
+                        $stock->stock_where = 'warehouse';
+                        $stock->stock_in_out = 'stock_out';
+                        $stock->previous_stock = $current_stock;
+                        $stock->stock_in=0;
+                        $stock->stock_out = $new_stock_out;
+                        $stock->current_stock=$current_stock - $new_stock_out;
+                        $stock->stock_date = $date;
+                        $stock->stock_date_time = $date_time;
+                        $stock->save();
+
+                        // warehouse current stock
+                        $warehouse_current_stock_update->current_stock=$exists_current_stock - $new_stock_out;
+                        $warehouse_current_stock_update->save();
+
+
+                        $new_stock_in = $previous_store_stock_return_qty - $data['qty'];
+                        // stock in store product
+                        $stock = new Stock();
+                        $stock->ref_id = $store_stock_return->id;
+                        $stock->user_id = $user_id;
+                        $stock->warehouse_id = $warehouse_id;
+                        $stock->store_id = $store_id;
+                        $stock->product_id = $product_id;
+                        $stock->product_unit_id = $data['product_unit_id'];
+                        $stock->product_brand_id = $data['product_brand_id'] ? $data['product_brand_id'] : NULL;
+                        $stock->stock_type = 'from_warehouse_to_store';
+                        $stock->stock_where = 'store';
+                        $stock->stock_in_out = 'stock_in';
+                        $stock->previous_stock = $exists_warehouse_store_current_stock;
+                        $stock->stock_in = $new_stock_in;
+                        $stock->stock_out = 0;
+                        $stock->current_stock = $exists_warehouse_store_current_stock + $new_stock_out;
+                        $stock->stock_date = $date;
+                        $stock->stock_date_time = $date_time;
+                        $stock->save();
+
+                        // warehouse store current stock
+                        $warehouse_store_current_stock_update->current_stock=$exists_warehouse_store_current_stock + $new_stock_out;
+                        $warehouse_store_current_stock_update->save();
+                    }
                 }
             }
-        }
 
-        if($affectedRow){
-            return response()->json(['success'=>true,'response' => 'Stock Transfer Request Successfully Updated.'], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Stock Transfer Request Successfully Updated.!'], $this->failStatus);
+            if($affectedRow){
+                $response = APIHelpers::createAPIResponse(false,200,'Stock Return Updated Successfully.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Stock Return Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function storeToWarehouseStockReturnList(){
-        $stock_transfer_return_lists = DB::table('store_stock_returns')
-            ->leftJoin('users','store_stock_returns.return_by_user_id','users.id')
-            ->leftJoin('warehouses','store_stock_returns.return_to_warehouse_id','warehouses.id')
-            ->leftJoin('stores','store_stock_returns.return_from_store_id','stores.id')
-            ->select(
-                'store_stock_returns.id',
-                'store_stock_returns.invoice_no',
-                'store_stock_returns.return_date_time',
-                'store_stock_returns.return_remarks',
-                'users.name as user_name',
-                'warehouses.id as warehouse_id',
-                'warehouses.name as warehouse_name',
-                'stores.id as store_id',
-                'stores.name as store_name',
-                'stores.phone as store_phone',
-                'stores.email as store_email',
-                'stores.address as store_address'
-            )
-            ->get();
+        try {
+            $stock_transfer_return_lists = DB::table('store_stock_returns')
+                ->leftJoin('users','store_stock_returns.return_by_user_id','users.id')
+                ->leftJoin('warehouses','store_stock_returns.return_to_warehouse_id','warehouses.id')
+                ->leftJoin('stores','store_stock_returns.return_from_store_id','stores.id')
+                ->select(
+                    'store_stock_returns.id',
+                    'store_stock_returns.invoice_no',
+                    'store_stock_returns.return_date_time',
+                    'store_stock_returns.return_remarks',
+                    'users.name as user_name',
+                    'warehouses.id as warehouse_id',
+                    'warehouses.name as warehouse_name',
+                    'stores.id as store_id',
+                    'stores.name as store_name',
+                    'stores.phone as store_phone',
+                    'stores.email as store_email',
+                    'stores.address as store_address'
+                )
+                ->get();
 
-        if($stock_transfer_return_lists)
-        {
-            $success['stock_transfer_return_lists'] =  $stock_transfer_return_lists;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Store Stock Return List Found!'], $this->failStatus);
+            if($stock_transfer_return_lists === null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Store Stock Return List Found.',null);
+                return response()->json($response,404);
+            }else{
+                $response = APIHelpers::createAPIResponse(false,200,'',$stock_transfer_return_lists);
+                return response()->json($response,200);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function storeToWarehouseStockReturnDetails(Request $request){
-        $store_stock_return_details = DB::table('store_stock_returns')
-            ->join('store_stock_return_details','store_stock_returns.id','store_stock_return_details.store_stock_return_id')
-            ->leftJoin('products','store_stock_return_details.product_id','products.id')
-            ->leftJoin('product_units','store_stock_return_details.product_unit_id','product_units.id')
-            ->leftJoin('product_brands','store_stock_return_details.product_brand_id','product_brands.id')
-            ->where('store_stock_returns.id',$request->store_stock_return_id)
-            ->select(
-                'products.id as product_id',
-                'products.name as product_name',
-                'product_units.id as product_unit_id',
-                'product_units.name as product_unit_name',
-                'product_brands.id as product_brand_id',
-                'product_brands.name as product_brand_name',
-                'store_stock_return_details.qty',
-                'store_stock_return_details.id as stock_transfer_return_detail_id',
-                'store_stock_return_details.price',
-                'store_stock_return_details.sub_total',
-                'store_stock_return_details.vat_amount'
-            )
-            ->get();
+        try {
+            $store_stock_return_details = DB::table('store_stock_returns')
+                ->join('store_stock_return_details','store_stock_returns.id','store_stock_return_details.store_stock_return_id')
+                ->leftJoin('products','store_stock_return_details.product_id','products.id')
+                ->leftJoin('product_units','store_stock_return_details.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','store_stock_return_details.product_brand_id','product_brands.id')
+                ->where('store_stock_returns.id',$request->store_stock_return_id)
+                ->select(
+                    'products.id as product_id',
+                    'products.name as product_name',
+                    'product_units.id as product_unit_id',
+                    'product_units.name as product_unit_name',
+                    'product_brands.id as product_brand_id',
+                    'product_brands.name as product_brand_name',
+                    'store_stock_return_details.qty',
+                    'store_stock_return_details.id as stock_transfer_return_detail_id',
+                    'store_stock_return_details.price',
+                    'store_stock_return_details.sub_total',
+                    'store_stock_return_details.vat_amount'
+                )
+                ->get();
 
-        if($store_stock_return_details)
-        {
-            $success['store_stock_return_details'] =  $store_stock_return_details;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Store Stock Return Details Found!'], $this->failStatus);
+            if($store_stock_return_details === null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Store Stock Return Details Found.',null);
+                return response()->json($response,404);
+            }else{
+                $response = APIHelpers::createAPIResponse(false,200,'',$store_stock_return_details);
+                return response()->json($response,200);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     function universalSearchStoreCurrentProductStock(Request $request){
+        try {
+            if($request->name === null || $request->barcode === null || $request->item_code === null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Data Found.',null);
+                return response()->json($response,404);
+            }
+            $store_stocks = '';
+            $warehouse_stocks = '';
+            if($request->name){
+                $store_stocks = DB::table('products')
+                    ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+                    ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+                    //->where('products.name','like','%'.$request->name.'%')
+                    ->where('products.name',$request->name)
+                    ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
+                    ->get();
 
-        $store_stocks = '';
-        $warehouse_stocks = '';
-        if($request->name){
-            $store_stocks = DB::table('products')
-                ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
-                ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
-                //->where('products.name','like','%'.$request->name.'%')
-                ->where('products.name',$request->name)
-                ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
-                ->get();
+                $warehouse_stocks = DB::table('products')
+                    ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+                    ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+                    //->where('products.name','like','%'.$request->name.'%')
+                    ->where('products.name',$request->name)
+                    ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
+                    ->get();
+            }
 
-            $warehouse_stocks = DB::table('products')
-                ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
-                ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
-                //->where('products.name','like','%'.$request->name.'%')
-                ->where('products.name',$request->name)
-                ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
-                ->get();
-        }
+            if($request->barcode){
+                $store_stocks = DB::table('products')
+                    ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+                    ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+                    ->orWhere('products.barcode',$request->barcode)
+                    ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
+                    ->get();
 
-        if($request->barcode){
-            $store_stocks = DB::table('products')
-                ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
-                ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
-                ->orWhere('products.barcode',$request->barcode)
-                ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
-                ->get();
+                $warehouse_stocks = DB::table('products')
+                    ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+                    ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+                    ->orWhere('products.barcode',$request->barcode)
+                    ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
+                    ->get();
+            }
 
-            $warehouse_stocks = DB::table('products')
-                ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
-                ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
-                ->orWhere('products.barcode',$request->barcode)
-                ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
-                ->get();
-        }
+            if($request->item_code){
+                $store_stocks = DB::table('products')
+                    ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+                    ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+                    ->orWhere('products.item_code',$request->item_code)
+                    ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
+                    ->get();
 
-        if($request->item_code){
-            $store_stocks = DB::table('products')
-                ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
-                ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
-                ->orWhere('products.item_code',$request->item_code)
-                ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
-                ->get();
+                $warehouse_stocks = DB::table('products')
+                    ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+                    ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+                    ->orWhere('products.item_code',$request->item_code)
+                    ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
+                    ->get();
+            }
 
-            $warehouse_stocks = DB::table('products')
-                ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
-                ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
-                ->orWhere('products.item_code',$request->item_code)
-                ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
-                ->get();
-        }
+            if($store_stocks){
+                $success['store_stock_details'] =  $store_stocks;
+                $success['warehouse_stock_details'] =  $warehouse_stocks;
+//                return response()->json(['success'=>true,'response' => $success], $this->successStatus);
 
-        if($store_stocks){
-            $success['store_stock_details'] =  $store_stocks;
-            $success['warehouse_stock_details'] =  $warehouse_stocks;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Data Found!'], $this->failStatus);
+                $response = APIHelpers::createAPIResponse(false,200,'',$success);
+                return response()->json($response,200);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Helpers\APIHelpers;
 use App\Http\Controllers\Controller;
 use App\Product;
 use App\Stock;
@@ -26,106 +27,121 @@ class WarehouseController extends Controller
 
     // product warehouse
     public function warehouseList(){
-        $warehouses = DB::table('warehouses')->select('id','name','phone','email','address','status')->get();
-
-        if($warehouses)
-        {
-            $success['warehouses'] =  $warehouses;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Warehouses List Found!'], $this->failStatus);
+        try {
+            $warehouses = DB::table('warehouses')->select('id','name','phone','email','address','status')->get();
+            if($warehouses === null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Warehouse Found.',null);
+                return response()->json($response,404);
+            }else{
+                $response = APIHelpers::createAPIResponse(false,200,'',$warehouses);
+                return response()->json($response,200);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function warehouseCreate(Request $request){
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|unique:warehouses,name',
-            'phone' => 'required|unique:warehouses,phone',
-            'status'=> 'required',
-        ]);
+        try {
+            // required and unique
+            $validator = Validator::make($request->all(), [
+                'name' => 'unique:warehouses,name',
+                'phone' => 'required',
+                'status'=> 'required',
+            ]);
 
-        if ($validator->fails()) {
-            $response = [
-                'success' => false,
-                'data' => 'Validation Error.',
-                'message' => $validator->errors()
-            ];
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
+            }
 
-            return response()->json($response, $this-> validationStatus);
-        }
+            $warehouse = new Warehouse();
+            $warehouse->name = $request->name;
+            $warehouse->phone = $request->phone;
+            $warehouse->email = $request->email;
+            $warehouse->address = $request->address;
+            $warehouse->status = $request->status;
+            $warehouse->save();
 
-
-        $warehouse = new Warehouse();
-        $warehouse->name = $request->name;
-        $warehouse->phone = $request->phone;
-        $warehouse->email = $request->email;
-        $warehouse->address = $request->address;
-        $warehouse->status = $request->status;
-        $warehouse->save();
-        $insert_id = $warehouse->id;
-
-        if($insert_id){
-            return response()->json(['success'=>true,'response' => $warehouse], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Warehouse Not Created Successfully!'], $this->failStatus);
+            $response = APIHelpers::createAPIResponse(false,201,'Warehouse Added Successfully.',null);
+            return response()->json($response,201);
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function warehouseEdit(Request $request){
+        try {
+            $check_exists_warehouse = DB::table("warehouses")->where('id',$request->warehouse_id)->pluck('id')->first();
+            if($check_exists_warehouse == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Warehouse Found.',null);
+                return response()->json($response,404);
+            }
 
-        $validator = Validator::make($request->all(), [
-            'warehouse_id'=> 'required',
-            'name' => 'required|unique:warehouses,name,'.$request->warehouse_id,
-            'phone' => 'required|unique:warehouses,phone,'.$request->warehouse_id,
-            'status'=> 'required',
-        ]);
+            // required and unique
+            $validator = Validator::make($request->all(), [
+                'warehouse_id' => 'required',
+                'name' => 'unique:warehouses,name,'.$request->warehouse_id,
+                'phone' => 'required',
+                'status'=> 'required',
+            ]);
 
-        if ($validator->fails()) {
-            $response = [
-                'success' => false,
-                'data' => 'Validation Error.',
-                'message' => $validator->errors()
-            ];
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
+            }
 
-            return response()->json($response, $this->validationStatus);
-        }
+            $warehouse = Warehouse::find($request->warehouse_id);
+            $warehouse->name = $request->name;
+            $warehouse->phone = $request->phone;
+            $warehouse->email = $request->email;
+            $warehouse->address = $request->address;
+            $warehouse->status = $request->status;
+            $update_warehouse = $warehouse->save();
 
-        $check_exists_warehouse = DB::table("warehouses")->where('id',$request->warehouse_id)->pluck('id')->first();
-        if($check_exists_warehouse == null){
-            return response()->json(['success'=>false,'response'=>'No Warehouse Found!'], $this->failStatus);
-        }
-
-        $warehouse = Warehouse::find($request->warehouse_id);
-        $warehouse->name = $request->name;
-        $warehouse->phone = $request->phone;
-        $warehouse->email = $request->email;
-        $warehouse->address = $request->address;
-        $warehouse->status = $request->status;
-        $update_warehouse = $warehouse->save();
-
-        if($update_warehouse){
-            return response()->json(['success'=>true,'response' => $warehouse], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Warehouse Not Updated Successfully!'], $this->failStatus);
+            if($update_warehouse){
+                $response = APIHelpers::createAPIResponse(false,200,'Warehouse Updated Successfully.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Warehouse Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function warehouseDelete(Request $request){
-        $check_exists_warehouse = DB::table("warehouses")->where('id',$request->warehouse_id)->pluck('id')->first();
-        if($check_exists_warehouse == null){
-            return response()->json(['success'=>false,'response'=>'No Warehouse Found!'], $this->failStatus);
-        }
+        try {
+            $check_exists_warehouse = DB::table("warehouses")->where('id',$request->warehouse_id)->pluck('id')->first();
+            if($check_exists_warehouse == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Warehouse Found.',null);
+                return response()->json($response,404);
+            }
 
-        //$delete_warehouse = DB::table("warehouses")->where('id',$request->warehouse_id)->delete();
-        $soft_delete_warehouse = Warehouse::find($request->warehouse_id);
-        $soft_delete_warehouse->status=0;
-        $affected_row = $soft_delete_warehouse->update();
-        if($affected_row)
-        {
-            return response()->json(['success'=>true,'response' => 'Warehouse Successfully Soft Deleted!'], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Warehouse Deleted!'], $this->failStatus);
+            //$delete_warehouse = DB::table("warehouses")->where('id',$request->warehouse_id)->delete();
+            $soft_delete_warehouse = Warehouse::find($request->warehouse_id);
+            $soft_delete_warehouse->status=0;
+            $affected_row = $soft_delete_warehouse->update();
+            if($affected_row)
+            {
+                $response = APIHelpers::createAPIResponse(false,200,'Warehouse Successfully Soft Deleted.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Warehouse Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 

@@ -12,6 +12,7 @@ use App\Employee;
 use App\EmployeeOfficeInformation;
 use App\EmployeeSalaryInformation;
 use App\ExpenseCategory;
+use App\Helpers\APIHelpers;
 use App\Helpers\UserInfo;
 use App\Holiday;
 use App\Http\Controllers\Controller;
@@ -459,90 +460,99 @@ class PaginationController extends Controller
     }
 
     public function productPOSSaleListPaginationWithSearch(Request $request){
-        $user_id = Auth::user()->id;
-        $currentUserDetails = currentUserDetails($user_id);
-        $role = $currentUserDetails['role'];
-        $warehouse_id = $currentUserDetails['warehouse_id'];
-        $store_id = $currentUserDetails['store_id'];
+        try {
+            $user_id = Auth::user()->id;
+            $currentUserDetails = currentUserDetails($user_id);
+            $role = $currentUserDetails['role'];
+            $warehouse_id = $currentUserDetails['warehouse_id'];
+            $store_id = $currentUserDetails['store_id'];
 
-        if($role === 'admin'){
-            if($request->search){
-                $product_pos_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
-                    ->where('product_sales.sale_type','pos_sale')
-                    ->where(function ($q) use ($request){
-                        $q->where('product_sales.invoice_no','like','%'.$request->search.'%')
-                            ->orWhere('parties.name','like','%'.$request->search.'%');
-                    })
-                    ->select(
-                        'product_sales.id',
-                        'product_sales.invoice_no',
-                        'product_sales.sub_total',
-                        'product_sales.miscellaneous_comment',
-                        'product_sales.miscellaneous_charge',
-                        'product_sales.discount_type',
-                        'product_sales.discount_percent',
-                        'product_sales.discount_amount',
-                        'product_sales.total_vat_amount',
-                        'product_sales.total_amount',
-                        'product_sales.paid_amount',
-                        'product_sales.due_amount',
-                        'product_sales.sale_date',
-                        'product_sales.sale_date_time',
-                        'product_sales.user_id',
-                        'product_sales.party_id',
-                        'product_sales.warehouse_id',
-                        'product_sales.store_id'
-                    )
-                    ->latest('product_sales.id','desc')->paginate(12);
-                return new ProductPOSSaleCollection($product_pos_sales);
+            if($role === 'admin'){
+                if($request->search){
+                    $product_pos_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
+                        ->where('product_sales.sale_type','pos_sale')
+                        ->where(function ($q) use ($request){
+                            $q->where('product_sales.invoice_no','like','%'.$request->search.'%')
+                                ->orWhere('parties.name','like','%'.$request->search.'%');
+                        })
+                        ->select(
+                            'product_sales.id',
+                            'product_sales.invoice_no',
+                            'product_sales.sub_total',
+                            'product_sales.miscellaneous_comment',
+                            'product_sales.miscellaneous_charge',
+                            'product_sales.discount_type',
+                            'product_sales.discount_percent',
+                            'product_sales.discount_amount',
+                            'product_sales.total_vat_amount',
+                            'product_sales.total_amount',
+                            'product_sales.paid_amount',
+                            'product_sales.due_amount',
+                            'product_sales.sale_date',
+                            'product_sales.sale_date_time',
+                            'product_sales.user_id',
+                            'product_sales.party_id',
+                            'product_sales.warehouse_id',
+                            'product_sales.store_id'
+                        )
+                        ->latest('product_sales.id','desc')->paginate(12);
+                    return new ProductPOSSaleCollection($product_pos_sales);
+                }else{
+                    return new ProductPOSSaleCollection(
+                        ProductSale::where('sale_type','pos_sale')
+                            ->latest()->paginate(12)
+                    );
+                }
             }else{
-                return new ProductPOSSaleCollection(
-                    ProductSale::where('sale_type','pos_sale')
-                        ->latest()->paginate(12)
-                );
-            }
-        }else{
-            if($request->search){
-                $product_pos_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
-                    ->join('stores','product_sales.store_id','stores.id')
-                    ->where('product_sales.store_id',$store_id)
-                    ->where('product_sales.sale_type','pos_sale')
-                    ->where(function ($q) use ($request){
-                        $q->where('product_sales.invoice_no','like','%'.$request->search.'%')
-                            ->orWhere('parties.name','like','%'.$request->search.'%');
-                    })
-                    ->select(
-                        'product_sales.id',
-                        'product_sales.invoice_no',
-                        'product_sales.sub_total',
-                        'product_sales.miscellaneous_comment',
-                        'product_sales.miscellaneous_charge',
-                        'product_sales.discount_type',
-                        'product_sales.discount_percent',
-                        'product_sales.discount_amount',
-                        'product_sales.total_vat_amount',
-                        'product_sales.total_amount',
-                        'product_sales.paid_amount',
-                        'product_sales.due_amount',
-                        'product_sales.sale_date',
-                        'product_sales.sale_date_time',
-                        'product_sales.user_id',
-                        'product_sales.party_id',
-                        'product_sales.warehouse_id',
-                        'product_sales.store_id'
-                    )
-                    ->latest('product_sales.id','desc')->paginate(12);
-                return new ProductPOSSaleCollection($product_pos_sales);
-            }else{
-                return new ProductPOSSaleCollection(
-                    ProductSale::join('stores','product_sales.store_id','stores.id')
+                if($request->search){
+                    $product_pos_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
+                        ->join('stores','product_sales.store_id','stores.id')
                         ->where('product_sales.store_id',$store_id)
-                        ->where('sale_type','pos_sale')
-                        ->latest()->paginate(12)
-                );
-            }
-        }
+                        ->where('product_sales.sale_type','pos_sale')
+                        ->where(function ($q) use ($request){
+                            $q->where('product_sales.invoice_no','like','%'.$request->search.'%')
+                                ->orWhere('parties.name','like','%'.$request->search.'%');
+                        })
+                        ->select(
+                            'product_sales.id',
+                            'product_sales.invoice_no',
+                            'product_sales.sub_total',
+                            'product_sales.miscellaneous_comment',
+                            'product_sales.miscellaneous_charge',
+                            'product_sales.discount_type',
+                            'product_sales.discount_percent',
+                            'product_sales.discount_amount',
+                            'product_sales.total_vat_amount',
+                            'product_sales.total_amount',
+                            'product_sales.paid_amount',
+                            'product_sales.due_amount',
+                            'product_sales.sale_date',
+                            'product_sales.sale_date_time',
+                            'product_sales.user_id',
+                            'product_sales.party_id',
+                            'product_sales.warehouse_id',
+                            'product_sales.store_id'
+                        )
+                        ->latest('product_sales.id','desc')->paginate(12);
 
+                }else{
+                    $product_pos_sales = ProductSale::join('stores','product_sales.store_id','stores.id')
+                            ->where('product_sales.store_id',$store_id)
+                            ->where('sale_type','pos_sale')
+                            ->latest()->paginate(12);
+                }
+                if($product_pos_sales === null){
+                    $response = APIHelpers::createAPIResponse(true,404,'No POS Sale Found.',null);
+                    return response()->json($response,404);
+                }else{
+                    return new ProductPOSSaleCollection($product_pos_sales);
+                }
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
+        }
     }
 
     public function warehouseCurrentStockListPaginationWithOutZero(Request $request){

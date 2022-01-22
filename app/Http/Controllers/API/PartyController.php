@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API;
 use App\ChartOfAccount;
 use App\ChartOfAccountTransaction;
 use App\ChartOfAccountTransactionDetail;
+use App\Helpers\APIHelpers;
 use App\Helpers\UserInfo;
 use App\Http\Controllers\Controller;
 use App\Party;
@@ -96,31 +97,35 @@ class PartyController extends Controller
 
     // supplier
     public function partySupplierList(){
-        $party_suppliers = DB::table('parties')
-            ->select('id','type','customer_type','name','phone','email','address','virtual_balance','status')
-            ->where('type','supplier')
-            ->orderBy('id','desc')
-            ->get();
+        try {
+            $party_suppliers = DB::table('parties')
+                ->select('id','type','customer_type','name','phone','email','address','virtual_balance','status')
+                ->where('type','supplier')
+                ->orderBy('id','desc')
+                ->get();
 
-        if($party_suppliers)
-        {
+            if($party_suppliers === null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Suppliers Found.',null);
+                return response()->json($response,404);
+            }
+
             $party_supplier_arr = [];
-            foreach($party_suppliers as $party_supplier){
+            foreach ($party_suppliers as $party_supplier) {
 
                 $purchase_total_amount = 0;
 
                 $total_amount = DB::table('transactions')
                     ->select(DB::raw('SUM(amount) as sum_total_amount'))
-                    ->where('party_id',$party_supplier->id)
+                    ->where('party_id', $party_supplier->id)
                     //->where('transaction_type','whole_purchase')
                     //->orWhere('transaction_type','pos_purchase')
                     ->where(function ($query) {
-                        $query->where('transaction_type','whole_purchase')
-                            ->orWhere('transaction_type','pos_purchase');
+                        $query->where('transaction_type', 'whole_purchase')
+                            ->orWhere('transaction_type', 'pos_purchase');
                     })
                     ->first();
 
-                if(!empty($total_amount)){
+                if (!empty($total_amount)) {
                     $purchase_total_amount = $total_amount->sum_total_amount;
                 }
 
@@ -135,158 +140,178 @@ class PartyController extends Controller
                 $nested_data['virtual_balance'] = $party_supplier->virtual_balance;
                 $nested_data['status'] = $party_supplier->status;
 
-                array_push($party_supplier_arr,$nested_data);
+                array_push($party_supplier_arr, $nested_data);
             }
 
-            $success['party_suppliers'] =  $party_supplier_arr;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Party Supplier List Found!'], $this->failStatus);
+            $response = APIHelpers::createAPIResponse(false,200,'',$party_supplier_arr);
+            return response()->json($response,200);
+
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function supplierCreate(Request $request){
 
-        $validator = Validator::make($request->all(), [
-            //'email' => 'unique:parties',
-            'name' => 'required',
-            'phone'=> 'required',
-            'status' => 'required',
-        ]);
+        try {
+            // required
+            $validator = Validator::make($request->all(), [
+                'name' => 'required',
+                'phone' => 'required',
+                'status'=> 'required',
+            ]);
 
-        if ($validator->fails()) {
-            $response = [
-                'success' => false,
-                'data' => 'Validation Error.',
-                'message' => $validator->errors()
-            ];
-
-            return response()->json($response, $this-> validationStatus);
-        }
-
-
-        $parties = new Party();
-        $parties->type = 'supplier';
-        $parties->customer_type = NULL;
-        $parties->name = $request->name;
-        $parties->slug = Str::slug($request->name);
-        $parties->phone = $request->phone;
-        $parties->email = $request->email;
-        $parties->address = $request->address;
-        $parties->status = $request->status;
-        $parties->save();
-        $insert_id = $parties->id;
-
-        if($insert_id){
-            $account = DB::table('chart_of_accounts')
-                ->where('head_level',3)
-                ->where('head_code', 'like', '50101%')
-                ->Orderby('created_at', 'desc')
-                ->limit(1)
-                ->first();
-            //dd($account);
-            if(!empty($account)){
-                $head_code=$account->head_code+1;
-                //$p_acc = $headcode ."-".$request->name;
-            }else{
-                $head_code="5010100001";
-                //$p_acc = $headcode ."-".$request->name;
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
             }
-            $head_name = $request->name.'('.$request->phone.')';
 
-            $parent_head_name = 'Account Payable';
-            $head_level = 3;
-            $head_type = 'L';
+            $parties = new Party();
+            $parties->type = 'supplier';
+            $parties->customer_type = NULL;
+            $parties->name = $request->name;
+            $parties->slug = Str::slug($request->name);
+            $parties->phone = $request->phone;
+            $parties->email = $request->email;
+            $parties->address = $request->address;
+            $parties->status = $request->status;
+            $parties->save();
+            $insert_id = $parties->id;
 
+            if($insert_id){
+                $account = DB::table('chart_of_accounts')
+                    ->where('head_level',3)
+                    ->where('head_code', 'like', '50101%')
+                    ->Orderby('created_at', 'desc')
+                    ->limit(1)
+                    ->first();
+                //dd($account);
+                if(!empty($account)){
+                    $head_code=$account->head_code+1;
+                    //$p_acc = $headcode ."-".$request->name;
+                }else{
+                    $head_code="5010100001";
+                    //$p_acc = $headcode ."-".$request->name;
+                }
+                $head_name = $request->name.'('.$request->phone.')';
 
-            $coa = new ChartOfAccount();
-            $coa->head_code             = $head_code;
-            $coa->head_name             = $head_name;
-            $coa->parent_head_name      = $parent_head_name;
-            $coa->head_type             = $head_type;
-            $coa->head_level            = $head_level;
-            $coa->is_active             = '1';
-            $coa->is_transaction        = '1';
-            $coa->is_general_ledger     = '1';
-            $coa->ref_id                = $insert_id;
-            $coa->user_bank_account_no  = NULL;
-            $coa->created_by              = Auth::User()->id;
-            $coa->updated_by              = Auth::User()->id;
-            $coa->save();
+                $parent_head_name = 'Account Payable';
+                $head_level = 3;
+                $head_type = 'L';
 
-            return response()->json(['success'=>true,'response' => $parties,'exist'=>0], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Supplier Not Created Successfully!'], $this->failStatus);
+                $coa = new ChartOfAccount();
+                $coa->head_code             = $head_code;
+                $coa->head_name             = $head_name;
+                $coa->parent_head_name      = $parent_head_name;
+                $coa->head_type             = $head_type;
+                $coa->head_level            = $head_level;
+                $coa->is_active             = '1';
+                $coa->is_transaction        = '1';
+                $coa->is_general_ledger     = '1';
+                $coa->ref_id                = $insert_id;
+                $coa->user_bank_account_no  = NULL;
+                $coa->created_by              = Auth::User()->id;
+                $coa->updated_by              = Auth::User()->id;
+                $coa->save();
+
+                $response = APIHelpers::createAPIResponse(false,201,'Supplier Added Successfully.',null);
+                return response()->json($response,201);
+            }else{
+                $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+                return response()->json($response,500);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function supplierDetails(Request $request){
-        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
-        if($check_exists_party == null){
-            return response()->json(['success'=>false,'response'=>'No Supplier Found, using this id!'], $this->failStatus);
-        }
+        try {
+            $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+            if($check_exists_party == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Supplier Found.',null);
+                return response()->json($response,404);
+            }
 
-        $party = DB::table("parties")->where('id',$request->party_id)->latest()->first();
-        if($party)
-        {
-            return response()->json(['success'=>true,'response' => $party], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Supplier Found!'], $this->failStatus);
+            $party = DB::table("parties")->where('id',$request->party_id)->latest()->first();
+            $response = APIHelpers::createAPIResponse(false,200,'',$party);
+            return response()->json($response,200);
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function supplierUpdate(Request $request){
+        try {
+            $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+            if($check_exists_party == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Warehouse Found.',null);
+                return response()->json($response,404);
+            }
 
-        $validator = Validator::make($request->all(), [
-            'party_id'=> 'required',
-            'name' => 'required',
-            'phone'=> 'required',
-            'status' => 'required',
-        ]);
+            // required
+            $validator = Validator::make($request->all(), [
+                'party_id' => 'required',
+                'name' => 'required',
+                'phone' => 'required',
+                'status'=> 'required',
+            ]);
 
-        if ($validator->fails()) {
-            $response = [
-                'success' => false,
-                'data' => 'Validation Error.',
-                'message' => $validator->errors()
-            ];
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
+            }
 
-            return response()->json($response, $this->validationStatus);
-        }
+            $parties = Party::find($request->party_id);
+            $parties->name = $request->name;
+            $parties->slug = Str::slug($request->name);
+            $parties->phone = $request->phone;
+            $parties->email = $request->email;
+            $parties->address = $request->address;
+            $parties->status = $request->status;
+            $update_party = $parties->save();
 
-        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
-        if($check_exists_party == null){
-            return response()->json(['success'=>false,'response'=>'No Supplier Found!'], $this->failStatus);
-        }
-
-        $parties = Party::find($request->party_id);
-        $parties->name = $request->name;
-        $parties->slug = Str::slug($request->name);
-        $parties->phone = $request->phone;
-        $parties->email = $request->email;
-        $parties->address = $request->address;
-        $parties->status = $request->status;
-        $update_party = $parties->save();
-
-        if($update_party){
-            return response()->json(['success'=>true,'response' => $parties], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Supplier Not Created Successfully!'], $this->failStatus);
+            if($update_party){
+                $response = APIHelpers::createAPIResponse(false,200,'Supplier Updated Successfully.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Supplier Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function supplierDelete(Request $request){
-        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
-        if($check_exists_party == null){
-            return response()->json(['success'=>false,'response'=>'No Supplier Found!'], $this->failStatus);
-        }
+        try {
+            $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+            if($check_exists_party == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Supplier Found.',null);
+                return response()->json($response,404);
+            }
 
-        $delete_party = DB::table("parties")->where('id',$request->party_id)->delete();
-        if($delete_party)
-        {
-            return response()->json(['success'=>true,'response' => 'Supplier Successfully Deleted!'], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Supplier Deleted!'], $this->failStatus);
+            $delete_party = DB::table("parties")->where('id',$request->party_id)->delete();
+            if($delete_party)
+            {
+                $response = APIHelpers::createAPIResponse(false,200,'Supplier Successfully Soft Deleted.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Supplier Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
@@ -296,177 +321,408 @@ class PartyController extends Controller
 
     // pos customer
     public function posCustomerCreate(Request $request){
+        try {
+            // required
+            $validator = Validator::make($request->all(), [
+                'name' => 'required',
+                'phone' => 'unique:parties,phone',
+                'status'=> 'required',
+            ]);
 
-        $validator = Validator::make($request->all(), [
-            'email' => 'unique:parties',
-            'name' => 'required',
-            'phone'=> 'required',
-            'status' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            $response = [
-                'success' => false,
-                'data' => 'Validation Error.',
-                'message' => $validator->errors()
-            ];
-
-            return response()->json($response, $this-> validationStatus);
-        }
-
-        $parties = Party::where('phone',$request->phone)->first();
-        if($parties){
-            return response()->json(['success'=>true,'response' => $parties,'exist'=>1], $this->successStatus);
-        }
-
-        $parties = new Party();
-        $parties->type = 'customer';
-        $parties->customer_type = 'POS Sale';
-        $parties->name = $request->name;
-        $parties->slug = Str::slug($request->name);
-        $parties->phone = $request->phone;
-        $parties->email = $request->email;
-        $parties->address = $request->address;
-        $parties->status = $request->status;
-        $parties->save();
-        $insert_id = $parties->id;
-
-        if($insert_id){
-            $user_data['name'] = $request->name;
-            $user_data['email'] = $request->email;
-            $user_data['phone'] = $request->phone;
-            $user_data['password'] = Hash::make(123456);
-            $user_data['party_id'] = $insert_id;
-            $user = User::create($user_data);
-            // first create customer role, then bellow code enable
-            $user->assignRole('customer');
-
-            $text = "Dear ".$request->name." Sir, Your Username is ".$request->phone." and password is: 123456";
-            UserInfo::smsAPI("88".$request->phone,$text);
-
-            $account = DB::table('chart_of_accounts')
-                ->where('head_level',3)
-                ->where('head_code', 'like', '10203%')
-                ->Orderby('created_at', 'desc')
-                ->limit(1)
-                ->first();
-            //dd($account);
-            if(!empty($account)){
-                $head_code=$account->head_code+1;
-                //$p_acc = $headcode ."-".$request->name;
-            }else{
-                $head_code="1020300001";
-                //$p_acc = $headcode ."-".$request->name;
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
             }
-            $head_name = $request->name;
 
-            $parent_head_name = 'Account Receivable';
-            $head_level = 3;
-            $head_type = 'A';
+            $parties = new Party();
+            $parties->type = 'customer';
+            $parties->customer_type = 'POS Sale';
+            $parties->name = $request->name;
+            $parties->slug = Str::slug($request->name);
+            $parties->phone = $request->phone;
+            $parties->email = $request->email;
+            $parties->address = $request->address;
+            $parties->status = $request->status;
+            $parties->save();
+            $insert_id = $parties->id;
 
-            $coa = new ChartOfAccount();
-            $coa->head_code             = $head_code;
-            $coa->head_name             = $head_name;
-            $coa->parent_head_name      = $parent_head_name;
-            $coa->head_type             = $head_type;
-            $coa->head_level            = $head_level;
-            $coa->is_active             = '1';
-            $coa->is_transaction        = '1';
-            $coa->is_general_ledger     = '1';
-            $coa->ref_id                = $insert_id;
-            $coa->user_bank_account_no  = NULL;
-            $coa->created_by              = Auth::User()->id;
-            $coa->updated_by              = Auth::User()->id;
-            $coa->save();
+            if($insert_id){
+                $user_data['name'] = $request->name;
+                $user_data['email'] = $request->email;
+                $user_data['phone'] = $request->phone;
+                $user_data['password'] = Hash::make(123456);
+                $user_data['party_id'] = $insert_id;
+                $user = User::create($user_data);
+                // first create customer role, then bellow code enable
+                $user->assignRole('customer');
 
-            return response()->json(['success'=>true,'response' => $parties,'exist'=>0], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Party Not Created Successfully!'], $this->failStatus);
+                $text = "Dear ".$request->name." Sir, Your Username is ".$request->phone." and password is: 123456";
+                UserInfo::smsAPI("88".$request->phone,$text);
+
+                $account = DB::table('chart_of_accounts')
+                    ->where('head_level',3)
+                    ->where('head_code', 'like', '10203%')
+                    ->Orderby('created_at', 'desc')
+                    ->limit(1)
+                    ->first();
+                //dd($account);
+                if(!empty($account)){
+                    $head_code=$account->head_code+1;
+                    //$p_acc = $headcode ."-".$request->name;
+                }else{
+                    $head_code="1020300001";
+                    //$p_acc = $headcode ."-".$request->name;
+                }
+                $head_name = $request->name;
+
+                $parent_head_name = 'Account Receivable';
+                $head_level = 3;
+                $head_type = 'A';
+
+                $coa = new ChartOfAccount();
+                $coa->head_code             = $head_code;
+                $coa->head_name             = $head_name;
+                $coa->parent_head_name      = $parent_head_name;
+                $coa->head_type             = $head_type;
+                $coa->head_level            = $head_level;
+                $coa->is_active             = '1';
+                $coa->is_transaction        = '1';
+                $coa->is_general_ledger     = '1';
+                $coa->ref_id                = $insert_id;
+                $coa->user_bank_account_no  = NULL;
+                $coa->created_by              = Auth::User()->id;
+                $coa->updated_by              = Auth::User()->id;
+                $coa->save();
+
+                $response = APIHelpers::createAPIResponse(false,201,'POS Sale Customer Added Successfully.',null);
+                return response()->json($response,201);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'POS Sale Customer Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function customerDetails(Request $request){
-        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
-        if($check_exists_party == null){
-            return response()->json(['success'=>false,'response'=>'No Party Found, using this id!'], $this->failStatus);
-        }
+        try {
+            $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+            if($check_exists_party == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Warehouse Found.',null);
+                return response()->json($response,404);
+            }
 
-        $party = DB::table("parties")->where('id',$request->party_id)->latest()->first();
-        if($party)
-        {
-            return response()->json(['success'=>true,'response' => $party], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Party Found!'], $this->failStatus);
+            $party = DB::table("parties")->where('id',$request->party_id)->latest()->first();
+            if($party === null)
+            {
+                $response = APIHelpers::createAPIResponse(true,404,'No Customer Found.',null);
+                return response()->json($response,404);
+            }else{
+                $response = APIHelpers::createAPIResponse(false,200,'',$party);
+                return response()->json($response,200);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
     public function customerUpdate(Request $request){
+        try {
+            $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+            if($check_exists_party == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Customer Found.',null);
+                return response()->json($response,404);
+            }
+            // required
+            $validator = Validator::make($request->all(), [
+                'party_id'=> 'required',
+                'name' => 'required',
+                'phone' => 'required',
+                'status'=> 'required',
+            ]);
 
-        $validator = Validator::make($request->all(), [
-            'party_id'=> 'required',
-            'name' => 'required',
-            'phone'=> 'required',
-            'status' => 'required',
-        ]);
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
+            }
 
-        if ($validator->fails()) {
-            $response = [
-                'success' => false,
-                'data' => 'Validation Error.',
-                'message' => $validator->errors()
-            ];
+            $parties = Party::find($request->party_id);
+            //$parties->customer_type = $request->customer_type;
+            $parties->name = $request->name;
+            $parties->slug = Str::slug($request->name);
+            $parties->phone = $request->phone;
+            $parties->email = $request->email;
+            $parties->address = $request->address;
+            $parties->status = $request->status;
+            $parties->initial_due = $request->initial_due;
+            $update_party = $parties->save();
 
-            return response()->json($response, $this->validationStatus);
-        }
+            if($update_party){
 
-        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
-        if($check_exists_party == null){
-            return response()->json(['success'=>false,'response'=>'No Customer Found!'], $this->failStatus);
-        }
+                // whole customer initial due
+                if(($request->initial_due > 0) && ($parties->customer_type == 'Whole Sale')){
+                    $coa = ChartOfAccount::where('head_name',$parties->name)->first();
 
-        $parties = Party::find($request->party_id);
-        //$parties->customer_type = $request->customer_type;
-        $parties->name = $request->name;
-        $parties->slug = Str::slug($request->name);
-        $parties->phone = $request->phone;
-        $parties->email = $request->email;
-        $parties->address = $request->address;
-        $parties->status = $request->status;
-        $parties->initial_due = $request->initial_due;
-        $update_party = $parties->save();
+                    $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
+                    $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
+                    if(!empty($get_voucher_no)){
+                        $get_voucher_name_str = $get_voucher_name."-";
+                        $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+                        $voucher_no = $get_voucher+1;
+                    }else{
+                        $voucher_no = 8000;
+                    }
+                    $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
 
-        if($update_party){
+                    $date = date('Y-m-d');
+                    $year = date('Y');
+                    $month = date('m');
+                    $date_time = date('Y-m-d H:i:s');
+                    $user_id = Auth::user()->id;
+                    //$store_id = $request->store_id;
+                    //$warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
+                    $warehouse_id = 6;
 
-            // whole customer initial due
-            if(($request->initial_due > 0) && ($parties->customer_type == 'Whole Sale')){
-                $coa = ChartOfAccount::where('head_name',$parties->name)->first();
+                    $check_exists_posting = ChartOfAccountTransaction::where('ref_id',$parties->id)
+                        ->where('transaction_type','Initial Due')->first();
 
-                $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
-                $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
-                if(!empty($get_voucher_no)){
-                    $get_voucher_name_str = $get_voucher_name."-";
-                    $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
-                    $voucher_no = $get_voucher+1;
-                }else{
-                    $voucher_no = 8000;
+                    if(empty($check_exists_posting)){
+                        $chart_of_account_transactions = new ChartOfAccountTransaction();
+                        $chart_of_account_transactions->ref_id = $parties->id;
+                        $chart_of_account_transactions->transaction_type = 'Initial Due';
+                        $chart_of_account_transactions->user_id = $user_id;
+                        $chart_of_account_transactions->warehouse_id = $warehouse_id;
+                        $chart_of_account_transactions->store_id = NULL;
+                        $chart_of_account_transactions->voucher_type_id = 2;
+                        $chart_of_account_transactions->voucher_no = $final_voucher_no;
+                        $chart_of_account_transactions->is_approved = 'approved';
+                        $chart_of_account_transactions->transaction_date = $date;
+                        $chart_of_account_transactions->transaction_date_time = $date_time;
+                        $chart_of_account_transactions->save();
+                        $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
+
+                        if($chart_of_account_transactions_insert_id) {
+
+                            // customer account
+                            $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                            $chart_of_account_transaction_details->store_id = NULL;
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_id = $coa->id;
+                            $chart_of_account_transaction_details->chart_of_account_number = $coa->head_code;
+                            $chart_of_account_transaction_details->chart_of_account_name = $coa->head_name;
+                            $chart_of_account_transaction_details->chart_of_account_parent_name = $coa->parent_head_name;
+                            $chart_of_account_transaction_details->chart_of_account_type = $coa->head_type;
+                            $chart_of_account_transaction_details->debit = $request->initial_due;
+                            $chart_of_account_transaction_details->credit = NULL;
+                            $chart_of_account_transaction_details->description = 'Initial Due';
+                            $chart_of_account_transaction_details->year = $year;
+                            $chart_of_account_transaction_details->month = $month;
+                            $chart_of_account_transaction_details->transaction_date = $date;
+                            $chart_of_account_transaction_details->transaction_date_time = $date_time;
+                            $chart_of_account_transaction_details->save();
+
+                            // Account Receivable
+                            $cash_chart_of_account_info = ChartOfAccount::where('head_name', 'Account Receivable')->first();
+                            $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
+                            $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
+                            $chart_of_account_transaction_details->store_id = NULL;
+                            $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
+                            $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
+                            $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
+                            $chart_of_account_transaction_details->chart_of_account_name = 'Account Receivable';
+                            $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
+                            $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
+                            $chart_of_account_transaction_details->debit = NULL;
+                            $chart_of_account_transaction_details->credit = $request->initial_due;
+                            $chart_of_account_transaction_details->description = 'Initial Due';
+                            $chart_of_account_transaction_details->year = $year;
+                            $chart_of_account_transaction_details->month = $month;
+                            $chart_of_account_transaction_details->transaction_date = $date;
+                            $chart_of_account_transaction_details->transaction_date_time = $date_time;
+                            $chart_of_account_transaction_details->save();
+
+                        }
+                    }else{
+                        $check_exists_posting->transaction_date = $date;
+                        $check_exists_posting->transaction_date_time = $date_time;
+                        $check_exists_posting->save();
+
+
+
+                        // customer account
+                        $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_name',$check_exists_posting->head_name)
+                            ->where('chart_of_account_id',$check_exists_posting->id)->first();
+
+                        $chart_of_account_transaction_details->debit = $request->initial_due;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $date_time;
+                        $chart_of_account_transaction_details->save();
+
+                        // Account Receivable
+                        $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_name','Account Receivable')
+                            ->where('chart_of_account_transaction_id',$check_exists_posting->id)->first();
+                        $chart_of_account_transaction_details->credit = $request->initial_due;
+                        $chart_of_account_transaction_details->transaction_date = $date;
+                        $chart_of_account_transaction_details->transaction_date_time = $date_time;
+                        $chart_of_account_transaction_details->save();
+
+
+                    }
+
                 }
-                $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+                $response = APIHelpers::createAPIResponse(false,200,'Customer Updated Successfully.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Customer Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
+        }
+    }
 
-                $date = date('Y-m-d');
-                $year = date('Y');
-                $month = date('m');
-                $date_time = date('Y-m-d H:i:s');
-                $user_id = Auth::user()->id;
-                //$store_id = $request->store_id;
-                //$warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
-                $warehouse_id = 6;
+    public function customerDelete(Request $request){
+        try {
+            $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
+            if($check_exists_party == null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Customer Found.',null);
+                return response()->json($response,404);
+            }
 
-                $check_exists_posting = ChartOfAccountTransaction::where('ref_id',$parties->id)
-                    ->where('transaction_type','Initial Due')->first();
+            //$delete_party = DB::table("parties")->where('id',$request->party_id)->delete();
+            $soft_delete_party = Party::find($request->party_id);
+            $soft_delete_party->status=0;
+            $affected_row = $soft_delete_party->update();
+            if($affected_row)
+            {
+                $response = APIHelpers::createAPIResponse(false,200,'Customer Successfully Soft Deleted.',null);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'Customer Updated Failed.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
+        }
+    }
 
-                if(empty($check_exists_posting)){
+
+
+    // whole customer
+    // customer
+    public function wholeCustomerCreate(Request $request){
+
+        try {
+            // required
+            $validator = Validator::make($request->all(), [
+                'email' => 'required',
+                'name' => 'required',
+                'phone' => 'unique:parties,phone',
+                'status'=> 'required',
+            ]);
+
+            if ($validator->fails()) {
+                $response = APIHelpers::createAPIResponse(true,400,$validator->errors(),null);
+                return response()->json($response,400);
+            }
+
+            $parties = new Party();
+            $parties->type = 'customer';
+            $parties->customer_type = 'Whole Sale';
+            $parties->name = $request->name.'('.$request->phone.')';
+            $parties->slug = Str::slug($request->name);
+            $parties->phone = $request->phone;
+            $parties->email = $request->email;
+            $parties->address = $request->address;
+            $parties->status = $request->status;
+            $parties->initial_due = $request->initial_due;
+            $parties->save();
+            $insert_id = $parties->id;
+
+            if($insert_id){
+                $user_data['name'] = $request->name;
+                $user_data['email'] = $request->email;
+                $user_data['phone'] = $request->phone;
+                $user_data['password'] = Hash::make(123456);
+                $user_data['party_id'] = $insert_id;
+                $user = User::create($user_data);
+                // first create customer role, then bellow code enable
+                $user->assignRole('customer');
+
+                $text = "Dear ".$request->name." Sir, Your Username is ".$request->phone." and password is: 123456";
+                UserInfo::smsAPI("88".$request->phone,$text);
+
+                $account = DB::table('chart_of_accounts')
+                    ->where('head_level',3)
+                    ->where('head_code', 'like', '10203%')
+                    ->Orderby('created_at', 'desc')
+                    ->limit(1)
+                    ->first();
+                //dd($account);
+                if(!empty($account)){
+                    $head_code=$account->head_code+1;
+                    //$p_acc = $headcode ."-".$request->name;
+                }else{
+                    $head_code="1020300001";
+                    //$p_acc = $headcode ."-".$request->name;
+                }
+                $head_name = $request->name.'('.$request->phone.')';
+
+                $parent_head_name = 'Account Receivable';
+                $head_level = 3;
+                $head_type = 'A';
+
+                $coa = new ChartOfAccount();
+                $coa->head_code             = $head_code;
+                $coa->head_name             = $head_name;
+                $coa->parent_head_name      = $parent_head_name;
+                $coa->head_type             = $head_type;
+                $coa->head_level            = $head_level;
+                $coa->is_active             = '1';
+                $coa->is_transaction        = '1';
+                $coa->is_general_ledger     = '1';
+                $coa->ref_id                = $insert_id;
+                $coa->user_bank_account_no  = NULL;
+                $coa->created_by              = Auth::User()->id;
+                $coa->updated_by              = Auth::User()->id;
+                $coa->save();
+
+
+
+                // whole customer initial due
+                if($request->initial_due > 0){
+                    $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
+                    $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
+                    if(!empty($get_voucher_no)){
+                        $get_voucher_name_str = $get_voucher_name."-";
+                        $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
+                        $voucher_no = $get_voucher+1;
+                    }else{
+                        $voucher_no = 8000;
+                    }
+                    $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
+
+                    $date = date('Y-m-d');
+                    $year = date('Y');
+                    $month = date('m');
+                    $date_time = date('Y-m-d h:i:s');
+                    $user_id = Auth::user()->id;
+                    //$store_id = $request->store_id;
+                    //$warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
+                    $warehouse_id = 6;
+
                     $chart_of_account_transactions = new ChartOfAccountTransaction();
-                    $chart_of_account_transactions->ref_id = $parties->id;
+                    $chart_of_account_transactions->ref_id = $insert_id;
                     $chart_of_account_transactions->transaction_type = 'Initial Due';
                     $chart_of_account_transactions->user_id = $user_id;
                     $chart_of_account_transactions->warehouse_id = $warehouse_id;
@@ -521,233 +777,19 @@ class PartyController extends Controller
                         $chart_of_account_transaction_details->save();
 
                     }
-                }else{
-                    $check_exists_posting->transaction_date = $date;
-                    $check_exists_posting->transaction_date_time = $date_time;
-                    $check_exists_posting->save();
-
-
-
-                    // customer account
-                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_name',$check_exists_posting->head_name)
-                        ->where('chart_of_account_id',$check_exists_posting->id)->first();
-
-                    $chart_of_account_transaction_details->debit = $request->initial_due;
-                    $chart_of_account_transaction_details->transaction_date = $date;
-                    $chart_of_account_transaction_details->transaction_date_time = $date_time;
-                    $chart_of_account_transaction_details->save();
-
-                    // Account Receivable
-                    $chart_of_account_transaction_details = ChartOfAccountTransactionDetail::where('chart_of_account_name','Account Receivable')
-                        ->where('chart_of_account_transaction_id',$check_exists_posting->id)->first();
-                    $chart_of_account_transaction_details->credit = $request->initial_due;
-                    $chart_of_account_transaction_details->transaction_date = $date;
-                    $chart_of_account_transaction_details->transaction_date_time = $date_time;
-                    $chart_of_account_transaction_details->save();
-
-
                 }
-
-            }
-            return response()->json(['success'=>true,'response' => $parties], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Customer Not Created Successfully!'], $this->failStatus);
-        }
-    }
-
-    public function customerDelete(Request $request){
-        $check_exists_party = DB::table("parties")->where('id',$request->party_id)->pluck('id')->first();
-        if($check_exists_party == null){
-            return response()->json(['success'=>false,'response'=>'No Customer Found!'], $this->failStatus);
-        }
-
-        $delete_party = DB::table("parties")->where('id',$request->party_id)->delete();
-        if($delete_party)
-        {
-            return response()->json(['success'=>true,'response' => 'Customer Successfully Deleted!'], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Customer Deleted!'], $this->failStatus);
-        }
-    }
-
-
-
-    // whole customer
-    // customer
-    public function wholeCustomerCreate(Request $request){
-
-        $validator = Validator::make($request->all(), [
-            'email' => 'unique:parties',
-            'name' => 'required',
-            'phone'=> 'required',
-            'status' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            $response = [
-                'success' => false,
-                'data' => 'Validation Error.',
-                'message' => $validator->errors()
-            ];
-
-            return response()->json($response, $this-> validationStatus);
-        }
-
-        $parties = Party::where('phone',$request->phone)->first();
-        if($parties){
-            return response()->json(['success'=>true,'response' => $parties,'exist'=>1], $this->successStatus);
-        }
-
-        $parties = new Party();
-        $parties->type = 'customer';
-        $parties->customer_type = 'Whole Sale';
-        $parties->name = $request->name.'('.$request->phone.')';
-        $parties->slug = Str::slug($request->name);
-        $parties->phone = $request->phone;
-        $parties->email = $request->email;
-        $parties->address = $request->address;
-        $parties->status = $request->status;
-        $parties->initial_due = $request->initial_due;
-        $parties->save();
-        $insert_id = $parties->id;
-
-        if($insert_id){
-            $user_data['name'] = $request->name;
-            $user_data['email'] = $request->email;
-            $user_data['phone'] = $request->phone;
-            $user_data['password'] = Hash::make(123456);
-            $user_data['party_id'] = $insert_id;
-            $user = User::create($user_data);
-            // first create customer role, then bellow code enable
-            $user->assignRole('customer');
-
-            $text = "Dear ".$request->name." Sir, Your Username is ".$request->phone." and password is: 123456";
-            UserInfo::smsAPI("88".$request->phone,$text);
-
-            $account = DB::table('chart_of_accounts')
-                ->where('head_level',3)
-                ->where('head_code', 'like', '10203%')
-                ->Orderby('created_at', 'desc')
-                ->limit(1)
-                ->first();
-            //dd($account);
-            if(!empty($account)){
-                $head_code=$account->head_code+1;
-                //$p_acc = $headcode ."-".$request->name;
+                $response = APIHelpers::createAPIResponse(false,201,'Warehouse Added Successfully.',null);
+                return response()->json($response,201);
             }else{
-                $head_code="1020300001";
-                //$p_acc = $headcode ."-".$request->name;
-            }
-            $head_name = $request->name.'('.$request->phone.')';
-
-            $parent_head_name = 'Account Receivable';
-            $head_level = 3;
-            $head_type = 'A';
-
-            $coa = new ChartOfAccount();
-            $coa->head_code             = $head_code;
-            $coa->head_name             = $head_name;
-            $coa->parent_head_name      = $parent_head_name;
-            $coa->head_type             = $head_type;
-            $coa->head_level            = $head_level;
-            $coa->is_active             = '1';
-            $coa->is_transaction        = '1';
-            $coa->is_general_ledger     = '1';
-            $coa->ref_id                = $insert_id;
-            $coa->user_bank_account_no  = NULL;
-            $coa->created_by              = Auth::User()->id;
-            $coa->updated_by              = Auth::User()->id;
-            $coa->save();
-
-
-
-            // whole customer initial due
-            if($request->initial_due > 0){
-                $get_voucher_name = VoucherType::where('id',2)->pluck('name')->first();
-                $get_voucher_no = ChartOfAccountTransaction::where('voucher_type_id',2)->latest()->pluck('voucher_no')->first();
-                if(!empty($get_voucher_no)){
-                    $get_voucher_name_str = $get_voucher_name."-";
-                    $get_voucher = str_replace($get_voucher_name_str,"",$get_voucher_no);
-                    $voucher_no = $get_voucher+1;
-                }else{
-                    $voucher_no = 8000;
-                }
-                $final_voucher_no = $get_voucher_name.'-'.$voucher_no;
-
-                $date = date('Y-m-d');
-                $year = date('Y');
-                $month = date('m');
-                $date_time = date('Y-m-d h:i:s');
-                $user_id = Auth::user()->id;
-                //$store_id = $request->store_id;
-                //$warehouse_id = Store::where('id',$store_id)->pluck('warehouse_id')->first();
-                $warehouse_id = 6;
-
-                $chart_of_account_transactions = new ChartOfAccountTransaction();
-                $chart_of_account_transactions->ref_id = $insert_id;
-                $chart_of_account_transactions->transaction_type = 'Initial Due';
-                $chart_of_account_transactions->user_id = $user_id;
-                $chart_of_account_transactions->warehouse_id = $warehouse_id;
-                $chart_of_account_transactions->store_id = NULL;
-                $chart_of_account_transactions->voucher_type_id = 2;
-                $chart_of_account_transactions->voucher_no = $final_voucher_no;
-                $chart_of_account_transactions->is_approved = 'approved';
-                $chart_of_account_transactions->transaction_date = $date;
-                $chart_of_account_transactions->transaction_date_time = $date_time;
-                $chart_of_account_transactions->save();
-                $chart_of_account_transactions_insert_id = $chart_of_account_transactions->id;
-
-                if($chart_of_account_transactions_insert_id) {
-
-                    // customer account
-                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
-                    $chart_of_account_transaction_details->store_id = NULL;
-                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-                    $chart_of_account_transaction_details->chart_of_account_id = $coa->id;
-                    $chart_of_account_transaction_details->chart_of_account_number = $coa->head_code;
-                    $chart_of_account_transaction_details->chart_of_account_name = $coa->head_name;
-                    $chart_of_account_transaction_details->chart_of_account_parent_name = $coa->parent_head_name;
-                    $chart_of_account_transaction_details->chart_of_account_type = $coa->head_type;
-                    $chart_of_account_transaction_details->debit = $request->initial_due;
-                    $chart_of_account_transaction_details->credit = NULL;
-                    $chart_of_account_transaction_details->description = 'Initial Due';
-                    $chart_of_account_transaction_details->year = $year;
-                    $chart_of_account_transaction_details->month = $month;
-                    $chart_of_account_transaction_details->transaction_date = $date;
-                    $chart_of_account_transaction_details->transaction_date_time = $date_time;
-                    $chart_of_account_transaction_details->save();
-
-                    // Account Receivable
-                    $cash_chart_of_account_info = ChartOfAccount::where('head_name', 'Account Receivable')->first();
-                    $chart_of_account_transaction_details = new ChartOfAccountTransactionDetail();
-                    $chart_of_account_transaction_details->warehouse_id = $warehouse_id;
-                    $chart_of_account_transaction_details->store_id = NULL;
-                    $chart_of_account_transaction_details->chart_of_account_transaction_id = $chart_of_account_transactions_insert_id;
-                    $chart_of_account_transaction_details->chart_of_account_id = $cash_chart_of_account_info->id;
-                    $chart_of_account_transaction_details->chart_of_account_number = $cash_chart_of_account_info->head_code;
-                    $chart_of_account_transaction_details->chart_of_account_name = 'Account Receivable';
-                    $chart_of_account_transaction_details->chart_of_account_parent_name = $cash_chart_of_account_info->parent_head_name;
-                    $chart_of_account_transaction_details->chart_of_account_type = $cash_chart_of_account_info->head_type;
-                    $chart_of_account_transaction_details->debit = NULL;
-                    $chart_of_account_transaction_details->credit = $request->initial_due;
-                    $chart_of_account_transaction_details->description = 'Initial Due';
-                    $chart_of_account_transaction_details->year = $year;
-                    $chart_of_account_transaction_details->month = $month;
-                    $chart_of_account_transaction_details->transaction_date = $date;
-                    $chart_of_account_transaction_details->transaction_date_time = $date_time;
-                    $chart_of_account_transaction_details->save();
-
-                }
+                $response = APIHelpers::createAPIResponse(true,400,'Warehouse Updated Failed.',null);
+                return response()->json($response,400);
             }
 
 
-
-
-
-            return response()->json(['success'=>true,'response' => $parties,'exist'=>0], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'Party Not Created Successfully!'], $this->failStatus);
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
