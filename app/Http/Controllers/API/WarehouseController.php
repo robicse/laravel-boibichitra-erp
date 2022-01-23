@@ -147,25 +147,31 @@ class WarehouseController extends Controller
 
     // warehouse product damage
     public function warehouseProductDamageList(){
-        $warehouse_product_damage_lists = DB::table('warehouse_product_damages')
-            ->leftJoin('users','warehouse_product_damages.user_id','users.id')
-            ->leftJoin('warehouses','warehouse_product_damages.warehouse_id','warehouses.id')
-            ->select(
-                'warehouse_product_damages.id',
-                'warehouse_product_damages.invoice_no',
-                'users.name as user_name',
-                'warehouses.id as warehouse_id',
-                'warehouses.name as warehouse_name',
-                'warehouse_product_damages.damage_date'
-            )
-            ->paginate(12);
+        try {
+            $warehouse_product_damage_lists = DB::table('warehouse_product_damages')
+                ->leftJoin('users','warehouse_product_damages.user_id','users.id')
+                ->leftJoin('warehouses','warehouse_product_damages.warehouse_id','warehouses.id')
+                ->select(
+                    'warehouse_product_damages.id',
+                    'warehouse_product_damages.invoice_no',
+                    'users.name as user_name',
+                    'warehouses.id as warehouse_id',
+                    'warehouses.name as warehouse_name',
+                    'warehouse_product_damages.damage_date'
+                )
+                ->paginate(12);
 
-        if($warehouse_product_damage_lists)
-        {
-            $success['warehouse_product_damage_lists'] =  $warehouse_product_damage_lists;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Warehouse Product Damage Lists Found!'], $this->failStatus);
+            if($warehouse_product_damage_lists === null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Warehouse Product Damage Found.',null);
+                return response()->json($response,404);
+            }else{
+                $response = APIHelpers::createAPIResponse(false,200,'',$warehouse_product_damage_lists);
+                return response()->json($response,200);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 

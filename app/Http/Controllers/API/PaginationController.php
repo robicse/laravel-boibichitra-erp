@@ -593,50 +593,61 @@ class PaginationController extends Controller
     }
 
     public function storeCurrentStockListPaginationWithOutZero(Request $request){
-        $user_id = Auth::user()->id;
-        $currentUserDetails = currentUserDetails($user_id);
-        $role = $currentUserDetails['role'];
-        $warehouse_id = $currentUserDetails['warehouse_id'];
-        $store_id = $currentUserDetails['store_id'];
+        try {
+            $user_id = Auth::user()->id;
+            $currentUserDetails = currentUserDetails($user_id);
+            $role = $currentUserDetails['role'];
+            $warehouse_id = $currentUserDetails['warehouse_id'];
+            $store_id = $currentUserDetails['store_id'];
 
-        $store_stock_product = DB::table('warehouse_store_current_stocks')
-            ->join('warehouses','warehouse_store_current_stocks.warehouse_id','warehouses.id')
-            ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
-            ->leftJoin('product_units','products.product_unit_id','product_units.id')
-            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
-            ->where('warehouse_store_current_stocks.store_id',$request->store_id)
-            //->where('warehouse_store_current_stocks.store_id',$store_id)
-            ->where('warehouse_store_current_stocks.current_stock','>',0)
-            ->select('warehouse_store_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
-            ->paginate(12);
+            $store_stock_product = DB::table('warehouse_store_current_stocks')
+                ->join('warehouses','warehouse_store_current_stocks.warehouse_id','warehouses.id')
+                ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
+                ->leftJoin('product_units','products.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+                ->where('warehouse_store_current_stocks.store_id',$request->store_id)
+                //->where('warehouse_store_current_stocks.store_id',$store_id)
+                ->where('warehouse_store_current_stocks.current_stock','>',0)
+                ->select('warehouse_store_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+                ->paginate(12);
 
-        $warehouse_store_stock_total_amounts = DB::table('warehouse_store_current_stocks')
-            ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
-            ->where('warehouse_store_current_stocks.store_id',$request->store_id)
-            //->where('warehouse_store_current_stocks.store_id',$store_id)
-            ->where('warehouse_store_current_stocks.current_stock','>',0)
-            ->select('warehouse_store_current_stocks.*','products.purchase_price','products.selling_price')
-            ->get();
+            $warehouse_store_stock_total_amounts = DB::table('warehouse_store_current_stocks')
+                ->leftJoin('products','warehouse_store_current_stocks.product_id','products.id')
+                ->where('warehouse_store_current_stocks.store_id',$request->store_id)
+                //->where('warehouse_store_current_stocks.store_id',$store_id)
+                ->where('warehouse_store_current_stocks.current_stock','>',0)
+                ->select('warehouse_store_current_stocks.*','products.purchase_price','products.selling_price')
+                ->get();
 
-        $warehouse_store_stock_sum_total_amount = 0;
-        if(count($warehouse_store_stock_total_amounts) > 0){
-            foreach ($warehouse_store_stock_total_amounts as $warehouse_store_stock_amount){
-                $warehouse_store_stock_sum_total_amount += ($warehouse_store_stock_amount->current_stock*$warehouse_store_stock_amount->selling_price);
+            $warehouse_store_stock_sum_total_amount = 0;
+            if(count($warehouse_store_stock_total_amounts) > 0){
+                foreach ($warehouse_store_stock_total_amounts as $warehouse_store_stock_amount){
+                    $warehouse_store_stock_sum_total_amount += ($warehouse_store_stock_amount->current_stock*$warehouse_store_stock_amount->selling_price);
+                }
             }
-        }
 
-        if($store_stock_product)
-        {
-            $store_info = DB::table('stores')
-                ->where('id',$request->store_id)
-                ->select('name','phone','email','address')
-                ->first();
-            $success['store_info'] =  $store_info;
-            $success['store_current_stock_list'] =  $store_stock_product;
-            $success['warehouse_store_stock_sum_total_amount'] =  $warehouse_store_stock_sum_total_amount;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Store Current Stock List Found!'], $this->failStatus);
+            if($store_stock_product)
+            {
+                $store_info = DB::table('stores')
+                    ->where('id',$request->store_id)
+                    ->select('name','phone','email','address')
+                    ->first();
+
+                $success['store_info'] =  $store_info;
+                $success['store_current_stock_list'] =  $store_stock_product;
+                $success['warehouse_store_stock_sum_total_amount'] =  $warehouse_store_stock_sum_total_amount;
+//                return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+
+                $response = APIHelpers::createAPIResponse(false,200,'',$success);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,404,'No Store Current Stock Found.',null);
+                return response()->json($response,404);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 }

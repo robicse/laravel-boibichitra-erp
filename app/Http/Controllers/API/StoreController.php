@@ -154,25 +154,31 @@ class StoreController extends Controller
 
     // store product damage
     public function storeProductDamageList(){
-        $store_product_damage_lists = DB::table('store_product_damages')
-            ->leftJoin('users','store_product_damages.user_id','users.id')
-            ->leftJoin('stores','store_product_damages.store_id','stores.id')
-            ->select(
-                'store_product_damages.id',
-                'store_product_damages.invoice_no',
-                'users.name as user_name',
-                'stores.id as store_id',
-                'stores.name as store_name',
-                'store_product_damages.damage_date'
-            )
-            ->paginate(12);
+        try {
+            $store_product_damage_lists = DB::table('store_product_damages')
+                ->leftJoin('users','store_product_damages.user_id','users.id')
+                ->leftJoin('stores','store_product_damages.store_id','stores.id')
+                ->select(
+                    'store_product_damages.id',
+                    'store_product_damages.invoice_no',
+                    'users.name as user_name',
+                    'stores.id as store_id',
+                    'stores.name as store_name',
+                    'store_product_damages.damage_date'
+                )
+                ->paginate(12);
 
-        if($store_product_damage_lists)
-        {
-            $success['store_product_damage_lists'] =  $store_product_damage_lists;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Store Product Damage Lists Found!'], $this->failStatus);
+            if($store_product_damage_lists === null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Store Product Damage Found.',null);
+                return response()->json($response,404);
+            }else{
+                $response = APIHelpers::createAPIResponse(false,200,'',$store_product_damage_lists);
+                return response()->json($response,200);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 

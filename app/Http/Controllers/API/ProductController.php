@@ -22,83 +22,87 @@ class ProductController extends Controller
     public $validationStatus = 404;
 
     public function productListBarcode(){
-        $products = DB::table('products')
-            ->leftJoin('product_units','products.product_unit_id','product_units.id')
-            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
-            ->select(
-                'products.id',
-                'products.name as product_name',
-                'products.image',
-                'product_units.id as unit_id',
-                'product_units.name as unit_name',
-                'products.item_code',
-                'products.barcode',
-                'products.self_no',
-                'products.low_inventory_alert',
-                'product_brands.id as brand_id',
-                'product_brands.name as brand_name',
-                'products.purchase_price',
-                'products.whole_sale_price as whole_sale_price',
-                'products.selling_price',
-                'products.note',
-                'products.date',
-                'products.status',
-                'products.vat_status',
-                'products.vat_percentage',
-                'products.vat_amount',
-                'products.vat_whole_amount'
-            )
-            ->orderBy('products.id','desc')
-            ->get();
+        try {
+            $products = DB::table('products')
+                ->leftJoin('product_units','products.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+                ->select(
+                    'products.id',
+                    'products.name as product_name',
+                    'products.image',
+                    'product_units.id as unit_id',
+                    'product_units.name as unit_name',
+                    'products.item_code',
+                    'products.barcode',
+                    'products.self_no',
+                    'products.low_inventory_alert',
+                    'product_brands.id as brand_id',
+                    'product_brands.name as brand_name',
+                    'products.purchase_price',
+                    'products.whole_sale_price as whole_sale_price',
+                    'products.selling_price',
+                    'products.note',
+                    'products.date',
+                    'products.status',
+                    'products.vat_status',
+                    'products.vat_percentage',
+                    'products.vat_amount',
+                    'products.vat_whole_amount'
+                )
+                ->orderBy('products.id','desc')
+                ->get();
 
-        $data = [];
-        if($products)
-        {
-            foreach($products as $product){
+            $data = [];
+            if($products)
+            {
+                foreach($products as $product){
 
-                $warehouse_current_stock = DB::table('warehouse_current_stocks')
-                    ->where('product_id',$product->id)
-                    ->latest('id')
-                    ->pluck('current_stock')
-                    ->first();
+                    $warehouse_current_stock = DB::table('warehouse_current_stocks')
+                        ->where('product_id',$product->id)
+                        ->latest('id')
+                        ->pluck('current_stock')
+                        ->first();
 
-                if($warehouse_current_stock == NULL){
-                    $warehouse_current_stock = 0;
+                    if($warehouse_current_stock == NULL){
+                        $warehouse_current_stock = 0;
+                    }
+
+                    $nested_data['id']=$product->id;
+                    $nested_data['product_name']=$product->product_name;
+                    $nested_data['image']=$product->image;
+                    $nested_data['unit_id']=$product->unit_id;
+                    $nested_data['unit_name']=$product->unit_name;
+                    $nested_data['item_code']=$product->item_code;
+                    $nested_data['barcode']=$product->barcode;
+                    $nested_data['self_no']=$product->self_no;
+                    $nested_data['low_inventory_alert']=$product->low_inventory_alert;
+                    $nested_data['brand_id']=$product->brand_id;
+                    $nested_data['brand_name']=$product->brand_name;
+                    $nested_data['purchase_price']=$product->purchase_price;
+                    $nested_data['whole_sale_price']=$product->whole_sale_price;
+                    $nested_data['selling_price']=$product->selling_price;
+                    $nested_data['note']=$product->note;
+                    $nested_data['date']=$product->date;
+                    $nested_data['status']=$product->status;
+                    $nested_data['vat_status']=$product->vat_status;
+                    $nested_data['vat_percentage']=$product->vat_percentage;
+                    $nested_data['vat_amount']=$product->vat_amount;
+                    $nested_data['vat_whole_amount']=$product->vat_whole_amount;
+                    $nested_data['warehouse_current_stock']=$warehouse_current_stock;
+
+                    array_push($data,$nested_data);
                 }
 
-                $nested_data['id']=$product->id;
-                $nested_data['product_name']=$product->product_name;
-                $nested_data['image']=$product->image;
-                $nested_data['unit_id']=$product->unit_id;
-                $nested_data['unit_name']=$product->unit_name;
-                $nested_data['item_code']=$product->item_code;
-                $nested_data['barcode']=$product->barcode;
-                $nested_data['self_no']=$product->self_no;
-                $nested_data['self_no']=$product->self_no;
-                $nested_data['low_inventory_alert']=$product->low_inventory_alert;
-                $nested_data['brand_id']=$product->brand_id;
-                $nested_data['brand_name']=$product->brand_name;
-                $nested_data['purchase_price']=$product->purchase_price;
-                $nested_data['whole_sale_price']=$product->whole_sale_price;
-                $nested_data['selling_price']=$product->selling_price;
-                $nested_data['note']=$product->note;
-                $nested_data['date']=$product->date;
-                $nested_data['status']=$product->status;
-                $nested_data['vat_status']=$product->vat_status;
-                $nested_data['vat_percentage']=$product->vat_percentage;
-                $nested_data['vat_amount']=$product->vat_amount;
-                $nested_data['vat_whole_amount']=$product->vat_whole_amount;
-                $nested_data['warehouse_current_stock']=$warehouse_current_stock;
-
-
-                array_push($data,$nested_data);
+                $response = APIHelpers::createAPIResponse(false,200,'',$data);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,404,'No Product List Found.',null);
+                return response()->json($response,404);
             }
-
-            //$success['products'] =  $products;
-            $success['products'] =  $data;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Product List Found!'], $this->failStatus);
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 
