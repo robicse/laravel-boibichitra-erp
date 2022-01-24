@@ -176,48 +176,79 @@ class WarehouseController extends Controller
     }
 
     public function warehouseProductDamageDetails(Request $request){
-        $warehouse_product_damage_details = DB::table('warehouse_product_damages')
-            ->join('warehouse_product_damage_details','warehouse_product_damages.id','warehouse_product_damage_details.warehouse_product_damage_id')
-            ->leftJoin('products','warehouse_product_damage_details.product_id','products.id')
-            ->leftJoin('product_units','warehouse_product_damage_details.product_unit_id','product_units.id')
-            ->leftJoin('product_brands','warehouse_product_damage_details.product_brand_id','product_brands.id')
-            ->where('warehouse_product_damages.id',$request->warehouse_product_damage_id)
-            ->select(
-                'products.id as product_id',
-                'products.name as product_name',
-                'product_units.id as product_unit_id',
-                'product_units.name as product_unit_name',
-                'product_brands.id as product_brand_id',
-                'product_brands.name as product_brand_name',
-                'warehouse_product_damage_details.qty',
-                'warehouse_product_damage_details.id as warehouse_product_damage_detail_id',
-                'warehouse_product_damage_details.price',
-                'warehouse_product_damage_details.sub_total',
-                'warehouse_product_damage_details.vat_amount'
-            )
-            ->get();
-
-        $total_damage_amount = 0;
-        if(count($warehouse_product_damage_details) > 0){
-            foreach ($warehouse_product_damage_details as $warehouse_product_damage_detail){
-                $total_damage_amount += $warehouse_product_damage_detail->sub_total;
-            }
-        }
-
-        if($warehouse_product_damage_details)
-        {
-            $warehouse_info = DB::table('warehouses')
-                ->join('warehouse_product_damages','warehouses.id','warehouse_product_damages.warehouse_id')
+        try {
+            $warehouse_product_damage_details = DB::table('warehouse_product_damages')
+                ->join('warehouse_product_damage_details','warehouse_product_damages.id','warehouse_product_damage_details.warehouse_product_damage_id')
+                ->leftJoin('products','warehouse_product_damage_details.product_id','products.id')
+                ->leftJoin('product_units','warehouse_product_damage_details.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','warehouse_product_damage_details.product_brand_id','product_brands.id')
                 ->where('warehouse_product_damages.id',$request->warehouse_product_damage_id)
-                ->select('name','phone','email','address')
-                ->first();
+                ->select(
+                    'products.id as product_id',
+                    'products.name as product_name',
+                    'product_units.id as product_unit_id',
+                    'product_units.name as product_unit_name',
+                    'product_brands.id as product_brand_id',
+                    'product_brands.name as product_brand_name',
+                    'warehouse_product_damages.warehouse_id',
+                    'warehouse_product_damage_details.qty',
+                    'warehouse_product_damage_details.id as warehouse_product_damage_detail_id',
+                    'warehouse_product_damage_details.price',
+                    'warehouse_product_damage_details.sub_total',
+                    'warehouse_product_damage_details.vat_amount'
+                )
+                ->get();
 
-            $success['warehouse_product_damage_details'] =  $warehouse_product_damage_details;
-            $success['total_damage_amount'] =  $total_damage_amount;
-            $success['warehouse_info'] =  $warehouse_info;
-            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-        }else{
-            return response()->json(['success'=>false,'response'=>'No Warehouse Product Damage Details Found!'], $this->failStatus);
+            $total_damage_amount = 0;
+            if(count($warehouse_product_damage_details) > 0){
+                foreach ($warehouse_product_damage_details as $warehouse_product_damage_detail){
+                    $total_damage_amount += $warehouse_product_damage_detail->sub_total;
+                }
+            }
+
+            if($warehouse_product_damage_details)
+            {
+                $store_stock_return_arr = [];
+                foreach ($warehouse_product_damage_details as $warehouse_product_damage_detail){
+                    $current_stock = warehouseProductCurrentStock($warehouse_product_damage_detail->warehouse_id,$warehouse_product_damage_detail->product_id);
+
+                    $nested_data['product_id']=$warehouse_product_damage_detail->product_id;
+                    $nested_data['product_name']=$warehouse_product_damage_detail->product_name;
+                    $nested_data['product_unit_id']=$warehouse_product_damage_detail->product_unit_id;
+                    $nested_data['product_unit_name']=$warehouse_product_damage_detail->product_unit_name;
+                    $nested_data['product_brand_id']=$warehouse_product_damage_detail->product_brand_id;
+                    $nested_data['product_brand_name']=$warehouse_product_damage_detail->product_brand_name;
+                    $nested_data['qty']=$warehouse_product_damage_detail->qty;
+                    $nested_data['warehouse_product_damage_detail_id']=$warehouse_product_damage_detail->warehouse_product_damage_detail_id;
+                    $nested_data['price']=$warehouse_product_damage_detail->price;
+                    $nested_data['sub_total']=$warehouse_product_damage_detail->sub_total;
+                    $nested_data['vat_amount']=$warehouse_product_damage_detail->vat_amount;
+                    $nested_data['current_stock']=$current_stock;
+
+                    array_push($store_stock_return_arr,$nested_data);
+                }
+
+                $warehouse_info = DB::table('warehouses')
+                    ->join('warehouse_product_damages','warehouses.id','warehouse_product_damages.warehouse_id')
+                    ->where('warehouse_product_damages.id',$request->warehouse_product_damage_id)
+                    ->select('name','phone','email','address')
+                    ->first();
+
+                $success['warehouse_product_damage_details'] =  $store_stock_return_arr;
+                $success['total_damage_amount'] =  $total_damage_amount;
+                $success['warehouse_info'] =  $warehouse_info;
+                //return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+
+                $response = APIHelpers::createAPIResponse(false,200,'',$success);
+                return response()->json($response,200);
+            }else{
+                $response = APIHelpers::createAPIResponse(true,400,'No Warehouse Product Damage Details Found.',null);
+                return response()->json($response,400);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
         }
     }
 

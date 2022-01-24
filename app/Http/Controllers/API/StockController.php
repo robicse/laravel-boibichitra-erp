@@ -253,7 +253,7 @@ class StockController extends Controller
     }
 
     public function storeToWarehouseStockRequestEdit(Request $request){
-        try {
+//        try {
             // required and unique
             $validator = Validator::make($request->all(), [
                 'stock_transfer_request_id'=> 'required',
@@ -303,11 +303,11 @@ class StockController extends Controller
                 $response = APIHelpers::createAPIResponse(true,400,'Stock Transfer Request Updated Failed.',null);
                 return response()->json($response,400);
             }
-        } catch (\Exception $e) {
-            //return $e->getMessage();
-            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
-            return response()->json($response,500);
-        }
+//        } catch (\Exception $e) {
+//            //return $e->getMessage();
+//            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+//            return response()->json($response,500);
+//        }
     }
 
     public function storeToWarehouseStockRequestList(){
