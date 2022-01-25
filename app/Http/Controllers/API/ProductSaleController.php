@@ -306,6 +306,15 @@ class ProductSaleController extends Controller
             $productSale->save();
             $insert_id = $productSale->id;
 
+            // discount start
+            $sum_total_amount = 0;
+            foreach ($request->products as $data) {
+                $price = $data['mrp_price'];
+                $qty = $data['qty'];
+                $sum_total_amount += (float)$price * (float)$qty;
+            }
+            // discount start
+
             if($insert_id)
             {
                 // for postman testing
@@ -319,20 +328,36 @@ class ProductSaleController extends Controller
                     $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
 
                     // discount start
-                    $price = $data['mrp_price'];
-                    $discount_amount = $request->discount_amount;
-                    $total_amount = $request->total_amount;
-
-                    $final_discount_amount = (float)$discount_amount * (float)$price;
-                    $final_total_amount = (float)$discount_amount + (float)$total_amount;
-                    $discount_type = $request->discount_type;
-                    $discount = (float)$final_discount_amount/(float)$final_total_amount;
-                    if($discount_type != NULL){
-                        if($discount_type == 'Flat'){
-                            $discount = round($discount);
-                        }
-                    }
+//                    $price = $data['mrp_price'];
+//                    $discount_amount = $request->discount_amount;
+//                    $total_amount = $request->total_amount;
+//
+//                    $final_discount_amount = (float)$discount_amount * (float)$price;
+//                    $final_total_amount = (float)$discount_amount + (float)$total_amount;
+//                    $discount_type = $request->discount_type;
+//                    $discount = (float)$final_discount_amount/(float)$final_total_amount;
+//                    if($discount_type != NULL){
+//                        if($discount_type == 'Flat'){
+//                            $discount = round($discount);
+//                        }
+//                    }
                     // discount end
+
+
+
+                    // discount start
+                    $price = $data['mrp_price'];
+                    $qty = $data['qty'];
+                    $final_discount_amount = $request->discount_amount;
+                    $sub_total_amount = (float)$price * (float)$qty;
+                    $amount = $final_discount_amount*$sub_total_amount;
+                    $discount = $amount/$sum_total_amount;
+                    // discount end
+
+                    // vat and sub total start
+                    $after_discount_amount = $sub_total_amount - $discount;
+                    $sub_total = $after_discount_amount;
+                    // vat and sub total end
 
                     // product sale detail
                     $product_sale_detail = new ProductSaleDetail();
@@ -346,8 +371,8 @@ class ProductSaleController extends Controller
                     $product_sale_detail->discount = $discount;
                     //$product_sale_detail->vat_amount = $data['vat_amount'];
                     $product_sale_detail->vat_amount = 0;
-                    //$product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
-                    $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']);
+                    //$product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']);
+                    $product_sale_detail->sub_total = $sub_total;
                     $product_sale_detail->barcode = $barcode;
                     $product_sale_detail->sale_date = $date;
                     $product_sale_detail->return_among_day = 2;
@@ -662,6 +687,16 @@ class ProductSaleController extends Controller
             $productSale->total_amount = $request->total_amount;
             $productSale->update();
             $affectedRows = $productSale->id;
+
+            // discount start
+            $sum_total_amount = 0;
+            foreach ($request->products as $data) {
+                $price = $data['mrp_price'];
+                $qty = $data['qty'];
+                $sum_total_amount += (float)$price * (float)$qty;
+            }
+            // discount start
+
             if($affectedRows)
             {
                 foreach ($request->products as $data) {
@@ -755,7 +790,19 @@ class ProductSaleController extends Controller
 
 
 
+                    // discount start
+                    $price = $data['mrp_price'];
+                    $qty = $data['qty'];
+                    $final_discount_amount = $request->discount_amount;
+                    $sub_total_amount = (float)$price * (float)$qty;
+                    $amount = $final_discount_amount*$sub_total_amount;
+                    $discount = $amount/$sum_total_amount;
+                    // discount end
 
+                    // vat and sub total start
+                    $after_discount_amount = $sub_total_amount - $discount;
+                    $sub_total = $after_discount_amount;
+                    // vat and sub total end
 
 
 
@@ -778,8 +825,9 @@ class ProductSaleController extends Controller
                         //$product_sale_detail->vat_amount = $data['vat_amount'];
                         $product_sale_detail->vat_amount = 0;
                         $product_sale_detail->price = $data['mrp_price'];
-                        //$product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
-                        $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']);
+                        $product_sale_detail->discount = $discount;
+                        //$product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']);
+                        $product_sale_detail->sub_total = $sub_total;
                         $product_sale_detail->barcode = $barcode;
                         $product_sale_detail->return_last_date = $add_two_day_date;
                         $product_sale_detail->update();
@@ -864,8 +912,10 @@ class ProductSaleController extends Controller
                         $product_sale_detail->product_id = $product_id;
                         $product_sale_detail->qty = $data['qty'];
                         $product_sale_detail->price = $data['mrp_price'];
-                        $product_sale_detail->vat_amount = $data['vat_amount'];
-                        $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                        $product_sale_detail->discount = $discount;
+                        $product_sale_detail->vat_amount = 0;
+                        //$product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                        $product_sale_detail->sub_total = $sub_total;
                         $product_sale_detail->barcode = $barcode;
                         $product_sale_detail->sale_date = $date;
                         $product_sale_detail->return_among_day = 2;
@@ -1543,6 +1593,15 @@ class ProductSaleController extends Controller
             $productSale->save();
             $insert_id = $productSale->id;
 
+            // discount start
+            $sum_total_amount = 0;
+            foreach ($request->products as $data) {
+                $price = $data['mrp_price'];
+                $qty = $data['qty'];
+                $sum_total_amount += (float)$price * (float)$qty;
+            }
+            // discount start
+
             if($insert_id)
             {
                 // for live testing
@@ -1556,20 +1615,40 @@ class ProductSaleController extends Controller
 
 
                     // discount start
-                    $price = $data['mrp_price'];
-                    $discount_amount = $request->discount_amount;
-                    $total_amount = $request->total_amount;
-
-                    $final_discount_amount = (float)$discount_amount * (float)$price;
-                    $final_total_amount = (float)$discount_amount + (float)$total_amount;
-                    $discount_type = $request->discount_type;
-                    $discount = (float)$final_discount_amount/(float)$final_total_amount;
-                    if($discount_type != NULL){
-                        if($discount_type == 'Flat'){
-                            $discount = round($discount);
-                        }
-                    }
+//                    $price = $data['mrp_price'];
+//                    $discount_amount = $request->discount_amount;
+//                    $total_amount = $request->total_amount;
+//
+//                    $final_discount_amount = (float)$discount_amount * (float)$price;
+//                    $final_total_amount = (float)$discount_amount + (float)$total_amount;
+//                    $discount_type = $request->discount_type;
+//                    $discount = (float)$final_discount_amount/(float)$final_total_amount;
+//                    if($discount_type != NULL){
+//                        if($discount_type == 'Flat'){
+//                            $discount = round($discount);
+//                        }
+//                    }
                     // discount end
+
+                    // discount start
+                    $price = $data['mrp_price'];
+                    $qty = $data['qty'];
+                    $final_discount_amount = $request->discount_amount;
+                    $sub_total_amount = (float)$price * (float)$qty;
+                    $amount = $final_discount_amount*$sub_total_amount;
+                    $discount = $amount/$sum_total_amount;
+                    // discount end
+
+                    // vat and sub total start
+                    $vat_percent = VatPercent();
+                    $after_discount_amount = $sub_total_amount - $discount;
+                    $vat_amount = $after_discount_amount/$vat_percent;
+                    if((!empty($request->total_vat_amount))){
+                        $sub_total = $after_discount_amount + $vat_amount;
+                    }else{
+                        $sub_total = $after_discount_amount;
+                    }
+                    // vat and sub total end
 
 
 
@@ -1584,8 +1663,10 @@ class ProductSaleController extends Controller
                     $product_sale_detail->qty = $data['qty'];
                     $product_sale_detail->discount = $discount;
                     $product_sale_detail->price = $data['mrp_price'];
-                    $product_sale_detail->vat_amount = $data['vat_amount'];
-                    $product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                    //$product_sale_detail->vat_amount = $data['vat_amount'];
+                    $product_sale_detail->vat_amount = $vat_amount;
+                    //$product_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                    $product_sale_detail->sub_total = $sub_total;
                     $product_sale_detail->sale_date = $date;
                     $product_sale_detail->return_among_day = 2;
                     $product_sale_detail->return_last_date = $add_two_day_date;
@@ -1959,6 +2040,16 @@ class ProductSaleController extends Controller
             $productSale->total_amount = $request->total_amount;
             $productSale->update();
             $affectedRows = $productSale->id;
+
+            // discount
+            $sum_total_amount = 0;
+            foreach ($request->products as $data) {
+                $price = $data['mrp_price'];
+                $qty = $data['qty'];
+                $sum_total_amount += (float)$price * (float)$qty;
+            }
+            // discount
+
             if($affectedRows)
             {
                 foreach ($request->products as $data) {
@@ -1967,20 +2058,41 @@ class ProductSaleController extends Controller
                     $get_purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
 
                     // discount start
-                    $price = $data['mrp_price'];
-                    $discount_amount = $request->discount_amount;
-                    $total_amount = $request->total_amount;
-
-                    $final_discount_amount = (float)$discount_amount * (float)$price;
-                    $final_total_amount = (float)$discount_amount + (float)$total_amount;
-                    $discount_type = $request->discount_type;
-                    $discount = (float)$final_discount_amount/(float)$final_total_amount;
-                    if($discount_type != NULL){
-                        if($discount_type == 'Flat'){
-                            $discount = round($discount);
-                        }
-                    }
+//                    $price = $data['mrp_price'];
+//                    $discount_amount = $request->discount_amount;
+//                    $total_amount = $request->total_amount;
+//
+//                    $final_discount_amount = (float)$discount_amount * (float)$price;
+//                    $final_total_amount = (float)$discount_amount + (float)$total_amount;
+//                    $discount_type = $request->discount_type;
+//                    $discount = (float)$final_discount_amount/(float)$final_total_amount;
+//                    if($discount_type != NULL){
+//                        if($discount_type == 'Flat'){
+//                            $discount = round($discount);
+//                        }
+//                    }
                     // discount end
+
+                    // discount start
+                    $price = $data['mrp_price'];
+                    $qty = $data['qty'];
+                    $final_discount_amount = $request->discount_amount;
+                    $sub_total_amount = (float)$price * (float)$qty;
+                    $amount = $final_discount_amount*$sub_total_amount;
+                    $discount = $amount/$sum_total_amount;
+                    // discount end
+
+                    // vat and sub total start
+                    $vat_percent = VatPercent();
+                    $after_discount_amount = $sub_total_amount - $discount;
+                    $vat_amount = $after_discount_amount/$vat_percent;
+                    if((!empty($request->total_vat_amount))){
+                        $sub_total = $after_discount_amount + $vat_amount;
+                    }else{
+                        $sub_total = $after_discount_amount;
+                    }
+
+                    // vat and sub total end
 
                     $product_sale_detail_id = $data['product_sale_detail_id'];
                     // product purchase detail
@@ -1993,8 +2105,10 @@ class ProductSaleController extends Controller
                     $purchase_sale_detail->qty = $data['qty'];
                     $purchase_sale_detail->discount = $discount;
                     $purchase_sale_detail->price = $data['mrp_price'];
-                    $purchase_sale_detail->vat_amount = $data['vat_amount'];
-                    $purchase_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                    //$purchase_sale_detail->vat_amount = $data['vat_amount'];
+                    $purchase_sale_detail->vat_amount = (!empty($request->total_vat_amount)) ? $vat_amount : 0;
+                    //$purchase_sale_detail->sub_total = ($data['qty']*$data['mrp_price']) + ($data['qty']*$data['vat_amount']);
+                    $purchase_sale_detail->sub_total = $sub_total;
                     $purchase_sale_detail->barcode = $barcode;
                     $purchase_sale_detail->update();
 

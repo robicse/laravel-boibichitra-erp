@@ -225,6 +225,7 @@ Route::middleware('auth:api')->post('/product_purchase_invoice_list_pagination_w
 Route::middleware('auth:api')->post('/product_purchase_details', 'API\ProductPurchaseController@productPurchaseDetails');
 Route::middleware('auth:api')->get('/product_purchase_return_list', 'API\ProductPurchaseController@productPurchaseReturnList');
 Route::middleware('auth:api')->post('/product_purchase_return_details', 'API\ProductPurchaseController@productPurchaseReturnDetails');
+Route::middleware('auth:api')->post('/product_purchase_return_details_pdf', 'API\ProductPurchaseController@productPurchaseReturnDetailsPdf');
 Route::middleware('auth:api')->post('/product_purchase_return_create', 'API\ProductPurchaseController@productPurchaseReturnCreate');
 Route::middleware('auth:api')->post('/product_whole_purchase_create_with_low_product', 'API\ProductPurchaseController@productWholePurchaseCreateWithLowProduct');
 

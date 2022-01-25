@@ -1803,6 +1803,47 @@ class ProductPurchaseController extends Controller
         }
     }
 
+    public function productPurchaseReturnDetailsPdf(Request $request){
+        try {
+            $product_purchase_return_details = DB::table('product_purchase_returns')
+                ->join('product_purchase_return_details','product_purchase_returns.id','product_purchase_return_details.pro_pur_return_id')
+                ->join('parties','product_purchase_returns.party_id','parties.id')
+                ->leftJoin('products','product_purchase_return_details.product_id','products.id')
+                ->leftJoin('product_units','product_purchase_return_details.product_unit_id','product_units.id')
+                ->leftJoin('product_brands','product_purchase_return_details.product_brand_id','product_brands.id')
+                ->where('product_purchase_return_details.pro_pur_return_id',$request->product_purchase_return_id)
+                ->select(
+                    'products.id as product_id',
+                    'products.name as product_name',
+                    'product_units.id as product_unit_id',
+                    'product_units.name as product_unit_name',
+                    'product_brands.id as product_brand_id',
+                    'product_brands.name as product_brand_name',
+                    'product_purchase_return_details.qty',
+                    'product_purchase_return_details.id as product_purchase_return_detail_id',
+                    'product_purchase_return_details.price',
+                    'product_purchase_returns.product_purchase_return_date',
+                    'parties.name',
+                    'parties.phone',
+                    'parties.email',
+                    'parties.address'
+                )
+                ->get();
+
+            if($product_purchase_return_details === null){
+                $response = APIHelpers::createAPIResponse(true,404,'No Purchase Return Detail Found.',null);
+                return response()->json($response,404);
+            }else{
+                $response = APIHelpers::createAPIResponse(false,200,'',$product_purchase_return_details);
+                return response()->json($response,200);
+            }
+        } catch (\Exception $e) {
+            //return $e->getMessage();
+            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+            return response()->json($response,500);
+        }
+    }
+
     public function productWholePurchaseCreateWithLowProduct(Request $request){
 
         $this->validate($request, [

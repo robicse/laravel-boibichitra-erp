@@ -625,7 +625,6 @@ class PartyController extends Controller
         try {
             // required
             $validator = Validator::make($request->all(), [
-                'email' => 'required',
                 'name' => 'required',
                 'phone' => 'unique:parties,phone',
                 'status'=> 'required',
@@ -639,7 +638,7 @@ class PartyController extends Controller
             $parties = new Party();
             $parties->type = 'customer';
             $parties->customer_type = 'Whole Sale';
-            $parties->name = $request->name.'('.$request->phone.')';
+            $parties->name = $request->name;
             $parties->slug = Str::slug($request->name);
             $parties->phone = $request->phone;
             $parties->email = $request->email;
@@ -804,7 +803,6 @@ class PartyController extends Controller
 
         $validator = Validator::make($request->all(), [
             'type'=> 'required',
-            'email' => 'unique:parties',
             'name' => 'required',
             'phone'=> 'required',
             'status' => 'required',

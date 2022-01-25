@@ -18,6 +18,7 @@ class CustomerCollection extends ResourceCollection
                     'customer_type' => $party_info->customer_type,
                     'name' => $party_info->name,
                     'phone' => $party_info->phone,
+                    'email' => $party_info->email,
                     'address' => $party_info->address,
                     'virtual_balance' => $party_info->virtual_balance,
                     'initial_due' => $party_info->initial_due,

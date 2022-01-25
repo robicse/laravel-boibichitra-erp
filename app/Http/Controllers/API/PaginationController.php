@@ -460,7 +460,7 @@ class PaginationController extends Controller
     }
 
     public function productPOSSaleListPaginationWithSearch(Request $request){
-        try {
+//        try {
             $user_id = Auth::user()->id;
             $currentUserDetails = currentUserDetails($user_id);
             $role = $currentUserDetails['role'];
@@ -507,7 +507,7 @@ class PaginationController extends Controller
                 if($request->search){
                     $product_pos_sales = ProductSale::join('parties','product_sales.party_id','parties.id')
                         ->join('stores','product_sales.store_id','stores.id')
-                        ->where('product_sales.store_id',$store_id)
+                        ->where('product_sales.store_id1',$store_id)
                         ->where('product_sales.sale_type','pos_sale')
                         ->where(function ($q) use ($request){
                             $q->where('product_sales.invoice_no','like','%'.$request->search.'%')
@@ -536,23 +536,22 @@ class PaginationController extends Controller
                         ->latest('product_sales.id','desc')->paginate(12);
 
                 }else{
-                    $product_pos_sales = ProductSale::join('stores','product_sales.store_id','stores.id')
-                            ->where('product_sales.store_id',$store_id)
-                            ->where('sale_type','pos_sale')
+                    $product_pos_sales =  ProductSale::where('sale_type','pos_sale')
+                            ->where('store_id',$store_id)
                             ->latest()->paginate(12);
                 }
-                if($product_pos_sales === null){
+                if($product_pos_sales){
+                    return new ProductPOSSaleCollection($product_pos_sales);
+                }else{
                     $response = APIHelpers::createAPIResponse(true,404,'No POS Sale Found.',null);
                     return response()->json($response,404);
-                }else{
-                    return new ProductPOSSaleCollection($product_pos_sales);
                 }
             }
-        } catch (\Exception $e) {
-            //return $e->getMessage();
-            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
-            return response()->json($response,500);
-        }
+//        } catch (\Exception $e) {
+//            //return $e->getMessage();
+//            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+//            return response()->json($response,500);
+//        }
     }
 
     public function warehouseCurrentStockListPaginationWithOutZero(Request $request){

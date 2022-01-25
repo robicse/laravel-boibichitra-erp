@@ -19,136 +19,173 @@ if (! function_exists('test_helper')) {
 // today purchase sum
 if (! function_exists('todayPurchase')) {
     function todayPurchase() {
+        $today_purchase = 0;
         $today_purchase_history = DB::table('product_purchases')
             ->where('purchase_date', date('Y-m-d'))
             ->select(DB::raw('SUM(total_amount) as today_purchase'))
             ->first();
+        if(!empty($today_purchase_history)){
+            $today_purchase = $today_purchase_history->today_purchase;
+        }
 
-        return $today_purchase_history->today_purchase;
+        return $today_purchase;
     }
 }
 
 // total purchase sum
 if (! function_exists('totalPurchase')) {
     function totalPurchase() {
+        $total_purchase = 0;
         $total_purchase_history = DB::table('product_purchases')
             ->select(DB::raw('SUM(total_amount) as total_purchase'))
             ->first();
+        if(!empty($total_purchase_history)){
+            $total_purchase = $total_purchase_history->total_purchase;
+        }
 
-        return $total_purchase_history->total_purchase;
+        return $total_purchase;
     }
 }
 
 // today purchase return sum
 if (! function_exists('todayPurchaseReturn')) {
     function todayPurchaseReturn() {
+        $today_purchase_return = 0;
         $today_purchase_return_history = DB::table('product_purchase_returns')
             ->where('product_purchase_return_date', date('Y-m-d'))
             ->select(DB::raw('SUM(total_amount) as today_purchase_return'))
             ->first();
+        if(!empty($today_purchase_return_history)){
+            $today_purchase_return = $today_purchase_return_history->today_purchase_return;
+        }
 
-        return $today_purchase_return_history->today_purchase_return;
+        return $today_purchase_return;
     }
 }
 
 // total purchase return sum
 if (! function_exists('totalPurchaseReturn')) {
+
     function totalPurchaseReturn() {
+        $total_purchase_return = 0;
         $total_purchase_return_history = DB::table('product_purchase_returns')
             ->select(DB::raw('SUM(total_amount) as total_purchase_return'))
             ->first();
-
-        return $total_purchase_return_history->total_purchase_return;
+        if(!empty($total_purchase_return_history)){
+            $total_purchase_return = $total_purchase_return_history->total_purchase_return;
+        }
+        return $total_purchase_return;
     }
 }
 
 // today sale sum
 if (! function_exists('todaySale')) {
     function todaySale() {
+        $today_sale = 0;
         $today_sale_history = DB::table('product_sales')
             ->where('sale_date', date('Y-m-d'))
             ->select(DB::raw('SUM(total_amount) as today_sale'),DB::raw('SUM(total_vat_amount) as today_sale_vat_amount'))
             ->first();
-
-        return $today_sale_history->today_sale - $today_sale_history->today_sale_vat_amount;
+        if(!empty($today_sale_history)){
+            $today_sale = $today_sale_history->today_sale - $today_sale_history->today_sale_vat_amount;
+        }
+        return $today_sale;
     }
 }
 
 // total sale sum
 if (! function_exists('totalSale')) {
     function totalSale() {
+        $total_sale = 0;
         $total_sale_history = DB::table('product_sales')
             ->select(DB::raw('SUM(total_amount) as total_sale'),DB::raw('SUM(total_vat_amount) as total_sale_vat_amount'))
             ->first();
-
-        return $total_sale_history->total_sale - $total_sale_history->total_sale_vat_amount;
+        if(!empty($total_sale_history)){
+            $total_sale = $total_sale_history->total_sale - $total_sale_history->total_sale_vat_amount;
+        }
+        return $total_sale;
     }
 }
 
 // today sale return sum
 if (! function_exists('todaySaleReturn')) {
     function todaySaleReturn() {
+        $today_sale_return = 0;
         $today_sale_return_history = DB::table('product_sale_returns')
             ->join('product_sales','product_sale_returns.product_sale_invoice_no','product_sales.invoice_no')
             ->where('product_sale_returns.product_sale_return_date', date('Y-m-d'))
             ->where('product_sales.sale_type', 'pos_sale')
             ->select(DB::raw('SUM(product_sale_returns.total_amount) as today_sale_return'))
             ->first();
-
-        return $today_sale_return_history->today_sale_return;
+        if(!empty($today_sale_return_history)){
+            $today_sale_return = $today_sale_return_history->today_sale_return;
+        }
+        return $today_sale_return;
     }
 }
 
 // total sale return sum
 if (! function_exists('totalSaleReturn')) {
     function totalSaleReturn() {
+        $total_sale_return = 0;
         $total_sale_return_history = DB::table('product_sale_returns')
             ->join('product_sales','product_sale_returns.product_sale_invoice_no','product_sales.invoice_no')
             ->where('product_sales.sale_type', 'pos_sale')
             ->select(DB::raw('SUM(product_sale_returns.total_amount) as total_sale_return'))
             ->first();
 
-        return $total_sale_return_history->total_sale_return;
+        if(!empty($total_sale_return_history)){
+            $total_sale_return = $total_sale_return_history->total_sale_return;
+        }
+        return $total_sale_return;
+    }
+}
+
+// Current User Details
+if (! function_exists('VatPercent')) {
+    function VatPercent() {
+        return \App\ProductVat::pluck('vat_percentage')->first();
     }
 }
 
 // today sale sum for profit calculation
 if (! function_exists('todayProfit')) {
     function todayProfit() {
-        $total_sale_for_profit_loss_history = DB::table('product_sale_details')
+        $sum_total_sale = 0;
+        $sum_total_purchase = 0;
+        $total_sale_for_profit_loss_histories = DB::table('product_sale_details')
             ->join('product_sales','product_sale_details.product_sale_id','product_sales.id')
             ->where('product_sale_details.sale_date', date('Y-m-d'))
-            ->where('product_sales.sale_type', 'pos_sale')
-            ->select(DB::raw('SUM(product_sale_details.sub_total) as sub_total'),DB::raw('SUM(product_sale_details.purchase_price) as purchase_price'))
-            ->first();
-
-        $total_discount_sale_for_profit_loss_history = DB::table('product_sales')
-            ->where('sale_date', date('Y-m-d'))
-            ->where('sale_type', 'pos_sale')
-            ->select(DB::raw('SUM(discount_amount) as discount_amount'))
-            ->first();
-
-        $after_discount = $total_sale_for_profit_loss_history->sub_total - $total_discount_sale_for_profit_loss_history->discount_amount;
-        return $after_discount - $total_sale_for_profit_loss_history->purchase_price;
+            //->where('product_sales.sale_type', 'pos_sale')
+            ->select('product_sale_details.product_id','product_sale_details.purchase_price','product_sale_details.qty','product_sale_details.sub_total')
+            ->get();
+        if(count($total_sale_for_profit_loss_histories) > 0){
+            foreach ($total_sale_for_profit_loss_histories as $total_sale_for_profit_loss_history){
+                $sum_total_sale += $total_sale_for_profit_loss_history->sub_total;
+                $sum_total_purchase += $total_sale_for_profit_loss_history->purchase_price*$total_sale_for_profit_loss_history->qty;
+            }
+        }
+        return $sum_total_sale - $sum_total_purchase;
     }
 }
 
 // total sale sum for profit calculation
 if (! function_exists('totalProfit')) {
     function totalProfit() {
-        $total_sale_for_profit_loss_history = DB::table('product_sale_details')
+        $sum_total_sale = 0;
+        $sum_total_purchase = 0;
+        $total_sale_for_profit_loss_histories = DB::table('product_sale_details')
             ->join('product_sales','product_sale_details.product_sale_id','product_sales.id')
-            ->where('product_sales.sale_type', 'pos_sale')
-            ->select(DB::raw('SUM(product_sale_details.sub_total) as sub_total'),DB::raw('SUM(product_sale_details.purchase_price) as purchase_price'))
-            ->first();
-
-        $total_discount_sale_for_profit_loss_history = DB::table('product_sales')
-            ->where('sale_type', 'pos_sale')
-            ->select(DB::raw('SUM(discount_amount) as discount_amount'))
-            ->first();
-
-        $after_discount = $total_sale_for_profit_loss_history->sub_total - $total_discount_sale_for_profit_loss_history->discount_amount;
-        return $after_discount - $total_sale_for_profit_loss_history->purchase_price;
+            //->where('product_sales.sale_type', 'pos_sale')
+            ->select('product_sale_details.product_id','product_sale_details.purchase_price','product_sale_details.qty','product_sale_details.sub_total')
+            ->get();
+        if(count($total_sale_for_profit_loss_histories) > 0){
+            foreach ($total_sale_for_profit_loss_histories as $total_sale_for_profit_loss_history){
+                $sum_total_sale += $total_sale_for_profit_loss_history->sub_total;
+                $sum_total_purchase += $total_sale_for_profit_loss_history->purchase_price*$total_sale_for_profit_loss_history->qty;
+            }
+        }
+        return $sum_total_sale - $sum_total_purchase;
     }
 }
 
