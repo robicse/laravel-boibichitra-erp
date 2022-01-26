@@ -164,6 +164,12 @@ class FrontendController extends Controller
             //$user = Auth::user();
             $user = Auth::guard('web')->user();
 
+            $user['warehouse_id'] = (int) $user['warehouse_id'];
+            $user['store_id'] = (int) $user['store_id'];
+            $user['party_id'] = (int) $user['party_id'];
+            $user['employee_id'] = (int) $user['employee_id'];
+            $user['status'] = (int) $user['status'];
+
             if($user['store_id'] != NULL){
                 $user['store_name'] = Store::where('id',$user['store_id'])->pluck('name')->first();
             }else{
@@ -177,9 +183,39 @@ class FrontendController extends Controller
             $user['role'] = $user->getRoleNames()[0];
             //$user['role_id'] = $user['roles'][0]->id;
             $role_id = $user['roles'][0]->id;
-            $user['permissions'] = Permission::join("role_has_permissions","role_has_permissions.permission_id","=","permissions.id")
+//            $user['permissions'] = Permission::join("role_has_permissions","role_has_permissions.permission_id","=","permissions.id")
+//                ->where("role_has_permissions.role_id",$role_id)
+//                ->get();
+            $permissions = Permission::join("role_has_permissions","role_has_permissions.permission_id","=","permissions.id")
+                ->select(
+                    'permissions.id',
+                    'permissions.name',
+                    'permissions.guard_name',
+                    //'permissions.status',
+                    'permissions.created_at',
+                    'permissions.updated_at',
+                    'role_has_permissions.permission_id',
+                    'role_has_permissions.role_id'
+                )
                 ->where("role_has_permissions.role_id",$role_id)
                 ->get();
+
+            $permission_data = [];
+            foreach($permissions as $per){
+                $nested_data['id'] = $per->id;
+                $nested_data['name'] = $per->name;
+                $nested_data['guard_name'] = $per->guard_name;
+                //$nested_data['status'] = (int) $per->status;
+                $nested_data['created_at'] = $per->created_at;
+                $nested_data['updated_at'] = $per->updated_at;
+                $nested_data['permission_id'] = (int) $per->permission_id;
+                $nested_data['role_id'] = (int) $per->role_id;
+
+                array_push($permission_data, $nested_data);
+            }
+
+
+            $user['permissions'] = $permission_data;
             unset($user['roles']);
 
 
