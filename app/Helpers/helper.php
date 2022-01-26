@@ -141,6 +141,21 @@ if (! function_exists('totalSaleReturn')) {
     }
 }
 
+// Current Product Discount
+if (! function_exists('productDiscount')) {
+    function productDiscount($total_amount,$selling_sub_total_price,$discount_amount) {
+        return ((float)$selling_sub_total_price*(float)$discount_amount)/(float)$total_amount;
+    }
+}
+
+// Current Product Price Vat Amount
+if (! function_exists('ProductPriceVatAmount')) {
+    function ProductPriceVatAmount($after_discount_amount) {
+        $vat_percent = VatPercent();
+        return ($after_discount_amount*$vat_percent)/100;
+    }
+}
+
 // Current User Details
 if (! function_exists('VatPercent')) {
     function VatPercent() {
