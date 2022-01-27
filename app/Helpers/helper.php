@@ -141,6 +141,19 @@ if (! function_exists('totalSaleReturn')) {
     }
 }
 
+// Current Product Total Amount
+if (! function_exists('productTotalAmount')) {
+    function productTotalAmount($products) {
+        $product_total_amount = 0;
+        foreach ($products as $data) {
+            $selling_price = $data['mrp_price'];
+            $qty = $data['qty'];
+            $product_total_amount += $selling_price*$qty;
+        }
+        return $product_total_amount;
+    }
+}
+
 // Current Product Discount
 if (! function_exists('productDiscount')) {
     function productDiscount($total_amount,$selling_sub_total_price,$discount_amount) {
