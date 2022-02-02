@@ -630,6 +630,78 @@ if (! function_exists('getLeaveThisDate')) {
     }
 }
 
+if (! function_exists('warehouseStockByProductName')) {
+    function warehouseStockByProductName($product_name)
+    {
+        return DB::table('products')
+            ->leftJoin('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+            ->where('products.name',$product_name)
+            ->select(
+                'products.name as product_name',
+                'products.selling_price as price',
+                'warehouse_current_stocks.current_stock'
+            )
+            ->first();
+    }
+}
+
+if (! function_exists('storeCurrentStockInfoByProductNameAndStoreName')) {
+    function storeCurrentStockInfoByProductNameAndStoreName($product_name,$store_name)
+    {
+        $current_stock = DB::table('products')
+            ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+            ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+            ->where('stores.id',$store_name)
+            ->where('products.name',$product_name)
+            ->pluck(
+            'warehouse_store_current_stocks.current_stock'
+            )
+            ->first();
+
+        if(!empty($current_stock)){
+            return $current_stock;
+        }else{
+            return 0;
+        }
+    }
+}
+
+if (! function_exists('warehouseStockByBarcode')) {
+    function warehouseStockByBarcode($barcode)
+    {
+        return DB::table('products')
+            ->leftJoin('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+            ->where('products.barcode',$barcode)
+            ->select(
+                'products.name as product_name',
+                'products.selling_price as price',
+                'warehouse_current_stocks.current_stock'
+            )
+            ->first();
+    }
+}
+
+if (! function_exists('storeCurrentStockInfoByBarcodeAndStoreName')) {
+    function storeCurrentStockInfoByBarcodeAndStoreName($barcode,$store_name)
+    {
+        $current_stock = DB::table('products')
+            ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+            ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+            ->where('stores.id',$store_name)
+            ->where('products.barcode',$barcode)
+            ->pluck(
+                'warehouse_store_current_stocks.current_stock'
+            )
+            ->first();
+
+        if(!empty($current_stock)){
+            return $current_stock;
+        }else{
+            return 0;
+        }
+    }
+}
+
 
 
 

@@ -11,9 +11,11 @@ use App\StockTransfer;
 use App\StockTransferDetail;
 use App\StockTransferRequest;
 use App\StockTransferRequestDetail;
+use App\Store;
 use App\StoreStockReturn;
 use App\StoreStockReturnDetail;
 use App\User;
+use App\Warehouse;
 use App\warehouseCurrentStock;
 use App\WarehouseStoreCurrentStock;
 use Illuminate\Database\Eloquent\Model;
@@ -1851,72 +1853,138 @@ class StockController extends Controller
         }
     }
 
+//    function universalSearchStoreCurrentProductStock(Request $request){
+//        try {
+//            if($request->name === null && $request->barcode === null && $request->item_code === null){
+//                $response = APIHelpers::createAPIResponse(true,404,'No Data Found.',null);
+//                return response()->json($response,404);
+//            }
+//            $store_stocks = '';
+//            $warehouse_stocks = '';
+//            if($request->name){
+//                $store_stocks = DB::table('products')
+//                    ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+//                    ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+//                    //->where('products.name','like','%'.$request->name.'%')
+//                    ->where('products.name',$request->name)
+//                    ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
+//                    ->get();
+//
+//                $warehouse_stocks = DB::table('products')
+//                    ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+//                    ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+//                    //->where('products.name','like','%'.$request->name.'%')
+//                    ->where('products.name',$request->name)
+//                    ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
+//                    ->get();
+//            }
+//
+//            if($request->barcode){
+//                $store_stocks = DB::table('products')
+//                    ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+//                    ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+//                    ->orWhere('products.barcode',$request->barcode)
+//                    ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
+//                    ->get();
+//
+//                $warehouse_stocks = DB::table('products')
+//                    ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+//                    ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+//                    ->orWhere('products.barcode',$request->barcode)
+//                    ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
+//                    ->get();
+//            }
+//
+//            if($request->item_code){
+//                $store_stocks = DB::table('products')
+//                    ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+//                    ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+//                    ->orWhere('products.item_code',$request->item_code)
+//                    ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
+//                    ->get();
+//
+//                $warehouse_stocks = DB::table('products')
+//                    ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+//                    ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+//                    ->orWhere('products.item_code',$request->item_code)
+//                    ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
+//                    ->get();
+//            }
+//
+//            if($store_stocks){
+//                $success['store_stock_details'] =  $store_stocks;
+//                $success['warehouse_stock_details'] =  $warehouse_stocks;
+////                return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+//
+//                $response = APIHelpers::createAPIResponse(false,200,'',$success);
+//                return response()->json($response,200);
+//            }
+//        } catch (\Exception $e) {
+//            //return $e->getMessage();
+//            $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
+//            return response()->json($response,500);
+//        }
+//    }
+
     function universalSearchStoreCurrentProductStock(Request $request){
         try {
-            if($request->name === null || $request->barcode === null || $request->item_code === null){
+            if($request->name === null && $request->barcode === null && $request->item_code === null){
                 $response = APIHelpers::createAPIResponse(true,404,'No Data Found.',null);
                 return response()->json($response,404);
             }
-            $store_stocks = '';
-            $warehouse_stocks = '';
-            if($request->name){
-                $store_stocks = DB::table('products')
-                    ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
-                    ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
-                    //->where('products.name','like','%'.$request->name.'%')
-                    ->where('products.name',$request->name)
-                    ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
-                    ->get();
 
-                $warehouse_stocks = DB::table('products')
-                    ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
-                    ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
-                    //->where('products.name','like','%'.$request->name.'%')
-                    ->where('products.name',$request->name)
-                    ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
-                    ->get();
+            $warehouse_info = Warehouse::where('id',6)->first();
+            $store_info = Store::all();
+            $warehouse_stock_info = [
+                'warehouse_name' => $warehouse_info->name,
+                'product_name' => '',
+                'price' => '',
+                'current_stock' => 0,
+            ];
+
+            $warehouse_stock_details = [];
+            $store_stock_info = [];
+
+            if($request->name){
+                $warehouse_stocks = warehouseStockByProductName($request->name);
+                $warehouse_stock_info['product_name'] = $warehouse_stocks->product_name;
+                $warehouse_stock_info['price'] = $warehouse_stocks->price;
+                $warehouse_stock_info['current_stock'] = $warehouse_stocks->current_stock == null ? 0 : $warehouse_stocks->current_stock;
+                array_push($warehouse_stock_details, $warehouse_stock_info);
+
+                foreach ($store_info as $store){
+                    $nested_data['store_name']=$store->name;
+                    $nested_data['product_name']=$warehouse_stocks->product_name;
+                    $nested_data['price']=$warehouse_stocks->price;
+                    $nested_data['current_stock']=storeCurrentStockInfoByProductNameAndStoreName($request->name,$store->id);
+
+                    array_push($store_stock_info, $nested_data);
+                }
             }
 
             if($request->barcode){
-                $store_stocks = DB::table('products')
-                    ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
-                    ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
-                    ->orWhere('products.barcode',$request->barcode)
-                    ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
-                    ->get();
+                $warehouse_stocks = warehouseStockByBarcode($request->barcode);
+                $warehouse_stock_info['product_name'] = $warehouse_stocks->product_name;
+                $warehouse_stock_info['price'] = $warehouse_stocks->price;
+                $warehouse_stock_info['current_stock'] = $warehouse_stocks->current_stock == null ? 0 : $warehouse_stocks->current_stock;
+                array_push($warehouse_stock_details, $warehouse_stock_info);
 
-                $warehouse_stocks = DB::table('products')
-                    ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
-                    ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
-                    ->orWhere('products.barcode',$request->barcode)
-                    ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
-                    ->get();
+                foreach ($store_info as $store){
+                    $nested_data['store_name']=$store->name;
+                    $nested_data['product_name']=$warehouse_stocks->product_name;
+                    $nested_data['price']=$warehouse_stocks->price;
+                    $nested_data['current_stock']=storeCurrentStockInfoByBarcodeAndStoreName($request->barcode,$store->id);
+
+                    array_push($store_stock_info, $nested_data);
+                }
             }
 
-            if($request->item_code){
-                $store_stocks = DB::table('products')
-                    ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
-                    ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
-                    ->orWhere('products.item_code',$request->item_code)
-                    ->select('stores.name as store_name','products.name as product_name','products.selling_price as price','warehouse_store_current_stocks.current_stock')
-                    ->get();
+            $success['store_stock_details'] =  $store_stock_info;
+            $success['warehouse_stock_details'] =  $warehouse_stock_details;
 
-                $warehouse_stocks = DB::table('products')
-                    ->join('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
-                    ->join('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
-                    ->orWhere('products.item_code',$request->item_code)
-                    ->select('warehouses.name as warehouse_name','products.name as product_name','products.selling_price as price','warehouse_current_stocks.current_stock')
-                    ->get();
-            }
+            $response = APIHelpers::createAPIResponse(false,200,'',$success);
+            return response()->json($response,200);
 
-            if($store_stocks){
-                $success['store_stock_details'] =  $store_stocks;
-                $success['warehouse_stock_details'] =  $warehouse_stocks;
-//                return response()->json(['success'=>true,'response' => $success], $this->successStatus);
-
-                $response = APIHelpers::createAPIResponse(false,200,'',$success);
-                return response()->json($response,200);
-            }
         } catch (\Exception $e) {
             //return $e->getMessage();
             $response = APIHelpers::createAPIResponse(false,500,'Internal Server Error.',null);
