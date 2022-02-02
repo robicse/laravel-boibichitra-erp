@@ -702,6 +702,86 @@ if (! function_exists('storeCurrentStockInfoByBarcodeAndStoreName')) {
     }
 }
 
+if (! function_exists('warehouseStockByItemcode')) {
+    function warehouseStockByItemcode($item_code)
+    {
+        return DB::table('products')
+            ->leftJoin('warehouse_current_stocks','products.id','warehouse_current_stocks.product_id')
+            ->where('products.item_code',$item_code)
+            ->select(
+                'products.name as product_name',
+                'products.selling_price as price',
+                'warehouse_current_stocks.current_stock'
+            )
+            ->first();
+    }
+}
+
+if (! function_exists('storeCurrentStockInfoByItemcodeAndStoreName')) {
+    function storeCurrentStockInfoByItemcodeAndStoreName($item_code,$store_name)
+    {
+        $current_stock = DB::table('products')
+            ->join('warehouse_store_current_stocks','products.id','warehouse_store_current_stocks.product_id')
+            ->join('stores','warehouse_store_current_stocks.store_id','stores.id')
+            ->where('stores.id',$store_name)
+            ->where('products.item_code',$item_code)
+            ->pluck(
+                'warehouse_store_current_stocks.current_stock'
+            )
+            ->first();
+
+        if(!empty($current_stock)){
+            return $current_stock;
+        }else{
+            return 0;
+        }
+    }
+}
+
+if (! function_exists('sumSaleTotalAmount')) {
+    function sumSaleTotalAmount($sale_date, $sale_type,$store_id=null)
+    {
+        if($store_id != null){
+            $product_sales = DB::table('product_sales')
+                //->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('DATE(created_at) date'))
+                ->select(DB::raw('sum(total_amount) as `sum_total_amount`'))
+                ->where('sale_date',$sale_date)
+                ->where('sale_type',$sale_type)
+                ->where('store_id',$store_id)
+                ->groupBy(DB::raw('DATE(created_at)'))
+                ->first();
+        }else{
+            $product_sales = DB::table('product_sales')
+                //->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('DATE(created_at) date'))
+                ->select(DB::raw('sum(total_amount) as `sum_total_amount`'))
+                ->where('sale_date',$sale_date)
+                ->where('sale_type',$sale_type)
+                ->groupBy(DB::raw('DATE(created_at)'))
+                ->first();
+        }
+
+        if(!empty($product_sales)){
+            return $product_sales->sum_total_amount;
+        }else{
+            return 0;
+        }
+    }
+}
+
+
+if (! function_exists('returnDates')) {
+    function returnDates($fromdate, $todate)
+    {
+        $fromdate = \DateTime::createFromFormat('Y-m-d', $fromdate);
+        $todate = \DateTime::createFromFormat('Y-m-d', $todate);
+        return new \DatePeriod(
+            $fromdate,
+            new \DateInterval('P1D'),
+            $todate->modify('+1 day')
+        );
+    }
+}
+
 
 
 

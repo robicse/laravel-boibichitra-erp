@@ -1960,9 +1960,7 @@ class StockController extends Controller
 
                     array_push($store_stock_info, $nested_data);
                 }
-            }
-
-            if($request->barcode){
+            }elseif($request->barcode){
                 $warehouse_stocks = warehouseStockByBarcode($request->barcode);
                 $warehouse_stock_info['product_name'] = $warehouse_stocks->product_name;
                 $warehouse_stock_info['price'] = $warehouse_stocks->price;
@@ -1977,6 +1975,23 @@ class StockController extends Controller
 
                     array_push($store_stock_info, $nested_data);
                 }
+            }elseif($request->item_code){
+                $warehouse_stocks = warehouseStockByItemcode($request->item_code);
+                $warehouse_stock_info['product_name'] = $warehouse_stocks->product_name;
+                $warehouse_stock_info['price'] = $warehouse_stocks->price;
+                $warehouse_stock_info['current_stock'] = $warehouse_stocks->current_stock == null ? 0 : $warehouse_stocks->current_stock;
+                array_push($warehouse_stock_details, $warehouse_stock_info);
+
+                foreach ($store_info as $store){
+                    $nested_data['store_name']=$store->name;
+                    $nested_data['product_name']=$warehouse_stocks->product_name;
+                    $nested_data['price']=$warehouse_stocks->price;
+                    $nested_data['current_stock']=storeCurrentStockInfoByItemcodeAndStoreName($request->item_code,$store->id);
+
+                    array_push($store_stock_info, $nested_data);
+                }
+            }else{
+
             }
 
             $success['store_stock_details'] =  $store_stock_info;
