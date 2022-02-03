@@ -527,6 +527,6 @@ Route::middleware('auth:api')->post('/ledger_report', 'API\AccountController@led
 Route::middleware('auth:api')->post('/balance_sheet', 'API\AccountController@balanceSheet');
 
 // database backup
-Route::get('/backup_database', 'HomeController@backup_database')->name('backup_database');
-//Route::middleware('auth:api')->get('/backup_database', 'API\BackendController@backupDatabase');
+//Route::get('/backup_database', 'API\AccountController@backupDatabase')->name('backup_database');
+Route::middleware('auth:api')->get('/backup_database', 'API\AccountController@backupDatabase')->name('backup_database');
 //Route::middleware('auth:api')->get('/sum_sub_total', 'API\BackendController@sum_sub_total');

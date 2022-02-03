@@ -2563,9 +2563,14 @@ class AccountController extends Controller
     public function backupDatabase(Request $request){
         // Database configuration
         $host = "127.0.0.1";
-        $username = "erp_boibichitra_user";
-        $password = "mGubJAw6e+m834Bs";
-        $database_name = "erp_boibichitra_db";
+        //erp
+        $username = "erp_boibichitra_dev_user";
+        $password = "]bLHgmTbcpi992)7";
+        $database_name = "erp_boibichitra_dev";
+        //dev
+//        $username = "dev_boibichitra_user";
+//        $password = "v4PAzgdmt9IN6EiP";
+//        $database_name = "dev_boibichitra_db";
 
         // Get connection object and set the charset
         $conn = mysqli_connect($host, $username, $password, $database_name);
@@ -2642,6 +2647,7 @@ class AccountController extends Controller
             readfile($backup_file_name);
             exec('rm ' . $backup_file_name);
         }
+        return response()->json(['success'=>true,'response' => $sqlScript], $this->successStatus);
     }
 
 //    public function sum_sub_total(){

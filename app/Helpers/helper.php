@@ -769,6 +769,35 @@ if (! function_exists('sumSaleTotalAmount')) {
 }
 
 
+if (! function_exists('sumSaleVatTotalAmount')) {
+    function sumSaleVatTotalAmount($sale_date, $sale_type,$store_id=null)
+    {
+        if($store_id != null){
+            $product_sales = DB::table('product_sales')
+                ->select(DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'))
+                ->where('sale_date',$sale_date)
+                ->where('sale_type',$sale_type)
+                ->where('store_id',$store_id)
+                ->groupBy(DB::raw('DATE(created_at)'))
+                ->first();
+        }else{
+            $product_sales = DB::table('product_sales')
+                ->select(DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'))
+                ->where('sale_date',$sale_date)
+                ->where('sale_type',$sale_type)
+                ->groupBy(DB::raw('DATE(created_at)'))
+                ->first();
+        }
+
+        if(!empty($product_sales)){
+            return $product_sales->sum_total_vat_amount;
+        }else{
+            return 0;
+        }
+    }
+}
+
+
 if (! function_exists('returnDates')) {
     function returnDates($fromdate, $todate)
     {
@@ -779,6 +808,80 @@ if (! function_exists('returnDates')) {
             new \DateInterval('P1D'),
             $todate->modify('+1 day')
         );
+    }
+}
+
+if (! function_exists('returnMonths')) {
+    function returnMonths($fromdate, $todate)
+    {
+        $start    = new \DateTime($fromdate);
+        $start->modify('first day of this month');
+        $end      = new \DateTime($todate);
+        $end->modify('first day of next month');
+        $interval = DateInterval::createFromDateString('1 month');
+        return new \DatePeriod($start, $interval, $end);
+    }
+}
+
+if (! function_exists('sumSaleTotalAmountThisMonth')) {
+    function sumSaleTotalAmountThisMonth($sale_year_month, $sale_type,$store_id=null)
+    {
+        if($store_id != null){
+            $product_sales = DB::table('product_sales')
+                //->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'),DB::raw('MONTH(created_at) month'))
+                ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('YEAR(created_at) year'),DB::raw('MONTH(created_at) month'))
+                ->where('sale_date','>=',$sale_year_month.'-01')
+                ->where('sale_date','<=',$sale_year_month.'-31')
+                ->where('sale_type',$sale_type)
+                ->where('store_id',$store_id)
+                ->groupBy(DB::raw('YEAR(created_at)'), DB::raw('MONTH(created_at)'))
+                ->first();
+        }else{
+            $product_sales = DB::table('product_sales')
+//                ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'),DB::raw('MONTH(created_at) month'))
+                ->select(DB::raw('sum(total_amount) as `sum_total_amount`'),DB::raw('YEAR(created_at) year'),DB::raw('MONTH(created_at) month'))
+                ->where('sale_date','>=',$sale_year_month.'-01')
+                ->where('sale_date','<=',$sale_year_month.'-31')
+                ->where('sale_type',$sale_type)
+                ->groupBy(DB::raw('YEAR(created_at)'), DB::raw('MONTH(created_at)'))
+                ->first();
+        }
+
+        if(!empty($product_sales)){
+            return $product_sales->sum_total_amount;
+        }else{
+            return 0;
+        }
+    }
+}
+
+if (! function_exists('sumSaleVatTotalAmountThisMonth')) {
+    function sumSaleVatTotalAmountThisMonth($sale_year_month, $sale_type,$store_id=null)
+    {
+        if($store_id != null){
+            $product_sales = DB::table('product_sales')
+                ->select(DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'),DB::raw('MONTH(created_at) month'))
+                ->where('sale_date','>=',$sale_year_month.'-01')
+                ->where('sale_date','<=',$sale_year_month.'-31')
+                ->where('sale_type',$sale_type)
+                ->where('store_id',$store_id)
+                ->groupBy(DB::raw('YEAR(created_at)'), DB::raw('MONTH(created_at)'))
+                ->first();
+        }else{
+            $product_sales = DB::table('product_sales')
+                ->select(DB::raw('sum(total_vat_amount) as `sum_total_vat_amount`'),DB::raw('YEAR(created_at) year'),DB::raw('MONTH(created_at) month'))
+                ->where('sale_date','>=',$sale_year_month.'-01')
+                ->where('sale_date','<=',$sale_year_month.'-31')
+                ->where('sale_type',$sale_type)
+                ->groupBy(DB::raw('YEAR(created_at)'), DB::raw('MONTH(created_at)'))
+                ->first();
+        }
+
+        if(!empty($product_sales)){
+            return $product_sales->sum_total_vat_amount;
+        }else{
+            return 0;
+        }
     }
 }
 
