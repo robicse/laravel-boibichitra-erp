@@ -174,8 +174,11 @@ Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination', 
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_two', 'API\PaginationController@warehouseCurrentStockListPaginationTwo');
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_two_with_search', 'API\PaginationController@warehouseCurrentStockListPaginationTwoWithSearch');
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_barcode', 'API\PaginationController@warehouseCurrentStockListPaginationBarcode');
+Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_barcode_no_check_current_stock', 'API\PaginationController@warehouseCurrentStockListPaginationBarcodeNoCheckCurrentStock');
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_item_code', 'API\PaginationController@warehouseCurrentStockListPaginationItemcode');
+Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_item_code_no_check_current_stock', 'API\PaginationController@warehouseCurrentStockListPaginationItemcodeNoCheckCurrentStock');
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_product_name', 'API\PaginationController@warehouseCurrentStockListPaginationProductName');
+Route::middleware('auth:api')->post('/warehouse_current_stock_list_pagination_product_name_no_check_current_stock', 'API\PaginationController@warehouseCurrentStockListPaginationProductNameNoCheckCurrentStock');
 
 Route::middleware('auth:api')->post('/store_current_stock_list_pagination', 'API\PaginationController@storeCurrentStockListPagination');
 Route::middleware('auth:api')->post('/store_current_stock_list_pagination_barcode', 'API\PaginationController@storeCurrentStockListPaginationBarcode');
@@ -236,6 +239,7 @@ Route::middleware('auth:api')->post('/product_purchase_return_single_product_rem
 Route::middleware('auth:api')->get('/warehouse_stock_list', 'API\StockController@warehouseStockList');
 Route::middleware('auth:api')->post('/warehouse_current_stock_list_without_zero', 'API\StockController@warehouseCurrentStockListWithoutZero');
 Route::middleware('auth:api')->get('/warehouse_stock_low_list', 'API\StockController@warehouseStockLowList');
+Route::middleware('auth:api')->get('/warehouse_stock_low_inventory_alert_list', 'API\StockController@warehouseStockLowInventoryAlertList');
 
 
 // store stock list
@@ -527,6 +531,6 @@ Route::middleware('auth:api')->post('/ledger_report', 'API\AccountController@led
 Route::middleware('auth:api')->post('/balance_sheet', 'API\AccountController@balanceSheet');
 
 // database backup
-//Route::get('/backup_database', 'API\AccountController@backupDatabase')->name('backup_database');
-Route::middleware('auth:api')->get('/backup_database', 'API\AccountController@backupDatabase')->name('backup_database');
+Route::get('/backup_database', 'API\AccountController@backupDatabase')->name('backup_database');
+//Route::middleware('auth:api')->get('/backup_database', 'API\AccountController@backupDatabase')->name('backup_database');
 //Route::middleware('auth:api')->get('/sum_sub_total', 'API\BackendController@sum_sub_total');

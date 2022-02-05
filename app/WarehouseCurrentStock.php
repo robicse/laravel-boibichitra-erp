@@ -4,7 +4,7 @@ namespace App;
 
 use Illuminate\Database\Eloquent\Model;
 
-class warehouseCurrentStock extends Model
+class WarehouseCurrentStock extends Model
 {
     //
 }

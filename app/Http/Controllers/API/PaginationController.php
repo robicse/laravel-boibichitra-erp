@@ -264,6 +264,43 @@ class PaginationController extends Controller
         }
     }
 
+    public function warehouseCurrentStockListPaginationBarcodeNoCheckCurrentStock(Request $request){
+
+        $warehouse_stock_product = DB::table('products')
+            ->leftJoin('warehouse_current_stocks','warehouse_current_stocks.product_id','products.id')
+            ->leftJoin('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+            ->where('products.barcode',$request->barcode)
+            ->select(
+                'warehouse_current_stocks.*',
+                'warehouses.name as warehouse_name',
+                'products.name as product_name',
+                'products.purchase_price',
+                'products.selling_price',
+                'products.whole_sale_price',
+                'products.item_code',
+                'products.barcode',
+                'products.image',
+                'products.vat_status',
+                'products.vat_percentage',
+                'products.vat_amount',
+                'product_units.id as product_unit_id',
+                'product_units.name as product_unit_name',
+                'product_brands.id as product_brand_id',
+                'product_brands.name as product_brand_name'
+            )
+            ->paginate(1);
+
+        if($warehouse_stock_product)
+        {
+            $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
     public function warehouseCurrentStockListPaginationItemcode(Request $request){
 
         $warehouse_stock_product = DB::table('warehouse_current_stocks')
@@ -286,6 +323,44 @@ class PaginationController extends Controller
         }
     }
 
+    public function warehouseCurrentStockListPaginationItemcodeNoCheckCurrentStock(Request $request){
+
+        $warehouse_stock_product = DB::table('products')
+            ->leftJoin('warehouse_current_stocks','warehouse_current_stocks.product_id','products.id')
+            ->leftJoin('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+            ->where('products.item_code',$request->item_code)
+            ->select(
+                'warehouse_current_stocks.*',
+                'warehouses.name as warehouse_name',
+                'products.name as product_name',
+                'products.purchase_price',
+                'products.selling_price',
+                'products.whole_sale_price',
+                'products.item_code',
+                'products.barcode',
+                'products.image',
+                'products.vat_status',
+                'products.vat_percentage',
+                'products.vat_amount',
+                'product_units.id as product_unit_id',
+                'product_units.name as product_unit_name',
+                'product_brands.id as product_brand_id',
+                'product_brands.name as product_brand_name'
+            )
+            ->paginate(1);
+
+
+        if($warehouse_stock_product)
+        {
+            $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
     public function warehouseCurrentStockListPaginationProductName(Request $request){
 
         $warehouse_stock_product = DB::table('warehouse_current_stocks')
@@ -297,6 +372,43 @@ class PaginationController extends Controller
             ->where('warehouse_current_stocks.current_stock','>',0)
             ->where('products.name','like','%'.$request->name.'%')
             ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.whole_sale_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+            ->paginate(12);
+
+        if($warehouse_stock_product)
+        {
+            $success['warehouse_current_stock_list'] =  $warehouse_stock_product;
+            return response()->json(['success'=>true,'response' => $success], $this->successStatus);
+        }else{
+            return response()->json(['success'=>false,'response'=>'No Warehouse Current Stock List Found!'], $this->failStatus);
+        }
+    }
+
+    public function warehouseCurrentStockListPaginationProductNameNoCheckCurrentStock(Request $request){
+
+        $warehouse_stock_product = DB::table('products')
+            ->leftJoin('warehouse_current_stocks','warehouse_current_stocks.product_id','products.id')
+            ->leftJoin('warehouses','warehouse_current_stocks.warehouse_id','warehouses.id')
+            ->leftJoin('product_units','products.product_unit_id','product_units.id')
+            ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
+            ->where('products.name','like','%'.$request->name.'%')
+            ->select(
+                'warehouse_current_stocks.*',
+                'warehouses.name as warehouse_name',
+                'products.name as product_name',
+                'products.purchase_price',
+                'products.selling_price',
+                'products.whole_sale_price',
+                'products.item_code',
+                'products.barcode',
+                'products.image',
+                'products.vat_status',
+                'products.vat_percentage',
+                'products.vat_amount',
+                'product_units.id as product_unit_id',
+                'product_units.name as product_unit_name',
+                'product_brands.id as product_brand_id',
+                'product_brands.name as product_brand_name'
+            )
             ->paginate(12);
 
         if($warehouse_stock_product)

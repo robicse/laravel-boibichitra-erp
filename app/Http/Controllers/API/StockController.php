@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Helpers\APIHelpers;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductLowAlertCollection;
 use App\Product;
 use App\ProductPurchase;
 use App\Stock;
@@ -16,7 +17,7 @@ use App\StoreStockReturn;
 use App\StoreStockReturnDetail;
 use App\User;
 use App\Warehouse;
-use App\warehouseCurrentStock;
+use App\WarehouseCurrentStock;
 use App\WarehouseStoreCurrentStock;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -87,6 +88,42 @@ class StockController extends Controller
         }else{
             return response()->json(['success'=>false,'response'=>'No Warehouse Stock Low List Found!'], $this->failStatus);
         }
+    }
+
+    public function warehouseStockLowInventoryAlertList(Request $request){
+
+        $low_inventory_alert_product_ids = [];
+
+        //$warehouse_current_stocks = WarehouseCurrentStock::all();
+
+        $warehouse_current_stocks = WarehouseCurrentStock::join('products','warehouse_current_stocks.product_id','products.id')
+            ->where('products.name','like','%'.$request->search.'%')
+            ->orWhere('item_code','like','%'.$request->search.'%')
+            ->orWhere('barcode','like','%'.$request->search.'%')
+            //->orWhere('whole_sale_price','like','%'.$request->search.'%')
+            //->orWhere('selling_price','like','%'.$request->search.'%')
+            ->get();
+
+
+        if(count($warehouse_current_stocks)){
+            foreach ($warehouse_current_stocks as $warehouse_current_stock){
+                $product_id = $warehouse_current_stock->product_id;
+                $current_stock = $warehouse_current_stock->current_stock;
+
+                $product_ids = Product::where('id',$product_id)->where('low_inventory_alert','>=',$current_stock)->pluck('id')->first();
+                if(!empty($product_ids)){
+                    $low_inventory_alert_product_ids[] = $product_ids;
+                }
+
+            }
+        }
+
+        $product_lists = Product::where('low_inventory_alert','!=',null)
+            ->whereIn('id', $low_inventory_alert_product_ids)
+            ->select('id','name','low_inventory_alert')
+            ->paginate(12);
+
+        return new ProductLowAlertCollection($product_lists);
     }
 
     public function warehouseCurrentStockList(Request $request){
