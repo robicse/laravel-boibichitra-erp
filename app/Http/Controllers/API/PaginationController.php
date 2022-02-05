@@ -275,6 +275,7 @@ class PaginationController extends Controller
             ->select(
                 'warehouse_current_stocks.*',
                 'warehouses.name as warehouse_name',
+                'products.id as product_id',
                 'products.name as product_name',
                 'products.purchase_price',
                 'products.selling_price',
@@ -334,6 +335,7 @@ class PaginationController extends Controller
             ->select(
                 'warehouse_current_stocks.*',
                 'warehouses.name as warehouse_name',
+                'products.id as product_id',
                 'products.name as product_name',
                 'products.purchase_price',
                 'products.selling_price',
@@ -394,6 +396,7 @@ class PaginationController extends Controller
             ->select(
                 'warehouse_current_stocks.*',
                 'warehouses.name as warehouse_name',
+                'products.id as product_id',
                 'products.name as product_name',
                 'products.purchase_price',
                 'products.selling_price',
