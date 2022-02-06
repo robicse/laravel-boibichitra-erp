@@ -437,7 +437,7 @@ class EmployeeController extends Controller
     public function employeeSalaryInformationList(){
         $employee_salary_informations = DB::table('employee_salary_informations')
             ->join('employees','employee_salary_informations.employee_id','=','employees.id')
-            ->select('employee_salary_informations.id','employee_salary_informations.gross_salary','employee_salary_informations.basic','employee_salary_informations.house_rent','employee_salary_informations.medical','employee_salary_informations.conveyance','employee_salary_informations.special','employee_salary_informations.status','employee_salary_informations.id as employee_id','employees.name as employee_name')
+            ->select('employee_salary_informations.id','employee_salary_informations.gross_salary','employee_salary_informations.basic','employee_salary_informations.house_rent','employee_salary_informations.medical','employee_salary_informations.conveyance','employee_salary_informations.special','employee_salary_informations.status','employee_salary_informations.employee_id as employee_id','employees.name as employee_name')
             ->orderBy('id','desc')
             ->get();
 
