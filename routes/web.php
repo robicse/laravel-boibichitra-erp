@@ -69,6 +69,10 @@ Route::get('/', function () {
 Auth::routes();
 
 Route::get('/home', 'HomeController@index')->name('home');
+Route::get('/purchase_price_update', 'HomeController@purchase_price_update')->name('purchase_price_update');
+Route::get('/stock_transfer_sub_total', 'HomeController@stock_transfer_sub_total')->name('stock_transfer_sub_total');
+
+Route::get('/check_missing_id', 'HomeController@check_missing_id')->name('check_missing_id');
 
 Route::group(['middleware' => ['auth']], function() {
     Route::get('change-password/{id}', 'UserController@changedPassword')->name('password.change_password');

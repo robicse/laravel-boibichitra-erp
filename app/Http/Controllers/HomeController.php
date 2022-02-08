@@ -6,6 +6,7 @@ use App\PaymentCollection;
 use App\Product;
 use App\ProductSale;
 use App\ProductSaleDetail;
+use App\Stock;
 use App\StockTransfer;
 use App\StockTransferDetail;
 use App\Transaction;
@@ -257,6 +258,54 @@ class HomeController extends Controller
             }
         }
         dd('ops');
+    }
+
+    public function purchase_price_update()
+    {
+        $product_sale_details = ProductSaleDetail::where('id','>',30000)->where('id','<=',44005)->select('id','product_id')->get();
+        foreach ($product_sale_details as $product_sale_detail)
+        {
+            $product_id = $product_sale_detail->product_id;
+            $purchase_price = Product::where('id',$product_id)->pluck('purchase_price')->first();
+
+            $product_sale_detail = ProductSaleDetail::where('id',$product_sale_detail->id)->first();
+            $product_sale_detail->purchase_price = $purchase_price;
+            $product_sale_detail->save();
+        }
+    }
+
+    public function stock_transfer_sub_total()
+    {
+        $stock_transfers = StockTransfer::where('id','>',10000)->where('id','<=',20000)->select('id','total_amount')->get();
+        foreach ($stock_transfers as $stock_transfer)
+        {
+            $id = $stock_transfer->id;
+            $total_amount = $stock_transfer->total_amount;
+            $st = StockTransfer::where('id',$id)->first();
+            $st->sub_total=$total_amount;
+            $st->save();
+        }
+        dd('done');
+    }
+
+    public function check_missing_id()
+    {
+        //dd('come here');
+        $stocks = Stock::where('id','<=',2000)->get();
+        $i = 6;
+        foreach ($stocks as $stock){
+            echo 'current => '.$i;
+            echo '<br/>';
+            if($stock->id === $i){
+                //echo 'Found => '. $stock->id;
+            }else{
+                echo 'Not Found => '. $stock->id;
+            }
+            echo '<br/>';
+            echo '<br/>';
+
+            $i++;
+        }
     }
 
     public function backup_database()
