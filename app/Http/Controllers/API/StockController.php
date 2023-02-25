@@ -181,7 +181,7 @@ class StockController extends Controller
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('warehouse_current_stocks.warehouse_id',$request->warehouse_id)
             ->where('warehouse_current_stocks.current_stock','!=',0)
-            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
+            ->select('warehouse_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.selling_price','products.whole_sale_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->get();
 
         $warehouse_stock_product = [];
@@ -194,6 +194,7 @@ class StockController extends Controller
             $nested_data['product_name'] = $stock_row->product_name;
             $nested_data['purchase_price'] = $stock_row->purchase_price;
             $nested_data['selling_price'] = $stock_row->selling_price;
+            $nested_data['whole_sale_price'] = $stock_row->whole_sale_price;
             $nested_data['item_code'] = $stock_row->item_code;
             $nested_data['barcode'] = $stock_row->barcode;
             $nested_data['image'] = $stock_row->image;
