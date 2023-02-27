@@ -1271,6 +1271,8 @@ class StockController extends Controller
             ->leftJoin('product_brands','products.product_brand_id','product_brands.id')
             ->where('warehouse_store_current_stocks.store_id',$request->store_id)
             ->where('warehouse_store_current_stocks.current_stock','!=',0)
+            // ->where('warehouse_store_current_stocks.id','<=',8000)
+            // ->where('warehouse_store_current_stocks.id','>',8001)
             ->select('warehouse_store_current_stocks.*','warehouses.name as warehouse_name','products.name as product_name','products.purchase_price','products.whole_sale_price','products.selling_price','products.item_code','products.barcode','products.image','products.vat_status','products.vat_percentage','products.vat_amount','products.vat_whole_amount','product_units.id as product_unit_id','product_units.name as product_unit_name','product_brands.id as product_brand_id','product_brands.name as product_brand_name')
             ->get();
 
